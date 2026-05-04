@@ -1,0 +1,33 @@
+from pydantic import BaseModel
+from typing import Optional
+
+
+class GenerateSuggestionsRequest(BaseModel):
+    archive_root: str = "D:/Archive"
+
+
+class GenerateSuggestionsResponse(BaseModel):
+    created_count: int
+    skipped_count: int
+
+
+class FileSuggestionResponse(BaseModel):
+    id: int
+    file_id: int
+    suggestion_type: str
+    source_path: str
+    target_path: str
+    reason: Optional[str] = None
+    confidence: float = 0
+    conflict_status: str = "none"
+    status: str = "pending"
+
+
+class SuggestionListResponse(BaseModel):
+    items: list[FileSuggestionResponse]
+    total: int
+
+
+class UpdateSuggestionRequest(BaseModel):
+    status: Optional[str] = None
+    target_path: Optional[str] = None
