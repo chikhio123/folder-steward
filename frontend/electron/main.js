@@ -10,6 +10,15 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow;
 let backendProcess = null;
+let pendingBackendError = null;
+
+function notifyBackendError(message) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('backend-error', message);
+  } else {
+    pendingBackendError = message;
+  }
+}
 
 function startBackend() {
   const backendDir = path.join(__dirname, '../../backend');
@@ -41,16 +50,7 @@ function startBackend() {
 
   backendProcess.on('error', (err) => {
     console.error(`[Backend Spawn Error] Failed to start backend: ${err.message}`);
-    // Wait for mainWindow to be ready before sending IPC
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('backend-error', err.message);
-    } else {
-      app.on('browser-window-created', (e, win) => {
-        win.webContents.once('did-finish-load', () => {
-          win.webContents.send('backend-error', err.message);
-        });
-      });
-    }
+    notifyBackendError(err.message);
   });
 
   backendProcess.on('close', (code) => {
@@ -58,16 +58,7 @@ function startBackend() {
     if (code !== 0 && code !== null) {
       const errMsg = `FastAPI backend exited unexpectedly with code ${code}. Port 8000 might be in use.`;
       console.error(`[Backend Exit Error] ${errMsg}`);
-      // Wait for mainWindow to be ready before sending IPC
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('backend-error', errMsg);
-      } else {
-        app.on('browser-window-created', (e, win) => {
-          win.webContents.once('did-finish-load', () => {
-            win.webContents.send('backend-error', errMsg);
-          });
-        });
-      }
+      notifyBackendError(errMsg);
     }
   });
 }
@@ -111,6 +102,13 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  mainWindow.webContents.once('did-finish-load', () => {
+    if (pendingBackendError) {
+      mainWindow.webContents.send('backend-error', pendingBackendError);
+      pendingBackendError = null;
+    }
+  });
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
@@ -123,8 +121,12 @@ function createWindow() {
 
 app.on('ready', async () => {
   startBackend();
-  await waitUntilBackendReady();
+  const ready = await waitUntilBackendReady();
   createWindow();
+
+  if (!ready) {
+    notifyBackendError('核心服务启动超时，请检查 Python 环境、依赖或端口占用。');
+  }
 });
 
 app.on('before-quit', () => {
