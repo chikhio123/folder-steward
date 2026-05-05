@@ -152,7 +152,7 @@ def init_db() -> None:
             filename,
             current_path,
             text_content,
-            tokenize='unicode61'
+            tokenize='trigram'
         );
 
         CREATE TABLE IF NOT EXISTS rules (
