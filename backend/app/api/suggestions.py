@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
+from pathlib import Path
 from typing import Optional
 
+from ..core.database import get_connection
 from ..schemas.suggestion_schema import (
     GenerateSuggestionsRequest,
     GenerateSuggestionsResponse,
@@ -48,15 +50,33 @@ def list_suggestions(
     )
 
 
+def _get_archive_root(suggestion_archive_root: Optional[str] = None) -> str:
+    if suggestion_archive_root:
+        return suggestion_archive_root
+    row = get_connection().execute(
+        "SELECT value FROM app_settings WHERE key = 'archive_root'"
+    ).fetchone()
+    return row["value"] if row else ""
+
+
 @router.patch("/suggestions/{suggestion_id}", response_model=FileSuggestionResponse)
 def update_suggestion(suggestion_id: int, body: UpdateSuggestionRequest):
     suggestion = suggestion_repo.get(suggestion_id)
     if not suggestion:
         raise HTTPException(status_code=404, detail="Suggestion not found")
+    if body.target_path is not None:
+        archive_root = _get_archive_root(suggestion.archive_root)
+        if archive_root:
+            target = Path(body.target_path).resolve()
+            root = Path(archive_root).resolve()
+            if not target.is_relative_to(root):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Target path must be within archive root: {archive_root}",
+                )
+        suggestion.target_path = body.target_path
     if body.status is not None:
         suggestion.status = body.status
-    if body.target_path is not None:
-        suggestion.target_path = body.target_path
     suggestion_repo.update(suggestion)
     return FileSuggestionResponse(
         id=suggestion.id,

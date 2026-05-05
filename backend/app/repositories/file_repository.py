@@ -20,6 +20,33 @@ class FileRepository:
         conn.commit()
         return cur.lastrowid
 
+    def find_by_current_path(self, current_path: str) -> Optional[FileRecord]:
+        row = get_connection().execute(
+            "SELECT * FROM file_records WHERE current_path = ?", (current_path,)
+        ).fetchone()
+        if not row:
+            return None
+        return FileRecord(**dict(row))
+
+    def upsert(self, record: FileRecord) -> int:
+        """Insert if new, update if existing by current_path. Returns record id."""
+        existing = self.find_by_current_path(record.current_path)
+        if existing:
+            conn = get_connection()
+            conn.execute(
+                """UPDATE file_records SET original_path=?, filename=?, extension=?,
+                   mime_type=?, size_bytes=?, sha256=?, modified_at=?,
+                   indexed_at=?, status=?, last_error=?
+                   WHERE id=?""",
+                (record.original_path, record.filename, record.extension,
+                 record.mime_type, record.size_bytes, record.sha256,
+                 record.modified_at, record.indexed_at, record.status,
+                 record.last_error, existing.id),
+            )
+            conn.commit()
+            return existing.id
+        return self.create(record)
+
     def get(self, file_id: int) -> Optional[FileRecord]:
         row = get_connection().execute(
             "SELECT * FROM file_records WHERE id = ?", (file_id,)

@@ -1,13 +1,21 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { createScanTask, getScanTask, getScanErrors } from "../services/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createScanTask, getScanTask, getScanErrors, cancelScanTask } from "../services/api";
 export default function ScanPage() {
+  const queryClient = useQueryClient();
   const [path, setPath] = useState("");
   const [taskId, setTaskId] = useState<number | null>(null);
 
   const createMutation = useMutation({
     mutationFn: () => createScanTask(path),
     onSuccess: (data) => setTaskId(data.task_id),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelScanTask(taskId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scan-task", taskId] });
+    },
   });
 
   const { data: task } = useQuery({
@@ -58,9 +66,20 @@ export default function ScanPage() {
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <h3 className="text-lg font-medium text-gray-800 mb-4">扫描进度</h3>
           <div className="space-y-3">
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between items-center text-sm">
               <span className="text-gray-500">状态</span>
-              <span className={`font-medium ${statusColor(task.status)}`}>{statusLabel(task.status)}</span>
+              <div className="flex items-center gap-3">
+                <span className={`font-medium ${statusColor(task.status)}`}>{statusLabel(task.status)}</span>
+                {(task.status === "running" || task.status === "pending") && (
+                  <button
+                    onClick={() => cancelMutation.mutate()}
+                    disabled={cancelMutation.isPending}
+                    className="px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-md hover:bg-red-200 disabled:opacity-50"
+                  >
+                    {cancelMutation.isPending ? "取消中..." : "取消扫描"}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">进度</span>
@@ -84,6 +103,9 @@ export default function ScanPage() {
             )}
             {task.error_message && (
               <p className="text-red-600 text-sm mt-2">{task.error_message}</p>
+            )}
+            {cancelMutation.isError && (
+              <p className="text-red-600 text-sm mt-2">{(cancelMutation.error as Error).message}</p>
             )}
           </div>
         </div>
@@ -131,6 +153,7 @@ function statusColor(status: string): string {
     case "running":
     case "pending": return "text-blue-600";
     case "failed": return "text-red-600";
+    case "cancelled": return "text-yellow-600";
     default: return "text-gray-600";
   }
 }

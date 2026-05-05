@@ -86,6 +86,7 @@ def init_db() -> None:
             confidence REAL DEFAULT 0,
             conflict_status TEXT DEFAULT 'none',
             status TEXT NOT NULL DEFAULT 'pending',
+            archive_root TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT,
             FOREIGN KEY (file_id) REFERENCES file_records(id)
@@ -117,4 +118,10 @@ def init_db() -> None:
             updated_at TEXT NOT NULL
         );
     """)
+    columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(file_suggestions)").fetchall()
+    }
+    if "archive_root" not in columns:
+        conn.execute("ALTER TABLE file_suggestions ADD COLUMN archive_root TEXT")
     conn.commit()

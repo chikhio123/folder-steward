@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
+from ..core.database import get_connection
 from ..models.file_record import FileRecord
 from ..models.file_suggestion import FileSuggestion
 from ..models.scan_task import now_iso
@@ -61,6 +62,13 @@ class SuggestionService:
 
     def generate_suggestions(self, archive_root: str) -> tuple[int, int]:
         archive = Path(archive_root).resolve()
+        # Store archive_root for later validation (PATCH, execute)
+        conn = get_connection()
+        conn.execute(
+            "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)",
+            ("archive_root", str(archive), now_iso()),
+        )
+        conn.commit()
         all_files, _ = self.file_repo.list_paginated(page=1, page_size=99999)
 
         created = 0
@@ -84,6 +92,7 @@ class SuggestionService:
                 confidence=self._calc_confidence(file_rec),
                 conflict_status=conflict,
                 status="pending",
+                archive_root=str(archive),
                 created_at=now_iso(),
             )
             self.sug_repo.create(suggestion)

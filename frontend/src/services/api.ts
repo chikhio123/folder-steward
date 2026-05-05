@@ -29,6 +29,11 @@ export const createScanTask = (rootPath: string) =>
 export const getScanTask = (taskId: number) =>
   request<import("../types").ScanTask>(`/scan-tasks/${taskId}`);
 
+export const cancelScanTask = (taskId: number) =>
+  request<{ task_id: number; status: string }>(`/scan-tasks/${taskId}/cancel`, {
+    method: "POST",
+  });
+
 export const getScanErrors = (taskId: number) =>
   request<{ items: import("../types").ScanError[] }>(`/scan-tasks/${taskId}/errors`);
 

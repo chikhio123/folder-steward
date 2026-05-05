@@ -13,5 +13,6 @@ class FileSuggestion:
     confidence: float = 0.0
     conflict_status: str = "none"
     status: str = "pending"
+    archive_root: Optional[str] = None
     created_at: str = ""
     updated_at: Optional[str] = None

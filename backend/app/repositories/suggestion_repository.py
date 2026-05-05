@@ -11,11 +11,12 @@ class SuggestionRepository:
         cur = conn.execute(
             """INSERT INTO file_suggestions
                (file_id, suggestion_type, source_path, target_path, reason,
-                confidence, conflict_status, status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                confidence, conflict_status, status, archive_root, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (suggestion.file_id, suggestion.suggestion_type, suggestion.source_path,
              suggestion.target_path, suggestion.reason, suggestion.confidence,
-             suggestion.conflict_status, suggestion.status, suggestion.created_at),
+             suggestion.conflict_status, suggestion.status, suggestion.archive_root,
+             suggestion.created_at),
         )
         conn.commit()
         return cur.lastrowid
@@ -31,10 +32,10 @@ class SuggestionRepository:
     def update(self, suggestion: FileSuggestion) -> None:
         conn = get_connection()
         conn.execute(
-            """UPDATE file_suggestions SET status=?, target_path=?, conflict_status=?,
+            """UPDATE file_suggestions SET status=?, target_path=?, conflict_status=?, archive_root=?,
                updated_at=? WHERE id=?""",
             (suggestion.status, suggestion.target_path, suggestion.conflict_status,
-             now_iso(), suggestion.id),
+             suggestion.archive_root, now_iso(), suggestion.id),
         )
         conn.commit()
 

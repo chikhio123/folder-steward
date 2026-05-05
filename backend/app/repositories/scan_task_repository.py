@@ -35,6 +35,48 @@ class ScanTaskRepository:
         )
         conn.commit()
 
+    def mark_running_if_pending(self, task_id: int, started_at: str) -> bool:
+        conn = get_connection()
+        cur = conn.execute(
+            "UPDATE scan_tasks SET status='running', started_at=? WHERE id=? AND status='pending'",
+            (started_at, task_id),
+        )
+        conn.commit()
+        return cur.rowcount == 1
+
+    def update_progress(self, task_id: int, scanned: int, failed: int) -> None:
+        """Update only progress counters without touching status/state fields.
+        Prevents race conditions where cancel_task sets cancelled but
+        the scan loop's periodic update overwrites it back to running."""
+        conn = get_connection()
+        conn.execute(
+            "UPDATE scan_tasks SET scanned_files=?, failed_files=? WHERE id=?",
+            (scanned, failed, task_id),
+        )
+        conn.commit()
+
+    def complete_if_running(self, task: ScanTask) -> bool:
+        conn = get_connection()
+        cur = conn.execute(
+            """UPDATE scan_tasks SET status=?, total_files=?, scanned_files=?,
+               failed_files=?, error_message=?, finished_at=?
+               WHERE id=? AND status='running'""",
+            (task.status, task.total_files, task.scanned_files,
+             task.failed_files, task.error_message, task.finished_at, task.id),
+        )
+        conn.commit()
+        return cur.rowcount == 1
+
+    def fail_if_running(self, task: ScanTask) -> bool:
+        conn = get_connection()
+        cur = conn.execute(
+            """UPDATE scan_tasks SET status='failed', error_message=?, finished_at=?
+               WHERE id=? AND status='running'""",
+            (task.error_message, task.finished_at, task.id),
+        )
+        conn.commit()
+        return cur.rowcount == 1
+
     def list_recent(self, limit: int = 5) -> list[ScanTask]:
         rows = get_connection().execute(
             "SELECT * FROM scan_tasks ORDER BY created_at DESC LIMIT ?", (limit,)

@@ -11,6 +11,7 @@ from app.services.operation_service import OperationService
 from app.repositories.file_repository import FileRepository
 from app.repositories.suggestion_repository import SuggestionRepository
 from app.repositories.operation_log_repository import OperationLogRepository
+from app.repositories.scan_task_repository import ScanTaskRepository
 
 
 @pytest.fixture(autouse=True)
@@ -190,3 +191,194 @@ class TestFullFlow:
 
         # The surviving file should have been moved (.txt → Notes)
         assert (archive_root / "Notes" / "keep.txt").exists()
+
+    def test_scan_total_files_includes_failed_files(self, temp_dir, monkeypatch):
+        source = temp_dir / "scan_failures"
+        source.mkdir()
+        ok_file = source / "ok.txt"
+        bad_file = source / "bad.txt"
+        ok_file.write_bytes(b"ok")
+        bad_file.write_bytes(b"bad")
+
+        scan_service = ScanService()
+        original_scan_single = scan_service._scan_single_file
+
+        def fail_one_file(task_id, task, path, root):
+            if path.name == "bad.txt":
+                raise RuntimeError("forced scan failure")
+            return original_scan_single(task_id, task, path, root)
+
+        monkeypatch.setattr(scan_service, "_scan_single_file", fail_one_file)
+        task = scan_service.create_scan_task(str(source))
+
+        import time
+        max_wait = 10
+        while max_wait > 0:
+            task = scan_service.get_task(task.id)
+            if task and task.status in ("completed", "failed"):
+                break
+            time.sleep(0.2)
+            max_wait -= 1
+
+        assert task is not None
+        assert task.status == "completed"
+        assert task.scanned_files == 1
+        assert task.failed_files == 1
+        assert task.total_files == 2
+
+    def test_scan_thread_respects_persisted_cancelled_status(self, temp_dir):
+        source = temp_dir / "cancelled"
+        source.mkdir()
+        (source / "file.txt").write_bytes(b"content")
+
+        task_repo = ScanTaskRepository()
+        task = task_repo.create(str(source))
+        task.status = "cancelled"
+        task.finished_at = "already-cancelled"
+        task_repo.update(task)
+
+        scan_service = ScanService()
+        scan_service._run_scan(task.id)
+
+        task_after = scan_service.get_task(task.id)
+        assert task_after is not None
+        assert task_after.status == "cancelled"
+        assert task_after.scanned_files == 0
+
+    def test_scan_start_does_not_overwrite_concurrent_cancel(self, temp_dir, monkeypatch):
+        source = temp_dir / "cancel_race"
+        source.mkdir()
+        (source / "file.txt").write_bytes(b"content")
+
+        task_repo = ScanTaskRepository()
+        task = task_repo.create(str(source))
+        scan_service = ScanService()
+        original_mark_running = scan_service.task_repo.mark_running_if_pending
+
+        def cancel_before_start(task_id, started_at):
+            cancel_task = task_repo.get(task_id)
+            cancel_task.status = "cancelled"
+            cancel_task.finished_at = "cancelled-before-start"
+            task_repo.update(cancel_task)
+            return original_mark_running(task_id, started_at)
+
+        monkeypatch.setattr(scan_service.task_repo, "mark_running_if_pending", cancel_before_start)
+
+        scan_service._run_scan(task.id)
+
+        task_after = scan_service.get_task(task.id)
+        assert task_after is not None
+        assert task_after.status == "cancelled"
+        assert task_after.scanned_files == 0
+
+    def test_scan_complete_does_not_overwrite_concurrent_cancel(self, temp_dir, monkeypatch):
+        source = temp_dir / "cancel_before_complete"
+        source.mkdir()
+        (source / "file.txt").write_bytes(b"content")
+
+        scan_service = ScanService()
+        original_complete = scan_service.task_repo.complete_if_running
+
+        def cancel_before_complete(task):
+            cancel_task = scan_service.task_repo.get(task.id)
+            cancel_task.status = "cancelled"
+            cancel_task.finished_at = "cancelled-before-complete"
+            scan_service.task_repo.update(cancel_task)
+            return original_complete(task)
+
+        monkeypatch.setattr(scan_service.task_repo, "complete_if_running", cancel_before_complete)
+        task = scan_service.create_scan_task(str(source))
+
+        import time
+        max_wait = 10
+        while max_wait > 0:
+            task = scan_service.get_task(task.id)
+            if task and task.status in ("completed", "failed", "cancelled"):
+                break
+            time.sleep(0.2)
+            max_wait -= 1
+
+        assert task is not None
+        assert task.status == "cancelled"
+
+    def test_execute_suggestion_restores_file_if_db_logging_fails(self, temp_dir, monkeypatch):
+        source_dir = temp_dir / "restore_on_failure"
+        source_dir.mkdir()
+        source = source_dir / "keep.txt"
+        source.write_bytes(b"content")
+        archive_root = temp_dir / "Archive"
+
+        scan_service = ScanService()
+        task = scan_service.create_scan_task(str(source_dir))
+        import time
+        max_wait = 10
+        while max_wait > 0:
+            task = scan_service.get_task(task.id)
+            if task and task.status in ("completed", "failed"):
+                break
+            time.sleep(0.2)
+            max_wait -= 1
+
+        SuggestionService().generate_suggestions(str(archive_root))
+        sug_repo = SuggestionRepository()
+        suggestions, _ = sug_repo.list_paginated(page=1, page_size=10)
+        suggestion = suggestions[0]
+        target = Path(suggestion.target_path)
+
+        op_service = OperationService()
+
+        def fail_after_partial_db_write(conn, sug, target):
+            conn.execute(
+                "UPDATE file_records SET current_path = ? WHERE id = ?",
+                (str(target), sug.file_id),
+            )
+            raise RuntimeError("forced db failure")
+
+        monkeypatch.setattr(op_service, "_record_successful_move", fail_after_partial_db_write)
+
+        result = op_service.execute_suggestions([suggestion.id])
+
+        assert result["success_count"] == 0
+        assert result["failed_count"] == 1
+        assert source.exists()
+        assert not target.exists()
+        rec = FileRepository().get(suggestion.file_id)
+        assert rec is not None
+        assert rec.current_path == str(source)
+
+    def test_execute_old_suggestion_uses_its_archive_root_snapshot(self, temp_dir):
+        source_a = temp_dir / "batch_a"
+        source_b = temp_dir / "batch_b"
+        source_a.mkdir()
+        source_b.mkdir()
+        file_a = source_a / "a.txt"
+        file_b = source_b / "b.txt"
+        file_a.write_bytes(b"a")
+        file_b.write_bytes(b"b")
+        archive_a = temp_dir / "ArchiveA"
+        archive_b = temp_dir / "ArchiveB"
+
+        scan_service = ScanService()
+        for source in (source_a, source_b):
+            task = scan_service.create_scan_task(str(source))
+            import time
+            max_wait = 10
+            while max_wait > 0:
+                task = scan_service.get_task(task.id)
+                if task and task.status in ("completed", "failed"):
+                    break
+                time.sleep(0.2)
+                max_wait -= 1
+
+        sug_service = SuggestionService()
+        sug_service.generate_suggestions(str(archive_a))
+        sug_repo = SuggestionRepository()
+        suggestions_a, _ = sug_repo.list_paginated(page=1, page_size=20)
+        old_suggestion = next(s for s in suggestions_a if s.source_path == str(file_a))
+
+        sug_service.generate_suggestions(str(archive_b))
+
+        result = OperationService().execute_suggestions([old_suggestion.id])
+
+        assert result["success_count"] == 1
+        assert (archive_a / "Notes" / "a.txt").exists()

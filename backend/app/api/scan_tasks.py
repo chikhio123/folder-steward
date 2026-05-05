@@ -52,6 +52,14 @@ def get_scan_task(task_id: int):
     )
 
 
+@router.post("/scan-tasks/{task_id}/cancel")
+def cancel_scan_task(task_id: int):
+    ok = scan_service.cancel_task(task_id)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Task cannot be cancelled (not running or not found)")
+    return {"task_id": task_id, "status": "cancelled"}
+
+
 @router.get("/scan-tasks/{task_id}/errors", response_model=ScanErrorListResponse)
 def get_scan_errors(task_id: int):
     errors = scan_service.get_errors(task_id)
