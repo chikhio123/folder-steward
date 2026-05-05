@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createScanTask, getScanTask, getScanErrors, cancelScanTask } from "../services/api";
-import { FolderSearch, Play, Square, AlertCircle, ChevronRight, CheckCircle2, FileText, Loader2 } from "lucide-react";
+import { FolderSearch, Play, Square, AlertCircle, ChevronRight, CheckCircle2, FileText, Loader2, FolderInput } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import toast from "react-hot-toast";
 
@@ -38,6 +38,17 @@ export default function ScanPage() {
     enabled: task?.status === "completed" || task?.status === "failed",
   });
 
+  const handleSelectDirectory = async () => {
+    if (window.electronAPI?.selectDirectory) {
+      const dirPath = await window.electronAPI.selectDirectory();
+      if (dirPath) {
+        setPath(dirPath);
+      }
+    } else {
+      toast.error("当前不在 Electron 桌面环境中，无法打开系统文件夹选择器");
+    }
+  };
+
   const isRunning = task?.status === "running" || task?.status === "pending";
 
   return (
@@ -59,13 +70,23 @@ export default function ScanPage() {
               value={path}
               onChange={(e) => setPath(e.target.value)}
               placeholder="例如：D:/Downloads 或 /Users/name/Downloads"
-              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400"
               disabled={isRunning}
             />
             {isRunning && (
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
                 <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
               </div>
+            )}
+            {!isRunning && window.electronAPI?.selectDirectory && (
+              <button
+                type="button"
+                onClick={handleSelectDirectory}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="选择文件夹"
+              >
+                <FolderInput className="w-5 h-5" />
+              </button>
             )}
           </div>
           <button

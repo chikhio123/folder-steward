@@ -66,6 +66,7 @@ declare global {
   interface Window {
     electronAPI?: {
       openInFolder: (path: string) => void;
+      selectDirectory: () => Promise<string | null>;
     };
   }
 }

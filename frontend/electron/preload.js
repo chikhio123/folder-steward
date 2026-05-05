@@ -1,8 +1,9 @@
-const { ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
-window.electronAPI = {
-  openInFolder: (path) => ipcRenderer.send('open-in-folder', path)
-};
+contextBridge.exposeInMainWorld('electronAPI', {
+  openInFolder: (path) => ipcRenderer.send('open-in-folder', path),
+  selectDirectory: () => ipcRenderer.invoke('select-directory')
+});
 
 window.addEventListener('DOMContentLoaded', () => {
   console.log('Folder Steward Electron Preload Loaded');

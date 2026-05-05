@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import isDev from 'electron-is-dev';
@@ -13,8 +13,8 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false, // For simplicity in V1, though contextIsolation is safer
+      nodeIntegration: false,
+      contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
     title: 'Folder Steward'
@@ -22,13 +22,10 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5174');
-    // Open the DevTools.
-    // mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
-  // Handle external links opening in default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
@@ -55,4 +52,11 @@ app.on('activate', () => {
 
 ipcMain.on('open-in-folder', (event, filePath) => {
   shell.showItemInFolder(filePath);
+});
+
+ipcMain.handle('select-directory', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory']
+  });
+  return result.canceled ? null : result.filePaths[0];
 });
