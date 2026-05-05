@@ -7,12 +7,8 @@ set -e
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
 FRONTEND_DIR="$ROOT_DIR/frontend"
-DATA_DIR="$ROOT_DIR/data"
 
 echo "📁 Folder Steward 启动中..."
-
-# 建数据目录
-mkdir -p "$DATA_DIR"
 
 # 后端启动
 echo "🔧 启动后端 (FastAPI)..."
@@ -24,17 +20,17 @@ echo "   Backend PID: $BACKEND_PID"
 # 等后端起来
 sleep 2
 
-# 前端启动
-echo "🎨 启动前端 (Vite)..."
+# 前端和 Electron 启动
+echo "🎨 启动前端 & Electron..."
 cd "$FRONTEND_DIR"
-npx vite --host 0.0.0.0 --port 5174 &
+npm run dev &
 FRONTEND_PID=$!
 echo "   Frontend PID: $FRONTEND_PID"
 
 echo ""
 echo "✅ 启动完成！"
 echo "   后端: http://localhost:8000"
-echo "   前端: http://localhost:5174"
+echo "   前端桌面: Electron Window"
 echo "   API 文档: http://localhost:8000/docs"
 echo ""
 echo "按 Ctrl+C 停止所有服务"
