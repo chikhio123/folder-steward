@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import isDev from 'electron-is-dev';
 import { spawn } from 'child_process';
+import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +55,41 @@ function startBackend() {
 
   backendProcess.on('close', (code) => {
     console.log(`Backend process exited with code ${code}`);
+    if (code !== 0 && code !== null) {
+      const errMsg = `FastAPI backend exited unexpectedly with code ${code}. Port 8000 might be in use.`;
+      console.error(`[Backend Exit Error] ${errMsg}`);
+      // Wait for mainWindow to be ready before sending IPC
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('backend-error', errMsg);
+      } else {
+        app.on('browser-window-created', (e, win) => {
+          win.webContents.once('did-finish-load', () => {
+            win.webContents.send('backend-error', errMsg);
+          });
+        });
+      }
+    }
+  });
+}
+
+function waitUntilBackendReady() {
+  return new Promise((resolve) => {
+    let attempts = 0;
+    const maxAttempts = 40; // 20 seconds
+    const interval = setInterval(() => {
+      attempts++;
+      http.get('http://127.0.0.1:8000/health', (res) => {
+        if (res.statusCode === 200) {
+          clearInterval(interval);
+          resolve(true);
+        }
+      }).on('error', () => {
+        if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          resolve(false);
+        }
+      });
+    }, 500);
   });
 }
 
@@ -85,8 +121,9 @@ function createWindow() {
   });
 }
 
-app.on('ready', () => {
+app.on('ready', async () => {
   startBackend();
+  await waitUntilBackendReady();
   createWindow();
 });
 
