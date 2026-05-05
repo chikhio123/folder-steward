@@ -128,7 +128,7 @@ class FileRepository:
         groups = []
         for r in rows:
             files = conn.execute(
-                "SELECT id, current_path, modified_at FROM file_records WHERE sha256 = ? ORDER BY id",
+                "SELECT id, filename, current_path, modified_at FROM file_records WHERE sha256 = ? ORDER BY id",
                 (r["sha256"],),
             ).fetchall()
             groups.append({

@@ -7,21 +7,12 @@ echo   Folder Steward
 echo ========================================
 echo.
 
-echo [1/2] Starting backend...
-cd /d "%~dp0backend"
-start "FolderSteward-Backend" cmd /c "py -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
-timeout /t 3 /nobreak > nul
-
-echo [2/2] Starting frontend & Electron...
+echo Starting Folder Steward...
 cd /d "%~dp0frontend"
-start "FolderSteward-Frontend" cmd /c "npm run dev"
+npm run dev
 
 echo.
 echo ========================================
-echo  Backend:  http://localhost:8000
-echo  Electron: Desktop App Window
-echo  Docs:     http://localhost:8000/docs
+echo  Folder Steward exited.
 echo ========================================
-echo.
-echo Close the two windows to stop services.
 pause
