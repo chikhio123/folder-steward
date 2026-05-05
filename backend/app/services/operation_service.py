@@ -34,26 +34,6 @@ class OperationService:
                 f"Target path is outside archive root ({archive_root}): {target_path}"
             )
 
-    @staticmethod
-    def _record_successful_move(conn, sug, target: Path) -> int:
-        conn.execute(
-            "UPDATE file_records SET current_path = ? WHERE id = ?",
-            (str(target), sug.file_id),
-        )
-        cur = conn.execute(
-            """INSERT INTO operation_logs
-               (operation_type, file_id, source_path, target_path, status,
-                rollback_available, executed_at, error_message)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            ("move", sug.file_id, sug.source_path, str(target), "success",
-             1, now_iso(), None),
-        )
-        conn.execute(
-            "UPDATE file_suggestions SET status=?, updated_at=? WHERE id=?",
-            ("executed", now_iso(), sug.id),
-        )
-        return cur.lastrowid
-
     def execute_suggestions(self, suggestion_ids: list[int]) -> dict:
         suggestions = self.sug_repo.list_by_ids(suggestion_ids)
         success_count = 0
@@ -61,13 +41,21 @@ class OperationService:
         results = []
 
         for sug in suggestions:
+            op_id = None
             moved = False
             source = Path(sug.source_path)
             target = Path(sug.target_path)
-            try:
-                if sug.status not in ("pending", "accepted"):
-                    raise OperationError(f"Suggestion cannot be executed because its status is {sug.status}")
 
+            if sug.status not in ("pending", "accepted"):
+                failed_count += 1
+                results.append({
+                    "suggestion_id": sug.id,
+                    "status": "skipped",
+                    "error_message": f"Suggestion status is {sug.status}"
+                })
+                continue
+
+            try:
                 # === Phase 1: Safety checks (no side effects) ===
                 if not source.exists():
                     raise OperationError(f"Source file missing: {source}")
@@ -152,9 +140,7 @@ class OperationService:
                 failed_count += 1
                 self.sug_repo.update_status(sug.id, "failed")
 
-                # If op_id exists, it means we already created a log (either pending or failed)
-                # But wait, op_id might not be defined if it failed in Phase 1-3.
-                if 'op_id' not in locals():
+                if op_id is None:
                     op_log = OperationLog(
                         operation_type="move",
                         file_id=sug.file_id,
@@ -227,11 +213,6 @@ class OperationService:
             shutil.move(str(source), str(target))
             moved = True
         except OSError as e:
-            self.op_repo.update_status(rollback_log_id, "failed")
-            # Wait, there's no update_status in op_repo?
-            # Let's check op_repo. update takes an OperationLog.
-
-            # Since op_repo.update takes an OperationLog, we should update rollback_log.id
             rollback_log.id = rollback_log_id
             rollback_log.status = "failed"
             rollback_log.error_message = str(e)

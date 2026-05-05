@@ -391,3 +391,65 @@ class TestFullFlow:
 
         assert result["success_count"] == 1
         assert (archive_a / "Others" / "NoExtension" / "a.txt").exists() or (archive_a / "Notes" / "a.txt").exists()
+
+    def test_rollback_oserror_logs_failure_and_raises(self, temp_dir, monkeypatch):
+        from app.core.errors import RollbackError
+        import shutil
+
+        source_dir = temp_dir / "rollback_err"
+        source_dir.mkdir()
+        source = source_dir / "file.txt"
+        source.write_bytes(b"data")
+        archive_root = temp_dir / "Archive"
+
+        # 1. Setup: Scan -> Generate -> Execute
+        scan_service = ScanService()
+        task = scan_service.create_scan_task(str(source_dir))
+        import time
+        max_wait = 10
+        while max_wait > 0:
+            task = scan_service.get_task(task.id)
+            if task and task.status in ("completed", "failed"):
+                break
+            time.sleep(0.2)
+            max_wait -= 1
+
+        SuggestionService().generate_suggestions(str(archive_root))
+        sug_repo = SuggestionRepository()
+        suggestions, _ = sug_repo.list_paginated(page=1, page_size=10)
+        suggestion = suggestions[0]
+
+        op_service = OperationService()
+        execute_result = op_service.execute_suggestions([suggestion.id])
+        op_id = execute_result["results"][0]["operation_id"]
+
+        # 2. Mock shutil.move to throw OSError during rollback
+        original_move = shutil.move
+
+        def fake_move(src, dst):
+            # Fail specifically when rolling back (moving from archive back to source)
+            if "Archive" in str(src):
+                raise OSError("Permission denied")
+            return original_move(src, dst)
+
+        monkeypatch.setattr(shutil, "move", fake_move)
+
+        # 3. Rollback should raise RollbackError and not AttributeError
+        import pytest
+        with pytest.raises(RollbackError) as exc:
+            op_service.rollback_operation(op_id)
+
+        assert "Rollback failed" in str(exc.value)
+
+        # 4. Check that a failed rollback log was created
+        from app.repositories.operation_log_repository import OperationLogRepository
+        op_repo = OperationLogRepository()
+        # Find the latest rollback log for this file
+        from app.core.database import get_connection
+        row = get_connection().execute(
+            "SELECT * FROM operation_logs WHERE operation_type = 'rollback' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+
+        assert row is not None
+        assert row["status"] == "failed"
+        assert "Permission denied" in row["error_message"]
