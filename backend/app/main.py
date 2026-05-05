@@ -32,6 +32,8 @@ from .api.suggestions import router as suggestions_router
 from .api.operations import router as operations_router
 from .api.settings import router as settings_router
 from .api.dashboard import router as dashboard_router
+from .api.extract_tasks import router as extract_tasks_router
+from .api.file_contents import router as file_contents_router
 
 app.include_router(scan_router, prefix="/api")
 app.include_router(files_router, prefix="/api")
@@ -40,3 +42,5 @@ app.include_router(suggestions_router, prefix="/api")
 app.include_router(operations_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
+app.include_router(extract_tasks_router, prefix="/api")
+app.include_router(file_contents_router, prefix="/api")

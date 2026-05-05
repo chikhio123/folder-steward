@@ -117,6 +117,58 @@ def init_db() -> None:
             value TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS file_contents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_id INTEGER NOT NULL,
+            text_content TEXT,
+            text_length INTEGER DEFAULT 0,
+            extractor_type TEXT NOT NULL,
+            extract_status TEXT NOT NULL,
+            error_message TEXT,
+            extracted_at TEXT,
+            updated_at TEXT,
+            FOREIGN KEY (file_id) REFERENCES file_records(id)
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_file_contents_file_id ON file_contents(file_id);
+        CREATE INDEX IF NOT EXISTS idx_file_contents_status ON file_contents(extract_status);
+
+        CREATE TABLE IF NOT EXISTS extract_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_id INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            error_message TEXT,
+            started_at TEXT,
+            finished_at TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (file_id) REFERENCES file_records(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_extract_tasks_file_id ON extract_tasks(file_id);
+        CREATE INDEX IF NOT EXISTS idx_extract_tasks_status ON extract_tasks(status);
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS file_content_fts USING fts5(
+            file_id UNINDEXED,
+            filename,
+            current_path,
+            text_content,
+            tokenize='unicode61'
+        );
+
+        CREATE TABLE IF NOT EXISTS rules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            rule_type TEXT NOT NULL,
+            pattern TEXT NOT NULL,
+            target_dir TEXT,
+            action TEXT NOT NULL,
+            priority INTEGER DEFAULT 100,
+            enabled INTEGER DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_rules_enabled_priority ON rules(enabled, priority);
     """)
     columns = {
         row["name"]
