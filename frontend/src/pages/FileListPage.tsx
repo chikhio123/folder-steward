@@ -17,9 +17,9 @@ import {
   ChevronRight,
   Database,
   Clock,
-  Loader2
+  Loader2,
+  FolderOpen
 } from "lucide-react";
-import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export default function FileListPage() {
@@ -43,6 +43,16 @@ export default function FileListPage() {
   });
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / 50)) : 1;
+
+  const handleOpenFolder = (path: string) => {
+    // @ts-ignore
+    if (window.electronAPI?.openInFolder) {
+      // @ts-ignore
+      window.electronAPI.openInFolder(path);
+    } else {
+      console.warn("Not running in Electron, cannot open folder.");
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto animation-fade-in flex flex-col h-full">
@@ -103,12 +113,13 @@ export default function FileListPage() {
 
       <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-2xl border border-slate-200/60 shadow-sm relative">
         {/* Table Header */}
-        <div className="grid grid-cols-[1fr_minmax(80px,100px)_minmax(100px,120px)_minmax(140px,160px)_100px] gap-4 items-center px-6 py-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10 text-sm font-semibold text-slate-600">
+        <div className="grid grid-cols-[1fr_minmax(80px,100px)_minmax(100px,120px)_minmax(140px,160px)_100px_40px] gap-4 items-center px-6 py-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10 text-sm font-semibold text-slate-600">
           <div className="pl-2">文件名</div>
           <div>类型</div>
           <div className="text-right">大小</div>
           <div>最后修改</div>
-          <div className="text-right pr-2">状态</div>
+          <div className="text-right">状态</div>
+          <div></div>
         </div>
 
         {/* Table Body */}
@@ -121,11 +132,16 @@ export default function FileListPage() {
           ) : data?.items?.length ? (
             <div className="divide-y divide-slate-100/60">
               {data.items.map((f: FileRecord) => (
-                <div key={f.id} className="grid grid-cols-[1fr_minmax(80px,100px)_minmax(100px,120px)_minmax(140px,160px)_100px] gap-4 items-center px-6 py-3.5 hover:bg-slate-50/50 transition-colors group">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {getFileIcon(f.extension)}
-                    <span className="text-sm font-medium text-slate-700 truncate" title={f.filename}>
-                      {f.filename}
+                <div key={f.id} className="grid grid-cols-[1fr_minmax(80px,100px)_minmax(100px,120px)_minmax(140px,160px)_100px_40px] gap-4 items-center px-6 py-3.5 hover:bg-slate-50/50 transition-colors group">
+                  <div className="flex flex-col min-w-0 gap-0.5">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {getFileIcon(f.extension)}
+                      <span className="text-sm font-medium text-slate-700 truncate" title={f.filename}>
+                        {f.filename}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 truncate pl-8" title={f.current_path}>
+                      {f.current_path}
                     </span>
                   </div>
                   <div className="text-sm text-slate-500 truncate">
@@ -147,6 +163,15 @@ export default function FileListPage() {
                     )}>
                       {f.status}
                     </span>
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => handleOpenFolder(f.current_path)}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      title="打开所在目录"
+                    >
+                      <FolderOpen className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
