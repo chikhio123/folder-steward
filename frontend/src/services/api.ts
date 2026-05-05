@@ -62,6 +62,12 @@ export const getFiles = (params: {
 export const getDuplicates = () =>
   request<{ groups: import("../types").DuplicateGroup[] }>("/duplicates");
 
+export const createDuplicateSuggestions = (sha256: string, keepFileId: number) =>
+  request<{ created_count: number }>("/duplicates/suggestions", {
+    method: "POST",
+    body: JSON.stringify({ sha256, keep_file_id: keepFileId }),
+  });
+
 // Suggestions
 export const generateSuggestions = (archiveRoot: string) =>
   request<{ created_count: number; skipped_count: number }>("/suggestions/generate", {

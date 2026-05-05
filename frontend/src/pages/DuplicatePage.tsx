@@ -1,18 +1,42 @@
-import { useQuery } from "@tanstack/react-query";
-import { getDuplicates } from "../services/api";
-import { CopyX, FileBox, Database, Loader2, Fingerprint } from "lucide-react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getDuplicates, createDuplicateSuggestions } from "../services/api";
+import { CopyX, FileBox, Database, Loader2, Fingerprint, Sparkles, CheckCircle2 } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 export default function DuplicatePage() {
+  const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["duplicates"],
     queryFn: getDuplicates,
+  });
+
+  const [processingSha, setProcessingSha] = useState<string | null>(null);
+
+  const suggestMutation = useMutation({
+    mutationFn: ({ sha256, keepFileId }: { sha256: string; keepFileId: number }) =>
+      createDuplicateSuggestions(sha256, keepFileId),
+    onMutate: (variables) => {
+      setProcessingSha(variables.sha256);
+    },
+    onSuccess: (data) => {
+      alert(`成功生成了 ${data.created_count} 条重复文件移动建议！请前往“整理建议”页面查看。`);
+      // Optionally invalidate or refetch duplicates if needed, but since we don't automatically remove them
+      // from the duplicate list until they are physically moved, we might just want to let the user know.
+    },
+    onError: (err) => {
+      alert(`生成建议失败: ${err.message}`);
+    },
+    onSettled: () => {
+      setProcessingSha(null);
+    }
   });
 
   return (
     <div className="max-w-4xl mx-auto animation-fade-in flex flex-col h-full">
       <div className="mb-6 shrink-0">
         <h2 className="text-3xl font-bold text-slate-800 tracking-tight">重复文件清理</h2>
-        <p className="text-slate-500 mt-1">基于 SHA-256 哈希值精确查找出的完全相同的文件副本。</p>
+        <p className="text-slate-500 mt-1">基于 SHA-256 哈希值精确查找出的完全相同的文件副本。点击右侧“保留此副本”即可生成其他副本的整理建议。</p>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-8">
@@ -44,16 +68,36 @@ export default function DuplicatePage() {
 
                 <div className="p-2 space-y-1">
                   {group.files.map((f) => (
-                    <div key={f.id} className="flex items-start gap-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl px-4 py-2.5 transition-colors">
-                      <FileBox className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-slate-800 truncate mb-0.5" title={f.filename}>
-                          {f.filename}
-                        </div>
-                        <div className="text-xs text-slate-500 truncate" title={f.current_path}>
-                          {f.current_path}
+                    <div key={f.id} className="flex items-center justify-between gap-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl px-4 py-2.5 transition-colors">
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        <FileBox className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-slate-800 truncate mb-0.5" title={f.filename}>
+                            {f.filename}
+                          </div>
+                          <div className="text-xs text-slate-500 truncate" title={f.current_path}>
+                            {f.current_path}
+                          </div>
                         </div>
                       </div>
+
+                      <button
+                        onClick={() => suggestMutation.mutate({ sha256: group.sha256, keepFileId: f.id })}
+                        disabled={suggestMutation.isPending && processingSha === group.sha256}
+                        className={twMerge(
+                          "shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 border",
+                          suggestMutation.isPending && processingSha === group.sha256
+                            ? "bg-slate-100 text-slate-400 border-slate-200"
+                            : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300"
+                        )}
+                      >
+                        {suggestMutation.isPending && processingSha === group.sha256 ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        保留此副本
+                      </button>
                     </div>
                   ))}
                 </div>
