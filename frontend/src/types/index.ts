@@ -31,7 +31,7 @@ export interface DuplicateGroup {
   sha256: string;
   size_bytes: number;
   count: number;
-  files: { id: number; current_path: string; modified_at: string | null }[];
+  files: { id: number; filename: string; current_path: string; modified_at: string | null }[];
 }
 
 export interface FileSuggestion {

@@ -1,8 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSettings, updateSettings } from "../services/api";
 import { useState, useEffect } from "react";
-import { Settings, Save, Loader2, FolderArchive, ShieldAlert, FileDigit, EyeOff } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { Save, Loader2, FolderArchive, ShieldAlert, FileDigit, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 
 const defaultSettings = {

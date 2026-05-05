@@ -8,7 +8,6 @@ import {
   History,
   Settings,
 } from "lucide-react";
-import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 const navItems = [

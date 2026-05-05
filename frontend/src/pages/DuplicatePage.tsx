@@ -1,13 +1,12 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { getDuplicates, createDuplicateSuggestions } from "../services/api";
-import { CopyX, FileBox, Database, Loader2, Fingerprint, Sparkles, CheckCircle2 } from "lucide-react";
+import { CopyX, FileBox, Database, Loader2, Fingerprint, CheckCircle2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import toast from "react-hot-toast";
 import { formatSize } from "../utils/format";
 
 export default function DuplicatePage() {
-  const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["duplicates"],
     queryFn: getDuplicates,
