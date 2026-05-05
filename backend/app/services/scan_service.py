@@ -52,9 +52,11 @@ class ScanService:
 
     def _finish_cancelled(self, task: ScanTask) -> None:
         self._cancelled_tasks.discard(task.id)
-        task.status = "cancelled"
-        task.finished_at = now_iso()
-        self.task_repo.update(task)
+        latest_task = self.task_repo.get(task.id)
+        if latest_task:
+            latest_task.status = "cancelled"
+            latest_task.finished_at = now_iso()
+            self.task_repo.update(latest_task)
         self._running_tasks.pop(task.id, None)
 
     def get_task(self, task_id: int) -> Optional[ScanTask]:

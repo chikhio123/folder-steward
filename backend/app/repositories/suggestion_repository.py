@@ -88,6 +88,14 @@ class SuggestionRepository:
         ).fetchone()
         return row["cnt"]
 
+    def mark_superseded_for_file(self, file_id: int) -> None:
+        conn = get_connection()
+        conn.execute(
+            "UPDATE file_suggestions SET status='superseded', updated_at=? WHERE file_id=? AND status='pending'",
+            (now_iso(), file_id),
+        )
+        conn.commit()
+
     def delete_by_file_id(self, file_id: int) -> None:
         get_connection().execute(
             "DELETE FROM file_suggestions WHERE file_id = ?", (file_id,)

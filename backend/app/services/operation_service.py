@@ -65,6 +65,9 @@ class OperationService:
             source = Path(sug.source_path)
             target = Path(sug.target_path)
             try:
+                if sug.status not in ("pending", "accepted"):
+                    raise OperationError(f"Suggestion cannot be executed because its status is {sug.status}")
+
                 # === Phase 1: Safety checks (no side effects) ===
                 if not source.exists():
                     raise OperationError(f"Source file missing: {source}")
@@ -86,19 +89,56 @@ class OperationService:
                 self.safety_service.validate_move(source, target)
 
                 # === Phase 4: Execute ===
-                shutil.move(str(source), str(target))
-                moved = True
+                # 1. Create a pending operation log first
+                conn = get_connection()
+                cur = conn.execute(
+                    """INSERT INTO operation_logs
+                       (operation_type, file_id, source_path, target_path, status,
+                        rollback_available, executed_at, error_message)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    ("move", sug.file_id, sug.source_path, str(target), "pending",
+                     0, now_iso(), None)
+                )
+                op_id = cur.lastrowid
+                conn.commit()
+
+                try:
+                    shutil.move(str(source), str(target))
+                    moved = True
+                except Exception as e:
+                    # Move failed, mark operation log as failed
+                    conn.execute(
+                        "UPDATE operation_logs SET status=?, error_message=? WHERE id=?",
+                        ("failed", str(e), op_id)
+                    )
+                    conn.commit()
+                    raise
 
                 # DB writes in a single transaction for atomicity
-                conn = get_connection()
                 conn.execute("BEGIN")
                 try:
-                    op_id = self._record_successful_move(conn, sug, target)
+                    conn.execute(
+                        "UPDATE file_records SET current_path = ? WHERE id = ?",
+                        (str(target), sug.file_id),
+                    )
+                    conn.execute(
+                        "UPDATE operation_logs SET status=?, rollback_available=? WHERE id=?",
+                        ("success", 1, op_id)
+                    )
+                    conn.execute(
+                        "UPDATE file_suggestions SET status=?, updated_at=? WHERE id=?",
+                        ("executed", now_iso(), sug.id),
+                    )
                     conn.commit()
                 except Exception as e:
                     conn.rollback()
                     if moved and target.exists() and not source.exists():
                         shutil.move(str(target), str(source))
+                    conn.execute(
+                        "UPDATE operation_logs SET status=?, error_message=? WHERE id=?",
+                        ("failed", f"Database update failed: {e}", op_id)
+                    )
+                    conn.commit()
                     raise OperationError(f"Database update failed after move: {e}") from e
 
                 success_count += 1
@@ -112,20 +152,23 @@ class OperationService:
                 failed_count += 1
                 self.sug_repo.update_status(sug.id, "failed")
 
-                op_log = OperationLog(
-                    operation_type="move",
-                    file_id=sug.file_id,
-                    source_path=sug.source_path,
-                    target_path=sug.target_path,
-                    status="failed",
-                    rollback_available=0,
-                    executed_at=now_iso(),
-                    error_message=str(e),
-                )
-                try:
-                    self.op_repo.create(op_log)
-                except Exception:
-                    pass
+                # If op_id exists, it means we already created a log (either pending or failed)
+                # But wait, op_id might not be defined if it failed in Phase 1-3.
+                if 'op_id' not in locals():
+                    op_log = OperationLog(
+                        operation_type="move",
+                        file_id=sug.file_id,
+                        source_path=sug.source_path,
+                        target_path=sug.target_path,
+                        status="failed",
+                        rollback_available=0,
+                        executed_at=now_iso(),
+                        error_message=str(e),
+                    )
+                    try:
+                        self.op_repo.create(op_log)
+                    except Exception:
+                        pass
 
                 results.append({
                     "suggestion_id": sug.id,
@@ -167,30 +210,59 @@ class OperationService:
         except (OSError, PathSafetyError) as e:
             raise RollbackError(f"Rollback path validation failed: {e}")
 
+        # Record the rollback as pending
+        rollback_log = OperationLog(
+            operation_type="rollback",
+            file_id=op_log.file_id,
+            source_path=op_log.target_path,
+            target_path=op_log.source_path,
+            status="pending",
+            rollback_available=0,
+            executed_at=now_iso(),
+        )
+        rollback_log_id = self.op_repo.create(rollback_log)
+
+        moved = False
         try:
             shutil.move(str(source), str(target))
-
-            if op_log.file_id:
-                self.file_repo.update_path(op_log.file_id, str(target))
-
-            op_log.status = "rolled_back"
-            op_log.rollback_available = 0
-            op_log.rollback_at = now_iso()
-            self.op_repo.update(op_log)
-
-            # Record the rollback as its own log entry
-            rollback_log = OperationLog(
-                operation_type="rollback",
-                file_id=op_log.file_id,
-                source_path=op_log.target_path,
-                target_path=op_log.source_path,
-                status="success",
-                rollback_available=0,
-                executed_at=now_iso(),
-            )
-            self.op_repo.create(rollback_log)
-
-            return {"operation_id": operation_id, "status": "rolled_back"}
-
+            moved = True
         except OSError as e:
+            self.op_repo.update_status(rollback_log_id, "failed")
+            # Wait, there's no update_status in op_repo?
+            # Let's check op_repo. update takes an OperationLog.
+
+            # Since op_repo.update takes an OperationLog, we should update rollback_log.id
+            rollback_log.id = rollback_log_id
+            rollback_log.status = "failed"
+            rollback_log.error_message = str(e)
+            self.op_repo.update(rollback_log)
             raise RollbackError(f"Rollback failed: {e}")
+
+        conn = get_connection()
+        conn.execute("BEGIN")
+        try:
+            if op_log.file_id:
+                conn.execute("UPDATE file_records SET current_path = ? WHERE id = ?", (str(target), op_log.file_id))
+
+            conn.execute(
+                "UPDATE operation_logs SET status=?, rollback_available=?, rollback_at=? WHERE id=?",
+                ("rolled_back", 0, now_iso(), operation_id)
+            )
+
+            conn.execute(
+                "UPDATE operation_logs SET status=? WHERE id=?",
+                ("success", rollback_log_id)
+            )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            if moved and target.exists() and not source.exists():
+                shutil.move(str(target), str(source))
+
+            rollback_log.id = rollback_log_id
+            rollback_log.status = "failed"
+            rollback_log.error_message = f"Database update failed: {e}"
+            self.op_repo.update(rollback_log)
+            raise RollbackError(f"Database update failed after rollback: {e}") from e
+
+        return {"operation_id": operation_id, "status": "rolled_back"}

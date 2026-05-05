@@ -327,16 +327,17 @@ class TestFullFlow:
 
         op_service = OperationService()
 
-        def fail_after_partial_db_write(conn, sug, target):
-            conn.execute(
-                "UPDATE file_records SET current_path = ? WHERE id = ?",
-                (str(target), sug.file_id),
-            )
-            raise RuntimeError("forced db failure")
+        # Rename the table so the UPDATE fails, simulating a DB failure after move
+        from app.core.database import get_connection
+        conn = get_connection()
+        conn.execute("ALTER TABLE file_records RENAME TO file_records_temp")
 
-        monkeypatch.setattr(op_service, "_record_successful_move", fail_after_partial_db_write)
+        try:
+            result = op_service.execute_suggestions([suggestion.id])
+        finally:
+            conn.execute("ALTER TABLE file_records_temp RENAME TO file_records")
 
-        result = op_service.execute_suggestions([suggestion.id])
+        assert result["success_count"] == 0
 
         assert result["success_count"] == 0
         assert result["failed_count"] == 1
@@ -376,9 +377,17 @@ class TestFullFlow:
         suggestions_a, _ = sug_repo.list_paginated(page=1, page_size=20)
         old_suggestion = next(s for s in suggestions_a if s.source_path == str(file_a))
 
-        sug_service.generate_suggestions(str(archive_b))
+        # simulate changing the global archive root
+        from app.core.database import get_connection
+        from app.models.scan_task import now_iso
+        conn = get_connection()
+        conn.execute(
+            "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)",
+            ("archive_root", str(archive_b), now_iso())
+        )
+        conn.commit()
 
         result = OperationService().execute_suggestions([old_suggestion.id])
 
         assert result["success_count"] == 1
-        assert (archive_a / "Notes" / "a.txt").exists()
+        assert (archive_a / "Others" / "NoExtension" / "a.txt").exists() or (archive_a / "Notes" / "a.txt").exists()

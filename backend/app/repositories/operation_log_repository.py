@@ -29,9 +29,10 @@ class OperationLogRepository:
     def update(self, log: OperationLog) -> None:
         conn = get_connection()
         conn.execute(
-            """UPDATE operation_logs SET status=?, rollback_available=?, rollback_at=?
-               WHERE id=?""",
-            (log.status, log.rollback_available, log.rollback_at, log.id),
+            """UPDATE operation_logs SET status=?, rollback_available=?, rollback_at=?,
+               error_message=? WHERE id=?""",
+            (log.status, log.rollback_available, log.rollback_at,
+             log.error_message, log.id),
         )
         conn.commit()
 

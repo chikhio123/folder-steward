@@ -1,5 +1,7 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Literal
+
+SuggestionStatus = Literal["pending", "accepted", "rejected", "executed", "failed", "superseded"]
 
 
 class GenerateSuggestionsRequest(BaseModel):
@@ -20,7 +22,7 @@ class FileSuggestionResponse(BaseModel):
     reason: Optional[str] = None
     confidence: float = 0
     conflict_status: str = "none"
-    status: str = "pending"
+    status: SuggestionStatus = "pending"
 
 
 class SuggestionListResponse(BaseModel):
@@ -29,5 +31,5 @@ class SuggestionListResponse(BaseModel):
 
 
 class UpdateSuggestionRequest(BaseModel):
-    status: Optional[str] = None
+    status: Optional[SuggestionStatus] = None
     target_path: Optional[str] = None

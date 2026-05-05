@@ -83,6 +83,8 @@ class SuggestionService:
             target_str = str(target)
             conflict = self._check_conflict(target_str)
 
+            self.sug_repo.mark_superseded_for_file(file_rec.id)
+
             suggestion = FileSuggestion(
                 file_id=file_rec.id,
                 suggestion_type="move",
