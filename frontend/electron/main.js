@@ -25,7 +25,7 @@ function startBackend() {
 
   console.log(`Starting backend. Database path: ${dbPath}`);
 
-  backendProcess = spawn(pythonCommand, ['-m', 'uvicorn', 'app.main:app', '--host', '0.0.0.0', '--port', '8000'], {
+  backendProcess = spawn(pythonCommand, ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000'], {
     cwd: backendDir,
     env
   });
@@ -36,6 +36,20 @@ function startBackend() {
 
   backendProcess.stderr.on('data', (data) => {
     console.error(`[Backend Err] ${data.toString().trim()}`);
+  });
+
+  backendProcess.on('error', (err) => {
+    console.error(`[Backend Spawn Error] Failed to start backend: ${err.message}`);
+    // Wait for mainWindow to be ready before sending IPC
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('backend-error', err.message);
+    } else {
+      app.on('browser-window-created', (e, win) => {
+        win.webContents.once('did-finish-load', () => {
+          win.webContents.send('backend-error', err.message);
+        });
+      });
+    }
   });
 
   backendProcess.on('close', (code) => {
@@ -79,7 +93,11 @@ app.on('ready', () => {
 app.on('before-quit', () => {
   if (backendProcess) {
     console.log('Killing backend process...');
-    backendProcess.kill();
+    if (process.platform === 'win32') {
+      spawn('taskkill', ['/pid', backendProcess.pid, '/f', '/t']);
+    } else {
+      backendProcess.kill();
+    }
   }
 });
 

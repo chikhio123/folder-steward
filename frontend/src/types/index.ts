@@ -67,6 +67,7 @@ declare global {
     electronAPI?: {
       openInFolder: (path: string) => void;
       selectDirectory: () => Promise<string | null>;
+      onBackendError: (callback: (message: string) => void) => void;
     };
   }
 }

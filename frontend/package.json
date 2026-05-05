@@ -45,7 +45,8 @@
     },
     "files": [
       "dist/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "../backend/**/*"
     ],
     "win": {
       "target": "nsis"
