@@ -2,11 +2,46 @@ import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import isDev from 'electron-is-dev';
+import { spawn } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let mainWindow;
+let backendProcess = null;
+
+function startBackend() {
+  const backendDir = path.join(__dirname, '../../backend');
+  const pythonCommand = process.platform === 'win32' ? 'py' : 'python3';
+
+  const userDataPath = app.getPath('userData');
+  const dbPath = path.join(userDataPath, 'folder_steward.db');
+
+  const env = {
+    ...process.env,
+    FS_DATABASE_PATH: dbPath,
+    PYTHONPATH: backendDir
+  };
+
+  console.log(`Starting backend. Database path: ${dbPath}`);
+
+  backendProcess = spawn(pythonCommand, ['-m', 'uvicorn', 'app.main:app', '--host', '0.0.0.0', '--port', '8000'], {
+    cwd: backendDir,
+    env
+  });
+
+  backendProcess.stdout.on('data', (data) => {
+    console.log(`[Backend] ${data.toString().trim()}`);
+  });
+
+  backendProcess.stderr.on('data', (data) => {
+    console.error(`[Backend Err] ${data.toString().trim()}`);
+  });
+
+  backendProcess.on('close', (code) => {
+    console.log(`Backend process exited with code ${code}`);
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -36,7 +71,17 @@ function createWindow() {
   });
 }
 
-app.on('ready', createWindow);
+app.on('ready', () => {
+  startBackend();
+  createWindow();
+});
+
+app.on('before-quit', () => {
+  if (backendProcess) {
+    console.log('Killing backend process...');
+    backendProcess.kill();
+  }
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -51,6 +96,7 @@ app.on('activate', () => {
 });
 
 ipcMain.on('open-in-folder', (event, filePath) => {
+  if (!filePath || typeof filePath !== 'string') return;
   shell.showItemInFolder(filePath);
 });
 
