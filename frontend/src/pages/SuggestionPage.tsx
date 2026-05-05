@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSuggestions, generateSuggestions, updateSuggestion, executeSuggestions } from "../services/api";
 import type { FileSuggestion } from "../types";
+import toast from "react-hot-toast";
 import {
   Wand2,
   FolderOpen,
@@ -37,16 +38,22 @@ export default function SuggestionPage() {
 
   const generateMutation = useMutation({
     mutationFn: () => generateSuggestions(archiveRoot),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["suggestions"] });
       setPage(1);
       setFilter("pending");
+      toast.success(`成功生成 ${data.created_count} 条建议`);
     },
+    onError: (err) => toast.error(`生成失败: ${err.message}`),
   });
 
   const acceptMutation = useMutation({
     mutationFn: (id: number) => updateSuggestion(id, { status: "accepted" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["suggestions"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["suggestions"] });
+      toast.success("已同意该建议");
+    },
+    onError: (err) => toast.error(`操作失败: ${err.message}`),
   });
 
   const savePathMutation = useMutation({
@@ -54,18 +61,25 @@ export default function SuggestionPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["suggestions"] });
       setEditingId(null);
+      toast.success("目标路径已更新");
     },
     onError: (err) => {
-      alert(`保存失败: ${err.message}`);
+      toast.error(`保存失败: ${err.message}`);
     }
   });
 
   const executeMutation = useMutation({
     mutationFn: () => executeSuggestions(Array.from(selected)),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["suggestions"] });
       setSelected(new Set());
+      if (data.failed_count > 0) {
+        toast.error(`${data.success_count} 个成功，${data.failed_count} 个失败`);
+      } else {
+        toast.success(`成功执行 ${data.success_count} 条操作`);
+      }
     },
+    onError: (err) => toast.error(`执行出错: ${err.message}`),
   });
 
   const toggle = (id: number) => {
@@ -290,7 +304,14 @@ export default function SuggestionPage() {
                           <CheckCircle2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => updateSuggestion(s.id, { status: "rejected" }).then(() => queryClient.invalidateQueries({ queryKey: ["suggestions"] }))}
+                          onClick={() => {
+                            updateSuggestion(s.id, { status: "rejected" })
+                              .then(() => {
+                                queryClient.invalidateQueries({ queryKey: ["suggestions"] });
+                                toast.success("已拒绝该建议");
+                              })
+                              .catch((err) => toast.error(`拒绝失败: ${err.message}`));
+                          }}
                           className="p-1.5 text-slate-500 bg-slate-100 hover:bg-rose-100 hover:text-rose-600 rounded-lg transition-colors"
                           title="拒绝建议"
                         >

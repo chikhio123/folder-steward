@@ -9,8 +9,8 @@ import {
   History,
   AlertCircle
 } from "lucide-react";
-import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { formatSize } from "../utils/format";
 
 export default function DashboardPage() {
   const { data, isLoading } = useQuery({
@@ -146,13 +146,6 @@ export default function DashboardPage() {
       </div>
     </div>
   );
-}
-
-function formatSize(bytes: number): string {
-  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
-  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
-  if (bytes >= 1_000) return `${(bytes / 1_000).toFixed(1)} KB`;
-  return `${bytes} B`;
 }
 
 function statusDotColor(status: string): string {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getOperations, rollbackOperation } from "../services/api";
 import type { OperationLog } from "../types";
+import toast from "react-hot-toast";
 import {
   History,
   RotateCcw,
@@ -27,7 +28,13 @@ export default function OperationHistoryPage() {
 
   const rollbackMutation = useMutation({
     mutationFn: (id: number) => rollbackOperation(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["operations"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operations"] });
+      toast.success("成功撤销操作，文件已恢复原位！");
+    },
+    onError: (err) => {
+      toast.error(`撤销失败: ${err.message}`);
+    }
   });
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / 50)) : 1;

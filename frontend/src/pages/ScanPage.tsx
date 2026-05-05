@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createScanTask, getScanTask, getScanErrors, cancelScanTask } from "../services/api";
 import { FolderSearch, Play, Square, AlertCircle, ChevronRight, CheckCircle2, FileText, Loader2 } from "lucide-react";
-import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import toast from "react-hot-toast";
 
 export default function ScanPage() {
   const queryClient = useQueryClient();
@@ -19,7 +19,9 @@ export default function ScanPage() {
     mutationFn: () => cancelScanTask(taskId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["scan-task", taskId] });
+      toast.success("已发送停止扫描指令");
     },
+    onError: (err) => toast.error(`无法停止扫描: ${err.message}`)
   });
 
   const { data: task } = useQuery({

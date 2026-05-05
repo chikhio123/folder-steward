@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDuplicates, createDuplicateSuggestions } from "../services/api";
 import { CopyX, FileBox, Database, Loader2, Fingerprint, Sparkles, CheckCircle2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import toast from "react-hot-toast";
+import { formatSize } from "../utils/format";
 
 export default function DuplicatePage() {
   const queryClient = useQueryClient();
@@ -20,12 +22,10 @@ export default function DuplicatePage() {
       setProcessingSha(variables.sha256);
     },
     onSuccess: (data) => {
-      alert(`成功生成了 ${data.created_count} 条重复文件移动建议！请前往“整理建议”页面查看。`);
-      // Optionally invalidate or refetch duplicates if needed, but since we don't automatically remove them
-      // from the duplicate list until they are physically moved, we might just want to let the user know.
+      toast.success(`成功生成 ${data.created_count} 条建议！`);
     },
     onError: (err) => {
-      alert(`生成建议失败: ${err.message}`);
+      toast.error(`生成建议失败: ${err.message}`);
     },
     onSettled: () => {
       setProcessingSha(null);
@@ -116,11 +116,4 @@ export default function DuplicatePage() {
       </div>
     </div>
   );
-}
-
-function formatSize(bytes: number): string {
-  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
-  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
-  if (bytes >= 1_000) return `${(bytes / 1_000).toFixed(1)} KB`;
-  return `${bytes} B`;
 }

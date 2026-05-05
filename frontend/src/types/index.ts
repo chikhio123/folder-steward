@@ -61,3 +61,11 @@ export interface PaginatedResponse<T> {
   items: T[];
   total: number;
 }
+
+declare global {
+  interface Window {
+    electronAPI?: {
+      openInFolder: (path: string) => void;
+    };
+  }
+}

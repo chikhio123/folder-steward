@@ -3,6 +3,7 @@ import { getSettings, updateSettings } from "../services/api";
 import { useState, useEffect } from "react";
 import { Settings, Save, Loader2, FolderArchive, ShieldAlert, FileDigit, EyeOff } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import toast from "react-hot-toast";
 
 const defaultSettings = {
   archive_root: "",
@@ -26,7 +27,13 @@ export default function SettingsPage() {
 
   const updateMutation = useMutation({
     mutationFn: () => updateSettings(values),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["settings"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      toast.success("全局设置已成功保存！");
+    },
+    onError: (err) => {
+      toast.error(`保存设置失败: ${err.message}`);
+    }
   });
 
   const fields = [
