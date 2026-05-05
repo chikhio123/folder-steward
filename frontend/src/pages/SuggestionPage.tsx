@@ -14,9 +14,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
-  Loader2
+  Loader2,
+  Pencil,
+  Save,
+  X
 } from "lucide-react";
-import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export default function SuggestionPage() {
@@ -25,6 +27,8 @@ export default function SuggestionPage() {
   const [filter, setFilter] = useState("pending");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editPath, setEditPath] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["suggestions", filter, page],
@@ -43,6 +47,17 @@ export default function SuggestionPage() {
   const acceptMutation = useMutation({
     mutationFn: (id: number) => updateSuggestion(id, { status: "accepted" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["suggestions"] }),
+  });
+
+  const savePathMutation = useMutation({
+    mutationFn: ({ id, path }: { id: number, path: string }) => updateSuggestion(id, { target_path: path }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["suggestions"] });
+      setEditingId(null);
+    },
+    onError: (err) => {
+      alert(`保存失败: ${err.message}`);
+    }
   });
 
   const executeMutation = useMutation({
@@ -70,6 +85,17 @@ export default function SuggestionPage() {
       setSelected(new Set());
     } else {
       setSelected(new Set(pendingItems.map((s: FileSuggestion) => s.id)));
+    }
+  };
+
+  const startEdit = (s: FileSuggestion) => {
+    setEditingId(s.id);
+    setEditPath(s.target_path);
+  };
+
+  const saveEdit = (id: number) => {
+    if (editPath.trim()) {
+      savePathMutation.mutate({ id, path: editPath.trim() });
     }
   };
 
@@ -198,9 +224,43 @@ export default function SuggestionPage() {
                         {s.source_path}
                       </div>
                       <ArrowRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                      <div className="text-blue-600 font-medium truncate flex-1" title={s.target_path}>
-                        {s.target_path}
-                      </div>
+
+                      {editingId === s.id ? (
+                        <div className="flex items-center gap-1 flex-1">
+                          <input
+                            type="text"
+                            value={editPath}
+                            onChange={(e) => setEditPath(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEdit(s.id);
+                              if (e.key === 'Escape') setEditingId(null);
+                            }}
+                            className="flex-1 bg-white border border-blue-300 text-slate-800 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+                            autoFocus
+                          />
+                          <button onClick={() => saveEdit(s.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded">
+                            <Save className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setEditingId(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 flex-1 min-w-0">
+                          <div className="text-blue-600 font-medium truncate" title={s.target_path}>
+                            {s.target_path}
+                          </div>
+                          {s.status === "pending" && (
+                            <button
+                              onClick={() => startEdit(s)}
+                              className="p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-blue-600 hover:bg-blue-50 rounded transition-all shrink-0"
+                              title="修改目标路径"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap gap-2 items-center">
