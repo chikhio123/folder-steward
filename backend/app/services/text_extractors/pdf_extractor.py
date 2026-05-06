@@ -1,6 +1,6 @@
 from pathlib import Path
 from pypdf import PdfReader
-from pypdf.errors import PdfError, FileNotDecryptedError
+from pypdf.errors import PyPdfError, FileNotDecryptedError
 from .base import TextExtractor, ExtractResult
 
 class PdfExtractor(TextExtractor):
@@ -61,7 +61,7 @@ class PdfExtractor(TextExtractor):
 
         except FileNotDecryptedError:
             return ExtractResult(text="", warnings=["PDF is encrypted or requires password, skipped."])
-        except PdfError as e:
+        except PyPdfError as e:
             return ExtractResult(text="", warnings=[f"PDF parsing error: {e}"])
         except Exception as e:
             return ExtractResult(text="", warnings=[f"Unexpected error reading PDF: {e}"])
