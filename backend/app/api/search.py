@@ -30,5 +30,10 @@ def search_files(
 
 @router.post("/search/rebuild-index")
 def rebuild_index():
-    # Not implemented in M4 yet, just a placeholder as per design
-    return {"indexed_count": 0, "failed_count": 0}
+    from ..services.extract_service import ExtractService
+    svc = ExtractService()
+
+    # Rebuild all (missing, failed, stale) in a single optimized pass
+    created, _ = svc.create_extract_tasks(mode="rebuild_all")
+
+    return {"queued_tasks": created}

@@ -37,7 +37,7 @@ def test_create_extract_tasks(mock_content_repo, mock_file_repo, mock_task_repo,
     mock_get_conn.return_value = mock_conn
 
     # Mock the database returning one valid file record
-    mock_conn.execute.return_value.fetchall.return_value = [{"id": 1, "extension": ".txt"}]
+    mock_conn.execute.return_value.fetchall.return_value = [{"id": 1, "extract_status": None, "extractor_type": None}]
 
     # Mock content_repo get_by_file_id returning None (no existing content)
     mock_content_repo_inst = MagicMock()

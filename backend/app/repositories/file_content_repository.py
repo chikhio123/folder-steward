@@ -18,7 +18,15 @@ class FileContentRepository:
         conn.commit()
         return cur.lastrowid
 
-    def get_by_file_id(self, file_id: int) -> Optional[FileContent]:
+    def mark_stale(self, file_id: int) -> None:
+        conn = get_connection()
+        conn.execute(
+            """UPDATE file_contents
+               SET extract_status = 'stale', updated_at = ?
+               WHERE file_id = ? AND extract_status = 'completed'""",
+            (now_iso(), file_id),
+        )
+        conn.commit()
         row = get_connection().execute(
             "SELECT * FROM file_contents WHERE file_id = ?", (file_id,)
         ).fetchone()

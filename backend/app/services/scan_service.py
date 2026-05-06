@@ -21,6 +21,8 @@ class ScanService:
         self.error_repo = ScanErrorRepository()
         self.hash_service = HashService()
         self.safety_service = PathSafetyService()
+        from ..repositories.file_content_repository import FileContentRepository
+        self.content_repo = FileContentRepository()
         self._running_tasks: dict[int, threading.Thread] = {}
         self._cancelled_tasks: set[int] = set()
 
@@ -169,6 +171,13 @@ class ScanService:
             indexed_at=now_iso(),
             status="active",
         )
+
+        # Check if file changed to mark stale
+        existing = self.file_repo.find_by_current_path(record.current_path)
+        if existing:
+            if existing.modified_at != record.modified_at or existing.size_bytes != record.size_bytes or existing.sha256 != record.sha256:
+                self.content_repo.mark_stale(existing.id)
+
         self.file_repo.upsert(record)
 
     def _should_scan_hidden(self) -> bool:

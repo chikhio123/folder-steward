@@ -22,14 +22,14 @@ class ExtractService:
         self._cleanup_ghost_tasks()
 
     def _cleanup_ghost_tasks(self) -> None:
-        """Reset any 'running' tasks from a previous crashed run back to 'failed'."""
+        """Reset any 'running' or 'pending' tasks from a previous crashed run back to 'failed'."""
         conn = get_connection()
         conn.execute(
-            "UPDATE extract_tasks SET status = 'failed', error_message = 'Process terminated unexpectedly', finished_at = ? WHERE status = 'running'",
+            "UPDATE extract_tasks SET status = 'failed', error_message = 'Process terminated unexpectedly', finished_at = ? WHERE status IN ('running', 'pending')",
             (now_iso(),)
         )
         conn.execute(
-            "UPDATE file_contents SET extract_status = 'failed', error_message = 'Process terminated unexpectedly', updated_at = ? WHERE extract_status = 'running'",
+            "UPDATE file_contents SET extract_status = 'failed', error_message = 'Process terminated unexpectedly', updated_at = ? WHERE extract_status IN ('running', 'pending')",
             (now_iso(),)
         )
         conn.commit()
@@ -46,41 +46,46 @@ class ExtractService:
 
         params = list(supported_exts)
 
-        query = f"SELECT id, extension FROM file_records WHERE status = 'active' AND extension IN ({placeholders})"
+        # Base query using LEFT JOIN to get content status directly
+        query = f"""
+            SELECT f.id, c.extract_status, c.extractor_type
+            FROM file_records f
+            LEFT JOIN file_contents c ON f.id = c.file_id
+            WHERE f.status = 'active' AND f.extension IN ({placeholders})
+        """
 
+        # Filter by file_ids if provided
         if file_ids:
             id_placeholders = ",".join("?" * len(file_ids))
-            query += f" AND id IN ({id_placeholders})"
+            query += f" AND f.id IN ({id_placeholders})"
             params.extend(file_ids)
+
+        # Add condition based on mode directly into SQL to eliminate Python-side filtering
+        if mode == "missing_only":
+            query += " AND (c.extract_status IS NULL OR c.extract_status NOT IN ('pending', 'running', 'completed'))"
+        elif mode == "failed_only":
+            query += " AND c.extract_status = 'failed'"
+        elif mode == "stale_only":
+            query += " AND c.extract_status = 'stale'"
+        elif mode == "rebuild_all":
+            # rebuild_all covers missing, failed, and stale.
+            query += " AND (c.extract_status IS NULL OR c.extract_status IN ('failed', 'stale') OR c.extract_status NOT IN ('pending', 'running', 'completed'))"
+        elif mode == "force":
+            # force bypasses completed checks but should still avoid duplicate pending/running
+            query += " AND (c.extract_status IS NULL OR c.extract_status NOT IN ('pending', 'running'))"
 
         records = conn.execute(query, params).fetchall()
 
         created = 0
-        skipped = 0
+        skipped = 0 # With SQL filtering, skipped is mostly 0 since we only select actionable rows, but keeping the var for return signature
 
         for r in records:
             file_id = r["id"]
 
-            content = self.content_repo.get_by_file_id(file_id)
-
-            # Prevent duplicate pending/running tasks
-            if content and content.extract_status in ("pending", "running"):
-                skipped += 1
-                continue
-
-            if mode == "missing_only":
-                if content and content.extract_status == "completed":
-                    skipped += 1
-                    continue
-            elif mode == "failed_only":
-                if not content or content.extract_status != "failed":
-                    skipped += 1
-                    continue
-
             # Upsert pending state into file_contents immediately so frontend UI updates
             pending_content = FileContent(
                 file_id=file_id,
-                extractor_type=content.extractor_type if content else "unknown",
+                extractor_type=r["extractor_type"] if r["extractor_type"] else "unknown",
                 extract_status="pending",
                 error_message=None
             )
