@@ -13,6 +13,7 @@ import { twMerge } from "tailwind-merge";
 const navItems = [
   { to: "/", label: "概览", icon: LayoutDashboard },
   { to: "/scan", label: "扫描", icon: Search },
+  { to: "/search", label: "全局搜索", icon: Search },
   { to: "/files", label: "文件列表", icon: Files },
   { to: "/duplicates", label: "重复文件", icon: Copy },
   { to: "/suggestions", label: "整理建议", icon: Wand2 },

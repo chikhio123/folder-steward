@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import Layout from "./components/Layout";
 import DashboardPage from "./pages/DashboardPage";
 import ScanPage from "./pages/ScanPage";
+import SearchPage from "./pages/SearchPage";
 import FileListPage from "./pages/FileListPage";
 import DuplicatePage from "./pages/DuplicatePage";
 import SuggestionPage from "./pages/SuggestionPage";
@@ -53,6 +54,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route index element={<DashboardPage />} />
             <Route path="scan" element={<ScanPage />} />
+            <Route path="search" element={<SearchPage />} />
             <Route path="files" element={<FileListPage />} />
             <Route path="duplicates" element={<DuplicatePage />} />
             <Route path="suggestions" element={<SuggestionPage />} />

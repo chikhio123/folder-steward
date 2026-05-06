@@ -62,6 +62,21 @@ export interface PaginatedResponse<T> {
   total: number;
 }
 
+export interface SearchResultItem {
+  file_id: number;
+  filename: string;
+  current_path: string;
+  extension: string | null;
+  match_source: "filename" | "content";
+  snippet: string | null;
+  score: number;
+}
+
+export interface SearchResponse {
+  items: SearchResultItem[];
+  total: number;
+}
+
 declare global {
   interface Window {
     electronAPI?: {
