@@ -207,6 +207,136 @@ def init_db() -> None:
         );
 
         CREATE INDEX IF NOT EXISTS idx_rules_enabled_priority ON rules(enabled, priority);
+
+        CREATE TABLE IF NOT EXISTS ai_rule_drafts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_prompt TEXT NOT NULL,
+            name TEXT NOT NULL,
+            rule_type TEXT NOT NULL,
+            pattern TEXT NOT NULL,
+            target_dir TEXT NOT NULL,
+            action TEXT NOT NULL,
+            priority INTEGER DEFAULT 90,
+            reason TEXT,
+            confidence REAL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'draft',
+            validation_error TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_ai_rule_drafts_status ON ai_rule_drafts(status);
+
+        CREATE TABLE IF NOT EXISTS ai_classification_suggestions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_id INTEGER NOT NULL,
+            suggested_target_dir TEXT NOT NULL,
+            directory_status TEXT NOT NULL DEFAULT 'proposed_new',
+            confidence REAL DEFAULT 0,
+            reason TEXT,
+            evidence_json TEXT,
+            source_context_hash TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            updated_at TEXT,
+            FOREIGN KEY (file_id) REFERENCES file_records(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_ai_classification_file_id ON ai_classification_suggestions(file_id);
+        CREATE INDEX IF NOT EXISTS idx_ai_classification_status ON ai_classification_suggestions(status);
+
+        CREATE TABLE IF NOT EXISTS organize_plans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'draft',
+            summary_json TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_organize_plans_status ON organize_plans(status);
+
+        CREATE TABLE IF NOT EXISTS organize_plan_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plan_id INTEGER NOT NULL,
+            file_id INTEGER NOT NULL,
+            source_path TEXT NOT NULL,
+            target_dir TEXT NOT NULL,
+            target_path TEXT NOT NULL,
+            directory_status TEXT NOT NULL DEFAULT 'proposed_new',
+            confidence REAL DEFAULT 0,
+            reason TEXT,
+            evidence_json TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            updated_at TEXT,
+            FOREIGN KEY (plan_id) REFERENCES organize_plans(id) ON DELETE CASCADE,
+            FOREIGN KEY (file_id) REFERENCES file_records(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_plan_items_plan_id ON organize_plan_items(plan_id);
+        CREATE INDEX IF NOT EXISTS idx_plan_items_status ON organize_plan_items(status);
+
+        CREATE TABLE IF NOT EXISTS file_summaries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_id INTEGER NOT NULL,
+            summary TEXT NOT NULL,
+            llm_provider TEXT,
+            model_name TEXT,
+            source_content_hash TEXT,
+            status TEXT NOT NULL DEFAULT 'completed',
+            error_message TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT,
+            FOREIGN KEY (file_id) REFERENCES file_records(id) ON DELETE CASCADE
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_file_summaries_file_id ON file_summaries(file_id);
+
+        CREATE TABLE IF NOT EXISTS ai_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_type TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            input_json TEXT,
+            result_ref_type TEXT,
+            result_ref_id INTEGER,
+            total_items INTEGER DEFAULT 0,
+            processed_items INTEGER DEFAULT 0,
+            error_message TEXT,
+            estimated_tokens INTEGER DEFAULT 0,
+            actual_tokens INTEGER DEFAULT 0,
+            estimated_cost REAL DEFAULT 0,
+            started_at TEXT,
+            finished_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_ai_tasks_status ON ai_tasks(status);
+        CREATE INDEX IF NOT EXISTS idx_ai_tasks_type_status ON ai_tasks(task_type, status);
+
+        CREATE TRIGGER IF NOT EXISTS idx_ai_classification_stale_on_content_update
+        AFTER UPDATE OF extract_status ON file_contents
+        WHEN new.extract_status = 'stale'
+        BEGIN
+            UPDATE ai_classification_suggestions
+            SET status = 'stale',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE file_id = new.file_id
+              AND status IN ('pending', 'accepted');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS idx_file_summary_stale_on_content_update
+        AFTER UPDATE OF extract_status ON file_contents
+        WHEN new.extract_status = 'stale'
+        BEGIN
+            UPDATE file_summaries
+            SET status = 'stale',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE file_id = new.file_id
+              AND status = 'completed';
+        END;
     """)
     columns = {
         row["name"]
