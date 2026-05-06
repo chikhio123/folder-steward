@@ -10,6 +10,8 @@ venv/
 # Node
 node_modules/
 frontend/dist/
+frontend/dist-electron/
+release/
 *.tsbuildinfo
 
 # Database
@@ -19,6 +21,8 @@ data/
 # Test temp
 .test_tmp/
 .test_debug/
+.test_real_run/
+.playwright-mcp/
 
 # IDE
 .vscode/
