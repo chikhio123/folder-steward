@@ -31,6 +31,7 @@ def create_classification_tasks(body: AIClassifyRequest):
         for fid in inputs["file_ids"]:
             class_service.process_classification_task(fid, inputs["archive_root"])
             t.processed_items += 1
+            queue_service.task_repo.update(t)
 
     task_id = queue_service.enqueue_task(task, handler)
 
@@ -68,9 +69,17 @@ def get_plan_preview(plan_id: int):
     return PlanPreviewResponse(**data)
 
 @router.post("/ai/organize-plans/{plan_id}/accept")
-def accept_organize_plan(plan_id: int, archive_root: str):
+def accept_organize_plan(plan_id: int):
     try:
-        plan_service.accept_plan(plan_id, archive_root)
+        plan_service.accept_plan(plan_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(400, str(e))
+
+@router.post("/ai/organize-plans/{plan_id}/reject")
+def reject_organize_plan(plan_id: int):
+    try:
+        plan_service.reject_plan(plan_id)
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(400, str(e))

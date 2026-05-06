@@ -63,8 +63,8 @@ class OrganizePlanService:
             )
             self.plan_repo.create_item(item)
 
-            # Mark AI suggestion as converted so it doesn't get picked up again
-            conn.execute("UPDATE ai_classification_suggestions SET status='converted' WHERE id=?", (r["id"],))
+            # Mark AI suggestion as in_plan so it doesn't get picked up again
+            conn.execute("UPDATE ai_classification_suggestions SET status='in_plan' WHERE id=?", (r["id"],))
 
         plan.summary_json = json.dumps(summary_counts, ensure_ascii=False)
         self.plan_repo.update_plan(plan)
@@ -100,7 +100,7 @@ class OrganizePlanService:
             "groups": grouped
         }
 
-    def accept_plan(self, plan_id: int, archive_root: str) -> None:
+    def accept_plan(self, plan_id: int) -> None:
         """Converts accepted plan items into actual file_suggestions."""
         plan = self.plan_repo.get_plan(plan_id)
         if not plan or plan.status != "draft":
@@ -113,6 +113,8 @@ class OrganizePlanService:
             raise ValueError("No pending items to accept.")
 
         conn = get_connection()
+        row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
+        archive_root = row["value"] if row else ""
 
         for item in accepted_items:
             # Create real suggestion
@@ -132,9 +134,29 @@ class OrganizePlanService:
 
             # Mark item converted
             conn.execute("UPDATE organize_plan_items SET status='converted' WHERE id=?", (item.id,))
+            # Mark original suggestion as converted
+            conn.execute("UPDATE ai_classification_suggestions SET status='converted' WHERE file_id=? AND status='in_plan'", (item.file_id,))
 
         # Mark plan converted
         plan.status = "converted"
+        plan.updated_at = now_iso()
+        self.plan_repo.update_plan(plan)
+        conn.commit()
+
+    def reject_plan(self, plan_id: int) -> None:
+        """Rejects a plan and restores its items' original classification suggestions to pending."""
+        plan = self.plan_repo.get_plan(plan_id)
+        if not plan or plan.status != "draft":
+            raise ValueError("Plan not found or not in draft status.")
+
+        conn = get_connection()
+        items = self.plan_repo.get_items_by_plan(plan_id)
+
+        for item in items:
+            conn.execute("UPDATE organize_plan_items SET status='rejected' WHERE id=?", (item.id,))
+            conn.execute("UPDATE ai_classification_suggestions SET status='pending' WHERE file_id=? AND status='in_plan'", (item.file_id,))
+
+        plan.status = "rejected"
         plan.updated_at = now_iso()
         self.plan_repo.update_plan(plan)
         conn.commit()
