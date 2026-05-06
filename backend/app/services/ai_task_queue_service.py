@@ -59,12 +59,18 @@ class AITaskQueueService:
             task.finished_at = now_iso()
             self.task_repo.update(task)
         except Exception as e:
-            # If 429 occurs, handler could raise a specific exception that we catch here
-            if "429" in str(e):
+            from .llm_provider_service import RateLimitException
+            if isinstance(e, RateLimitException) or "429" in str(e):
                 self._rate_limiter.record_429()
-                task.status = "rate_limited"
+                # Re-enqueue the task to try again later instead of failing it permanently
+                task.status = "pending"
+                task.error_message = f"Rate limited, retrying. Last error: {e}"
+                task.finished_at = None
+                self.task_repo.update(task)
+                # Submit it back to the executor
+                self._executor.submit(self._run_task_wrapper, task_id, handler)
             else:
                 task.status = "failed"
-            task.error_message = str(e)
-            task.finished_at = now_iso()
-            self.task_repo.update(task)
+                task.error_message = str(e)
+                task.finished_at = now_iso()
+                self.task_repo.update(task)

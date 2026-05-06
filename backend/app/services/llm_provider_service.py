@@ -1,6 +1,10 @@
 import json
 from typing import Dict, Any
 
+class RateLimitException(Exception):
+    """Raised when the LLM provider returns a 429 Too Many Requests."""
+    pass
+
 class LLMProviderService:
     """Wrapper for LLM calls (mocked for V3 initial phase)."""
 

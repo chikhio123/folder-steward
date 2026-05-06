@@ -15,6 +15,7 @@ class AIRateLimitService:
 
     def wait_if_needed(self) -> None:
         """Blocks the thread if the rate limit is exceeded."""
+        sleep_time = 0
         with self._lock:
             now = time.time()
             if now - self.last_reset_time > 60:
@@ -24,16 +25,18 @@ class AIRateLimitService:
             if self.requests_this_minute >= self.max_rpm:
                 # Calculate sleep time until next minute
                 sleep_time = 60 - (now - self.last_reset_time)
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
+                # Reset counters anticipating the sleep
                 self.requests_this_minute = 0
-                self.last_reset_time = time.time()
+                self.last_reset_time = now + sleep_time
 
             self.requests_this_minute += 1
 
+        if sleep_time > 0:
+            time.sleep(sleep_time)
+
     def record_429(self) -> None:
         """Called when a 429 Too Many Requests is received from the provider."""
-        # Sleep to backoff
+        # Sleep outside the lock so we don't block threads querying status
         time.sleep(self.retry_after_seconds)
         with self._lock:
             self.requests_this_minute = 0
