@@ -127,7 +127,7 @@ def init_db() -> None:
             error_message TEXT,
             extracted_at TEXT,
             updated_at TEXT,
-            FOREIGN KEY (file_id) REFERENCES file_records(id)
+            FOREIGN KEY (file_id) REFERENCES file_records(id) ON DELETE CASCADE
         );
 
         CREATE UNIQUE INDEX IF NOT EXISTS idx_file_contents_file_id ON file_contents(file_id);
@@ -141,7 +141,7 @@ def init_db() -> None:
             started_at TEXT,
             finished_at TEXT,
             created_at TEXT NOT NULL,
-            FOREIGN KEY (file_id) REFERENCES file_records(id)
+            FOREIGN KEY (file_id) REFERENCES file_records(id) ON DELETE CASCADE
         );
 
         CREATE INDEX IF NOT EXISTS idx_extract_tasks_file_id ON extract_tasks(file_id);
@@ -154,6 +154,27 @@ def init_db() -> None:
             text_content,
             tokenize='trigram'
         );
+
+        CREATE TRIGGER IF NOT EXISTS idx_file_contents_fts_insert AFTER INSERT ON file_contents BEGIN
+            INSERT INTO file_content_fts(file_id, filename, current_path, text_content)
+            SELECT new.file_id, f.filename, f.current_path, new.text_content
+            FROM file_records f WHERE f.id = new.file_id AND new.extract_status = 'completed';
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS idx_file_contents_fts_update AFTER UPDATE ON file_contents BEGIN
+            DELETE FROM file_content_fts WHERE file_id = old.file_id;
+            INSERT INTO file_content_fts(file_id, filename, current_path, text_content)
+            SELECT new.file_id, f.filename, f.current_path, new.text_content
+            FROM file_records f WHERE f.id = new.file_id AND new.extract_status = 'completed';
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS idx_file_contents_fts_delete AFTER DELETE ON file_contents BEGIN
+            DELETE FROM file_content_fts WHERE file_id = old.file_id;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS idx_file_records_fts_update AFTER UPDATE OF filename, current_path ON file_records BEGIN
+            UPDATE file_content_fts SET filename = new.filename, current_path = new.current_path WHERE file_id = new.id;
+        END;
 
         CREATE TABLE IF NOT EXISTS rules (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
