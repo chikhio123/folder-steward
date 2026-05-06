@@ -136,8 +136,7 @@ export default function SearchPage() {
                         {item.match_source === "content" && item.snippet && (
                           <div className="text-sm text-slate-600 bg-slate-50/50 border border-slate-100 rounded-lg p-3 leading-relaxed mt-2"
                                dangerouslySetInnerHTML={{
-                                 // Note: we trust SQLite's FTS5 snippet format. We mapped it to <mark></mark> in the backend.
-                                 __html: item.snippet.replace(/<mark>/g, '<mark className="bg-yellow-200/60 text-yellow-900 rounded-sm px-0.5 font-medium">')
+                                 __html: item.snippet.replace(/<mark>/g, '<mark class="bg-yellow-200/60 text-yellow-900 rounded-sm px-0.5 font-medium">')
                                }}
                           />
                         )}

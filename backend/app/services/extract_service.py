@@ -38,9 +38,10 @@ class ExtractService:
         conn = get_connection()
 
         # 确定支持的扩展名
-        from .text_extractors.txt_extractor import TxtExtractor
-        # 未来添加 pdf_extractor 等
-        supported_exts = TxtExtractor.supported_extensions
+        from .text_extractors import _EXTRACTORS
+        supported_exts = set()
+        for ex in _EXTRACTORS:
+            supported_exts.update(ex.supported_extensions)
         placeholders = ",".join("?" * len(supported_exts))
 
         params = list(supported_exts)
