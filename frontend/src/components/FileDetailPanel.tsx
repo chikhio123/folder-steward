@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getFileContent, forceExtractFile } from "../services/api";
+import { getFileContent, forceExtractFile, getFileSummary, createSummaryTask } from "../services/api";
 import { formatSize, getFileIcon } from "../utils/format";
 import type { FileRecord } from "../types";
-import { X, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { X, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, FileSignature, Sparkles } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import toast from "react-hot-toast";
 
@@ -14,13 +14,24 @@ interface FileDetailPanelProps {
 export default function FileDetailPanel({ file, onClose }: FileDetailPanelProps) {
   const queryClient = useQueryClient();
 
-  const { data: contentData, isLoading } = useQuery({
+  const { data: contentData, isLoading: isContentLoading } = useQuery({
     queryKey: ["file-content", file?.id],
     queryFn: () => getFileContent(file!.id),
     enabled: !!file,
     retry: false,
     refetchInterval: (query) => {
       const status = query.state.data?.extract_status;
+      return (status === "pending" || status === "running") ? 1000 : false;
+    }
+  });
+
+  const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
+    queryKey: ["file-summary", file?.id],
+    queryFn: () => getFileSummary(file!.id),
+    enabled: !!file,
+    retry: false,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
       return (status === "pending" || status === "running") ? 1000 : false;
     }
   });
@@ -33,6 +44,17 @@ export default function FileDetailPanel({ file, onClose }: FileDetailPanelProps)
     },
     onError: (err) => {
       toast.error(`提取失败: ${err.message}`);
+    }
+  });
+
+  const summaryMutation = useMutation({
+    mutationFn: () => createSummaryTask(file!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["file-summary", file!.id] });
+      toast.success("AI 摘要生成任务已提交");
+    },
+    onError: (err) => {
+      toast.error(`摘要生成失败: ${err.message}`);
     }
   });
 
@@ -101,7 +123,7 @@ export default function FileDetailPanel({ file, onClose }: FileDetailPanelProps)
             )}
           </div>
 
-          {isLoading && !contentData ? (
+          {isContentLoading && !contentData ? (
             <div className="py-8 flex flex-col items-center justify-center text-slate-400 space-y-2 border border-slate-100 rounded-xl bg-slate-50/50">
               <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
               <span className="text-sm">正在加载提取状态...</span>
@@ -152,6 +174,53 @@ export default function FileDetailPanel({ file, onClose }: FileDetailPanelProps)
             </div>
           )}
         </div>
+
+        {/* AI Summary Section */}
+        {contentData?.extract_status === "completed" && contentData.text_length > 0 && (
+          <div className="mt-8 border-t border-slate-100 pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold text-slate-800 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-500" />
+                AI 文件摘要
+              </h4>
+              {(!summaryData || summaryData.status !== "running") && (
+                <button
+                  onClick={() => summaryMutation.mutate()}
+                  disabled={summaryMutation.isPending}
+                  className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                >
+                  {summaryMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSignature className="w-3.5 h-3.5" />}
+                  {summaryData?.summary ? "重新生成" : "生成摘要"}
+                </button>
+              )}
+            </div>
+
+            {isSummaryLoading && !summaryData ? (
+              <div className="py-6 flex flex-col items-center justify-center text-slate-400 space-y-2 border border-slate-100 rounded-xl bg-slate-50/50">
+                <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+                <span className="text-xs">加载摘要中...</span>
+              </div>
+            ) : summaryData?.status === "pending" || summaryData?.status === "running" ? (
+              <div className="py-6 flex flex-col items-center justify-center text-slate-400 space-y-3 border border-indigo-100 rounded-xl bg-indigo-50/30">
+                <Sparkles className="w-6 h-6 animate-pulse text-indigo-400" />
+                <span className="text-xs text-indigo-600/80 font-medium">AI 正在深度阅读并总结...</span>
+              </div>
+            ) : summaryData?.status === "failed" ? (
+              <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-700">
+                <strong className="block mb-1">摘要生成失败：</strong>
+                {summaryData.error_message}
+              </div>
+            ) : summaryData?.summary ? (
+              <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl text-sm text-slate-700 leading-relaxed shadow-inner">
+                {summaryData.summary}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-xl border-dashed">
+                尚未生成摘要，点击上方按钮获取
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

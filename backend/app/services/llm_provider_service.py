@@ -40,10 +40,13 @@ class LLMProviderService:
             target_dir = "Books/Philosophy"
             reason = "正文或文件名包含哲学相关关键词"
 
-        return {
-            "suggested_target_dir": target_dir,
-            "directory_status": "proposed_new",
-            "confidence": 0.8,
-            "reason": reason,
-            "evidence": ["(Mocked Evidence)"]
-        }
+    def generate_summary(self, file_context: dict) -> str:
+        """Mock generating a summary for a file."""
+        filename = file_context.get("filename", "Unknown")
+        content = file_context.get("content_preview") or ""
+
+        if len(content) > 100:
+            return f"这是一份关于 {filename} 的 AI 摘要。核心内容涉及：{content[:50]}..."
+        elif content:
+            return f"简短文件摘要：{content}"
+        return f"文件 {filename} 的元数据摘要，暂无正文提取信息。"

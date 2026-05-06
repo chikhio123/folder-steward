@@ -185,6 +185,16 @@ export const rejectOrganizePlan = (planId: number) =>
     method: "POST"
   });
 
+// AI Summaries
+export const createSummaryTask = (fileId: number) =>
+  request<{ task_id: number; status: string }>("/ai/summaries", {
+    method: "POST",
+    body: JSON.stringify({ file_id: fileId }),
+  });
+
+export const getFileSummary = (fileId: number) =>
+  request<any>(`/files/${fileId}/summary`);
+
 // Dashboard
 export const getDashboard = () =>
   request<{

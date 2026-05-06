@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createOrganizePlan, getOrganizePlanPreview, acceptOrganizePlan, rejectOrganizePlan, getAiTask } from "../services/api";
 import { BrainCircuit, Loader2, ListChecks, CheckCircle2, Play, Settings, AlertCircle, FileBox, Archive, FolderTree, XCircle, ArrowRight } from "lucide-react";
@@ -8,12 +8,12 @@ export default function SmartOrganizePage() {
   const queryClient = useQueryClient();
   const [archiveRoot, setArchiveRoot] = useState(() => localStorage.getItem("fs_last_archive_root") || "D:/Archive");
   const [scope, setScope] = useState("all");
-  const [minConfidence, setMinConfidence] = useState(0.65);
+  const [minConfidence, setMinConfidence] = useState<number | string>(0.65);
   const [taskId, setTaskId] = useState<number | null>(null);
   const [planId, setPlanId] = useState<number | null>(null);
 
   const planMutation = useMutation({
-    mutationFn: () => createOrganizePlan(scope, archiveRoot, minConfidence),
+    mutationFn: () => createOrganizePlan(scope, archiveRoot, typeof minConfidence === "number" ? minConfidence : parseFloat(minConfidence) || 0),
     onSuccess: (data) => {
       setTaskId(data.task_id);
       localStorage.setItem("fs_last_archive_root", archiveRoot);
@@ -29,12 +29,16 @@ export default function SmartOrganizePage() {
     refetchInterval: (query) => {
       const s = query.state.data?.status;
       if (s === "pending" || s === "running") return 1000;
-      if (s === "completed" && query.state.data?.result_ref_id) {
-        setPlanId(query.state.data.result_ref_id);
-      }
       return false;
     }
   });
+
+  // Safely update planId outside of rendering phase
+  useEffect(() => {
+    if (task?.status === "completed" && task?.result_ref_id && planId === null) {
+      setPlanId(task.result_ref_id);
+    }
+  }, [task, planId]);
 
   const { data: planData } = useQuery({
     queryKey: ["organize-plan", planId],
