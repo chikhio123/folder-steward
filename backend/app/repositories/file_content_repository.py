@@ -27,6 +27,8 @@ class FileContentRepository:
             (now_iso(), file_id),
         )
         conn.commit()
+
+    def get_by_file_id(self, file_id: int) -> Optional[FileContent]:
         row = get_connection().execute(
             "SELECT * FROM file_contents WHERE file_id = ?", (file_id,)
         ).fetchone()
