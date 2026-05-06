@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createScanTask, getScanTask, getScanErrors, cancelScanTask } from "../services/api";
 import { FolderSearch, Play, Square, AlertCircle, ChevronRight, CheckCircle2, FileText, Loader2, FolderInput } from "lucide-react";
@@ -7,8 +7,15 @@ import toast from "react-hot-toast";
 
 export default function ScanPage() {
   const queryClient = useQueryClient();
-  const [path, setPath] = useState("");
+  const [path, setPath] = useState(() => localStorage.getItem("fs_last_scan_path") || "");
   const [taskId, setTaskId] = useState<number | null>(null);
+
+  // Save path to local storage whenever it changes
+  useEffect(() => {
+    if (path.trim()) {
+      localStorage.setItem("fs_last_scan_path", path.trim());
+    }
+  }, [path]);
 
   const createMutation = useMutation({
     mutationFn: () => createScanTask(path),

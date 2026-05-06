@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSuggestions, generateSuggestions, updateSuggestion, executeSuggestions } from "../services/api";
 import type { FileSuggestion } from "../types";
@@ -24,12 +24,18 @@ import { twMerge } from "tailwind-merge";
 
 export default function SuggestionPage() {
   const queryClient = useQueryClient();
-  const [archiveRoot, setArchiveRoot] = useState("D:/Archive");
+  const [archiveRoot, setArchiveRoot] = useState(() => localStorage.getItem("fs_last_archive_root") || "D:/Archive");
   const [filter, setFilter] = useState("pending");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editPath, setEditPath] = useState("");
+
+  useEffect(() => {
+    if (archiveRoot.trim()) {
+      localStorage.setItem("fs_last_archive_root", archiveRoot.trim());
+    }
+  }, [archiveRoot]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["suggestions", filter, page],
