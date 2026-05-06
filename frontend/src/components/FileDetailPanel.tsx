@@ -19,6 +19,10 @@ export default function FileDetailPanel({ file, onClose }: FileDetailPanelProps)
     queryFn: () => getFileContent(file!.id),
     enabled: !!file,
     retry: false,
+    refetchInterval: (query) => {
+      const status = query.state.data?.extract_status;
+      return (status === "pending" || status === "running") ? 1000 : false;
+    }
   });
 
   const extractMutation = useMutation({
@@ -97,7 +101,7 @@ export default function FileDetailPanel({ file, onClose }: FileDetailPanelProps)
             )}
           </div>
 
-          {isLoading ? (
+          {isLoading && !contentData ? (
             <div className="py-8 flex flex-col items-center justify-center text-slate-400 space-y-2 border border-slate-100 rounded-xl bg-slate-50/50">
               <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
               <span className="text-sm">正在加载提取状态...</span>

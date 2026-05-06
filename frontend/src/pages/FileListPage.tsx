@@ -235,7 +235,7 @@ export default function FileListPage() {
           selectedFile ? "translate-x-0" : "translate-x-full"
         )}
       >
-        <FileDetailPanel file={selectedFile} onClose={() => setSelectedFile(null)} />
+        {selectedFile && <FileDetailPanel file={selectedFile} onClose={() => setSelectedFile(null)} />}
       </div>
     </div>
   );

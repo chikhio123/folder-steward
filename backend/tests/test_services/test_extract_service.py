@@ -19,8 +19,11 @@ def test_cleanup_ghost_tasks(monkeypatch):
     monkeypatch.setattr("app.services.extract_service.FileRepository", lambda: mock_file_repo)
     monkeypatch.setattr("app.services.extract_service.FileContentRepository", lambda: mock_content_repo)
 
-    # Instantiate ExtractService
+    # Instantiate ExtractService (doesn't call cleanup now)
     svc = ExtractService()
+
+    # Call cleanup explicitly
+    ExtractService.cleanup_ghost_tasks()
 
     # Verify that cleanup was called
     assert mock_conn.execute.call_count >= 2

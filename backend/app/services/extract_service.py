@@ -19,9 +19,9 @@ class ExtractService:
         self.task_repo = ExtractTaskRepository()
         self.file_repo = FileRepository()
         self.content_repo = FileContentRepository()
-        self._cleanup_ghost_tasks()
 
-    def _cleanup_ghost_tasks(self) -> None:
+    @staticmethod
+    def cleanup_ghost_tasks() -> None:
         """Reset any 'running' or 'pending' tasks from a previous crashed run back to 'failed'."""
         conn = get_connection()
         conn.execute(
