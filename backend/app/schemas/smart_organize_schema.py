@@ -12,7 +12,6 @@ class AIClassifyResponse(BaseModel):
 
 class OrganizePlanRequest(BaseModel):
     scope: str
-    archive_root: str
     min_confidence: float = 0.65
 
 class OrganizePlanResponse(BaseModel):

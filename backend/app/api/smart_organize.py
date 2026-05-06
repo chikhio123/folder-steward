@@ -52,12 +52,12 @@ def get_ai_task(task_id: int):
 def create_organize_plan(body: OrganizePlanRequest):
     task = AITask(
         task_type="organize_plan",
-        input_json=json.dumps({"scope": body.scope, "archive_root": body.archive_root, "min_confidence": body.min_confidence})
+        input_json=json.dumps({"scope": body.scope, "min_confidence": body.min_confidence})
     )
 
     def handler(t: AITask):
         inputs = json.loads(t.input_json)
-        plan_id = plan_service.generate_plan(inputs["scope"], inputs["archive_root"], inputs["min_confidence"])
+        plan_id = plan_service.generate_plan(inputs["scope"], inputs["min_confidence"])
         t.result_ref_id = plan_id
         t.result_ref_type = "organize_plan"
 

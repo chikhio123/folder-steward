@@ -16,9 +16,12 @@ class OrganizePlanService:
         self.ai_sug_repo = AIClassificationRepository()
         self.sug_repo = SuggestionRepository()
 
-    def generate_plan(self, scope: str, archive_root: str, min_confidence: float = 0.65) -> int:
+    def generate_plan(self, scope: str, min_confidence: float = 0.65) -> int:
         """Aggregates recent pending AI classification suggestions into a structured plan."""
         conn = get_connection()
+        row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
+        archive_root = row["value"] if row else ""
+
         # Fetch pending AI suggestions that meet confidence
         rows = conn.execute(
             """SELECT a.*, f.current_path

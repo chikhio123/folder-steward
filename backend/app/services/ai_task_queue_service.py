@@ -28,6 +28,21 @@ class AITaskQueueService:
 
     def _cleanup_ghost_tasks(self) -> None:
         self.cleanup_ghost_tasks()
+        self._resurrect_pending_tasks()
+
+    def _resurrect_pending_tasks(self) -> None:
+        """Find pending tasks that were lost due to restart and submit them to thread pool."""
+        conn = get_connection()
+        rows = conn.execute("SELECT id FROM ai_tasks WHERE status = 'pending'").fetchall()
+        # Handlers cannot be reliably resurrected because they are closures capturing scope
+        # However, for simplicity in V3 M1-M12 we mark them failed if they don't have handlers.
+        # A robust system would serialize the handler type. For now, mark them failed so they aren't stuck forever.
+        for r in rows:
+            conn.execute(
+                "UPDATE ai_tasks SET status = 'failed', error_message = 'Lost handler due to process restart', finished_at = ? WHERE id = ?",
+                (now_iso(), r["id"])
+            )
+        conn.commit()
 
     def enqueue_task(self, task: AITask, handler: Callable[[AITask], None]) -> int:
         """Adds an AI task to the database and submits it to the thread pool."""
@@ -62,13 +77,18 @@ class AITaskQueueService:
             from .llm_provider_service import RateLimitException
             if isinstance(e, RateLimitException) or "429" in str(e):
                 self._rate_limiter.record_429()
-                # Re-enqueue the task to try again later instead of failing it permanently
-                task.status = "pending"
-                task.error_message = f"Rate limited, retrying. Last error: {e}"
-                task.finished_at = None
-                self.task_repo.update(task)
-                # Submit it back to the executor
-                self._executor.submit(self._run_task_wrapper, task_id, handler)
+                if task.retry_count < 3:
+                    task.retry_count += 1
+                    task.status = "pending"
+                    task.error_message = f"Rate limited, retrying ({task.retry_count}/3). Last error: {e}"
+                    task.finished_at = None
+                    self.task_repo.update(task)
+                    self._executor.submit(self._run_task_wrapper, task_id, handler)
+                else:
+                    task.status = "failed"
+                    task.error_message = f"Max retries exceeded after 429. Last error: {e}"
+                    task.finished_at = now_iso()
+                    self.task_repo.update(task)
             else:
                 task.status = "failed"
                 task.error_message = str(e)

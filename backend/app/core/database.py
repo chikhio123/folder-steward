@@ -81,7 +81,7 @@ def init_db() -> None:
             file_path TEXT NOT NULL,
             error_message TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            FOREIGN KEY (task_id) REFERENCES scan_tasks(id)
+            FOREIGN KEY (task_id) REFERENCES scan_tasks(id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS file_suggestions (
@@ -97,7 +97,7 @@ def init_db() -> None:
             archive_root TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT,
-            FOREIGN KEY (file_id) REFERENCES file_records(id)
+            FOREIGN KEY (file_id) REFERENCES file_records(id) ON DELETE CASCADE
         );
 
         CREATE INDEX IF NOT EXISTS idx_file_suggestions_file_id ON file_suggestions(file_id);
@@ -114,7 +114,7 @@ def init_db() -> None:
             executed_at TEXT NOT NULL,
             rollback_at TEXT,
             error_message TEXT,
-            FOREIGN KEY (file_id) REFERENCES file_records(id)
+            FOREIGN KEY (file_id) REFERENCES file_records(id) ON DELETE CASCADE
         );
 
         CREATE INDEX IF NOT EXISTS idx_operation_logs_file_id ON operation_logs(file_id);
@@ -164,6 +164,7 @@ def init_db() -> None:
         );
 
         CREATE TRIGGER IF NOT EXISTS idx_file_contents_fts_insert AFTER INSERT ON file_contents BEGIN
+            DELETE FROM file_content_fts WHERE file_id = new.file_id;
             INSERT INTO file_content_fts(file_id, filename, current_path, text_content)
             SELECT new.file_id, f.filename, f.current_path, new.text_content
             FROM file_records f WHERE f.id = new.file_id AND new.extract_status = 'completed';
@@ -304,6 +305,7 @@ def init_db() -> None:
             total_items INTEGER DEFAULT 0,
             processed_items INTEGER DEFAULT 0,
             error_message TEXT,
+            retry_count INTEGER DEFAULT 0,
             estimated_tokens INTEGER DEFAULT 0,
             actual_tokens INTEGER DEFAULT 0,
             estimated_cost REAL DEFAULT 0,
@@ -324,7 +326,7 @@ def init_db() -> None:
             SET status = 'stale',
                 updated_at = CURRENT_TIMESTAMP
             WHERE file_id = new.file_id
-              AND status IN ('pending', 'accepted');
+              AND status IN ('pending', 'accepted', 'in_plan');
         END;
 
         CREATE TRIGGER IF NOT EXISTS idx_file_summary_stale_on_content_update

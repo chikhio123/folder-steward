@@ -12,6 +12,7 @@ class AITask:
     total_items: int = 0
     processed_items: int = 0
     error_message: Optional[str] = None
+    retry_count: int = 0
     estimated_tokens: int = 0
     actual_tokens: int = 0
     estimated_cost: float = 0.0
