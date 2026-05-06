@@ -41,6 +41,13 @@ def create_classification_tasks(body: AIClassifyRequest):
         queued_count=len(body.file_ids)
     )
 
+@router.get("/ai/tasks/{task_id}")
+def get_ai_task(task_id: int):
+    task = queue_service.task_repo.get(task_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    return task
+
 @router.post("/ai/organize-plans", response_model=OrganizePlanResponse)
 def create_organize_plan(body: OrganizePlanRequest):
     task = AITask(

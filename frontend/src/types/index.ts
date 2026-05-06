@@ -77,6 +77,34 @@ export interface SearchResponse {
   total: number;
 }
 
+export interface RuleDraftResponse {
+  draft_id: number;
+  name: string;
+  rule_type: string;
+  pattern: string;
+  target_dir: string;
+  action: string;
+  priority: number;
+  reason: string | null;
+  confidence: number;
+  status: string;
+  validation_error: string | null;
+}
+
+export interface PreviewItem {
+  file_id: number;
+  filename: string;
+  current_path: string;
+  target_path: string;
+  reason: string | null;
+}
+
+export interface PreviewResponse {
+  draft_id: number;
+  matched_count: number;
+  items: PreviewItem[];
+}
+
 declare global {
   interface Window {
     electronAPI?: {

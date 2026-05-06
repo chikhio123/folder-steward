@@ -7,6 +7,8 @@ import {
   Wand2,
   History,
   Settings,
+  Sparkles,
+  BrainCircuit
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -16,6 +18,8 @@ const navItems = [
   { to: "/search", label: "全局搜索", icon: Search },
   { to: "/files", label: "文件列表", icon: Files },
   { to: "/duplicates", label: "重复文件", icon: Copy },
+  { to: "/smart-organize", label: "AI 智能大盘", icon: BrainCircuit },
+  { to: "/ai-rules", label: "AI 规则生成", icon: Sparkles },
   { to: "/suggestions", label: "整理建议", icon: Wand2 },
   { to: "/operations", label: "操作历史", icon: History },
   { to: "/settings", label: "设置", icon: Settings },

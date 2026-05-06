@@ -141,6 +141,50 @@ export const searchFiles = (params: { q: string; scope?: string; extension?: str
 export const rebuildSearchIndex = () =>
   request<{ indexed_count: number; failed_count: number }>("/search/rebuild-index", { method: "POST" });
 
+// AI Rule Drafts
+export const createRuleDraft = (prompt: string) =>
+  request<import("../types").RuleDraftResponse>("/ai/rule-drafts", {
+    method: "POST",
+    body: JSON.stringify({ prompt }),
+  });
+
+export const previewRuleDraft = (draftId: number) =>
+  request<import("../types").PreviewResponse>(`/ai/rule-drafts/${draftId}/preview`);
+
+export const acceptRuleDraft = (draftId: number) =>
+  request<{ status: string; rule_id: number | null }>(`/ai/rule-drafts/${draftId}/accept`, {
+    method: "POST",
+  });
+
+// Smart Organize
+export const createClassificationTasks = (fileIds: number[], archiveRoot: string) =>
+  request<{ task_id: number; status: string; queued_count: number }>("/ai/classify", {
+    method: "POST",
+    body: JSON.stringify({ file_ids: fileIds, archive_root: archiveRoot }),
+  });
+
+export const getAiTask = (taskId: number) =>
+  request<any>(`/ai/tasks/${taskId}`);
+
+export const createOrganizePlan = (scope: string, archiveRoot: string, minConfidence: number = 0.65) =>
+  request<{ task_id: number; status: string }>("/ai/organize-plans", {
+    method: "POST",
+    body: JSON.stringify({ scope, archive_root: archiveRoot, min_confidence: minConfidence }),
+  });
+
+export const getOrganizePlanPreview = (planId: number) =>
+  request<any>(`/ai/organize-plans/${planId}`);
+
+export const acceptOrganizePlan = (planId: number) =>
+  request<{ status: string }>(`/ai/organize-plans/${planId}/accept`, {
+    method: "POST"
+  });
+
+export const rejectOrganizePlan = (planId: number) =>
+  request<{ status: string }>(`/ai/organize-plans/${planId}/reject`, {
+    method: "POST"
+  });
+
 // Dashboard
 export const getDashboard = () =>
   request<{
