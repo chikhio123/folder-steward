@@ -26,13 +26,12 @@ class SuggestionService:
             ("archive_root", str(archive), now_iso()),
         )
         conn.commit()
-        all_files, _ = self.file_repo.list_paginated(page=1, page_size=99999)
+        files_with_content = self.file_repo.list_all_with_content()
 
         created = 0
         skipped = 0
 
-        for file_rec in all_files:
-            content = self.content_repo.get_by_file_id(file_rec.id)
+        for file_rec, content in files_with_content:
             match = self.rule_engine.match(file_rec, content)
 
             target = self.rule_engine.build_target_path(file_rec, match, archive)

@@ -5,7 +5,7 @@ class RuleCreateRequest(BaseModel):
     name: str
     rule_type: str
     pattern: str
-    target_dir: Optional[str] = None
+    target_dir: str
     action: str = "move_to"
     priority: int = 100
     enabled: int = 1
@@ -24,7 +24,7 @@ class RuleResponse(BaseModel):
     name: str
     rule_type: str
     pattern: str
-    target_dir: Optional[str] = None
+    target_dir: str
     action: str
     priority: int
     enabled: int

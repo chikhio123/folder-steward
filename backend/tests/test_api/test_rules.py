@@ -33,6 +33,7 @@ def test_update_and_delete_rule():
         "name": "Test Rule 2",
         "rule_type": "extension",
         "pattern": ".xyz",
+        "target_dir": "TestDir"
     })
     rule_id = response.json()["id"]
 

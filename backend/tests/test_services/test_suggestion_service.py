@@ -17,9 +17,9 @@ class TestSuggestionService:
 
         # Setup mocks
         mock_file_repo_inst = MagicMock()
-        mock_file_repo_inst.list_paginated.return_value = ([
-            FileRecord(id=1, filename="test.pdf", current_path="D:/test.pdf", extension=".pdf")
-        ], 1)
+        mock_file_repo_inst.list_all_with_content.return_value = [
+            (FileRecord(id=1, filename="test.pdf", current_path="D:/test.pdf", extension=".pdf"), None)
+        ]
         svc.file_repo = mock_file_repo_inst
 
         mock_rule_engine_inst = MagicMock()

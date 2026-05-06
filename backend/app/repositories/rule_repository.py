@@ -38,9 +38,9 @@ class RuleRepository:
     def list_all(self, only_enabled: bool = True) -> list[Rule]:
         conn = get_connection()
         if only_enabled:
-            rows = conn.execute("SELECT * FROM rules WHERE enabled = 1 ORDER BY priority DESC").fetchall()
+            rows = conn.execute("SELECT * FROM rules WHERE enabled = 1 ORDER BY priority DESC, id ASC").fetchall()
         else:
-            rows = conn.execute("SELECT * FROM rules ORDER BY priority DESC").fetchall()
+            rows = conn.execute("SELECT * FROM rules ORDER BY priority DESC, id ASC").fetchall()
         return [Rule(**dict(r)) for r in rows]
 
     def delete(self, rule_id: int) -> None:

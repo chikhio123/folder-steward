@@ -150,3 +150,53 @@ class FileRepository:
             )"""
         ).fetchone()
         return row["cnt"]
+
+    def list_all_with_content(self) -> list[tuple[FileRecord, Optional[dict]]]:
+        """Fetch all active file records along with their file_content data using a JOIN to avoid N+1 queries."""
+        conn = get_connection()
+        rows = conn.execute(
+            """SELECT
+                   f.*,
+                   c.text_content, c.text_length, c.extractor_type, c.extract_status,
+                   c.error_message, c.extracted_at, c.updated_at as content_updated_at
+               FROM file_records f
+               LEFT JOIN file_contents c ON f.id = c.file_id
+               WHERE f.status = 'active'"""
+        ).fetchall()
+
+        results = []
+        for r in rows:
+            file_rec = FileRecord(
+                id=r["id"],
+                original_path=r["original_path"],
+                current_path=r["current_path"],
+                filename=r["filename"],
+                extension=r["extension"],
+                mime_type=r["mime_type"],
+                size_bytes=r["size_bytes"],
+                sha256=r["sha256"],
+                created_at=r["created_at"],
+                modified_at=r["modified_at"],
+                indexed_at=r["indexed_at"],
+                status=r["status"],
+                last_error=r["last_error"],
+            )
+
+            content = None
+            if r["extract_status"]:  # If LEFT JOIN matched a content row
+                from ..models.file_content import FileContent
+                content = FileContent(
+                    id=None,  # We don't strictly need content ID here
+                    file_id=r["id"],
+                    text_content=r["text_content"],
+                    text_length=r["text_length"],
+                    extractor_type=r["extractor_type"],
+                    extract_status=r["extract_status"],
+                    error_message=r["error_message"],
+                    extracted_at=r["extracted_at"],
+                    updated_at=r["content_updated_at"]
+                )
+
+            results.append((file_rec, content))
+
+        return results
