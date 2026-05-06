@@ -1,3 +1,5 @@
+import os
+from collections import defaultdict
 from typing import List, Dict, Any
 from ..core.database import get_connection
 from .ai_rule_draft_service import AIRuleDraftService
@@ -13,37 +15,35 @@ class FeedbackRuleService:
         Returns a list of potential new rule drafts based on these patterns.
         """
         conn = get_connection()
-        # Find directories where at least 3 files were moved recently
+        # Fetch all successful move operations
         rows = conn.execute(
-            """SELECT target_path, COUNT(*) as cnt
+            """SELECT target_path
                FROM operation_logs
-               WHERE operation_type = 'move' AND status = 'success'
-               GROUP BY target_path
-               HAVING cnt >= 3
-               ORDER BY cnt DESC
-               LIMIT 5"""
+               WHERE operation_type = 'move' AND status = 'success'"""
         ).fetchall()
 
-        patterns = []
+        dir_counts = defaultdict(int)
         for r in rows:
             target_path = r["target_path"]
-            # Typically target_path looks like D:/Archive/MyDir/file.txt
-            # We want to extract just the directory part, but since operation_logs
-            # only stores target_path, we can do some simple splitting.
-            # In a real scenario, we would parse out the archive_root.
-            import os
-            target_dir = os.path.dirname(target_path)
+            if target_path:
+                # Extract the directory part
+                target_dir = os.path.dirname(target_path)
+                dir_counts[target_dir] += 1
 
-            patterns.append({
-                "target_dir": target_dir,
-                "move_count": r["cnt"],
-                "suggestion_prompt": f"用户最近手动将 {r['cnt']} 个文件移动到了 {target_dir}，建议创建一个自动化规则来处理类似文件。"
-            })
+        patterns = []
+        for target_dir, count in dir_counts.items():
+            if count >= 3:
+                patterns.append({
+                    "target_dir": target_dir,
+                    "move_count": count,
+                    "suggestion_prompt": f"用户最近手动将 {count} 个文件移动到了 {target_dir}，建议创建一个自动化规则来处理类似文件。"
+                })
 
-        return patterns
+        # Sort by move_count descending and limit to 5
+        patterns.sort(key=lambda x: x["move_count"], reverse=True)
+        return patterns[:5]
 
     def generate_draft_from_pattern(self, target_dir: str, keyword: str) -> int:
         """Generates an AI rule draft explicitly targeting a user-defined pattern."""
         prompt = f"把文件名包含 {keyword} 的文件全部归档到 {target_dir}"
-        # We invoke the draft service synchronously here for MVP
         return self.draft_service.generate_draft(prompt)

@@ -13,6 +13,24 @@ summary_repo = FileSummaryRepository()
 
 @router.post("/ai/summaries", response_model=dict)
 def create_summary_task(body: GenerateSummaryRequest):
+    from ..models.file_summary import FileSummary
+    from ..models.scan_task import now_iso
+
+    # Insert pending status placeholder to allow frontend polling
+    existing = summary_repo.get_by_file_id(body.file_id)
+    if existing:
+        existing.status = "pending"
+        existing.updated_at = now_iso()
+        summary_repo.update(existing)
+    else:
+        new_summary = FileSummary(
+            file_id=body.file_id,
+            summary="",
+            status="pending",
+            created_at=now_iso()
+        )
+        summary_repo.create(new_summary)
+
     task = AITask(
         task_type="summary",
         total_items=1,
@@ -23,6 +41,7 @@ def create_summary_task(body: GenerateSummaryRequest):
         inputs = json.loads(t.input_json)
         summary_service.process_summary_task(inputs["file_id"])
         t.processed_items = 1
+        queue_service.task_repo.update(t)
 
     task_id = queue_service.enqueue_task(task, handler)
     return {"task_id": task_id, "status": "pending"}
