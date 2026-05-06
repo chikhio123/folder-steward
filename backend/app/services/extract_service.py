@@ -61,17 +61,30 @@ class ExtractService:
         for r in records:
             file_id = r["id"]
 
+            content = self.content_repo.get_by_file_id(file_id)
+
+            # Prevent duplicate pending/running tasks
+            if content and content.extract_status in ("pending", "running"):
+                skipped += 1
+                continue
+
             if mode == "missing_only":
-                # Check if content already exists and is completed
-                content = self.content_repo.get_by_file_id(file_id)
                 if content and content.extract_status == "completed":
                     skipped += 1
                     continue
             elif mode == "failed_only":
-                content = self.content_repo.get_by_file_id(file_id)
                 if not content or content.extract_status != "failed":
                     skipped += 1
                     continue
+
+            # Upsert pending state into file_contents immediately so frontend UI updates
+            pending_content = FileContent(
+                file_id=file_id,
+                extractor_type=content.extractor_type if content else "unknown",
+                extract_status="pending",
+                error_message=None
+            )
+            self.content_repo.upsert(pending_content)
 
             task = ExtractTask(
                 file_id=file_id,
@@ -94,6 +107,11 @@ class ExtractService:
         task.status = "running"
         task.started_at = now_iso()
         self.task_repo.update(task)
+
+        content = self.content_repo.get_by_file_id(task.file_id)
+        if content:
+            content.extract_status = "running"
+            self.content_repo.upsert(content)
 
         file_record = self.file_repo.get(task.file_id)
         if not file_record or file_record.status != "active":
