@@ -1,0 +1,63 @@
+import pytest
+from app.services.ai_rule_draft_service import AIRuleDraftService
+from app.models.ai_rule_draft import AIRuleDraft
+from app.models.rule import Rule
+from app.repositories.ai_rule_draft_repository import AIRuleDraftRepository
+from app.core.database import get_connection, init_db
+
+@pytest.fixture(autouse=True)
+def setup_draft_db():
+    init_db()
+    conn = get_connection()
+    conn.execute("DELETE FROM ai_rule_drafts")
+    conn.execute("DELETE FROM rules")
+    conn.commit()
+
+def test_generate_draft():
+    svc = AIRuleDraftService()
+    draft_id = svc.generate_draft("把毕业论文放进 University/Thesis", "D:/Archive")
+    assert draft_id > 0
+
+    draft = svc.draft_repo.get(draft_id)
+    assert draft.status == "validated"
+    assert draft.target_dir == "University/Thesis"
+    assert draft.name == "AI生成的规则草案"
+
+def test_generate_draft_invalid_path():
+    svc = AIRuleDraftService()
+    # Mock the LLM to return an invalid path
+    original_generate = svc.llm_service.generate_rule_draft
+    svc.llm_service.generate_rule_draft = lambda prompt: {
+        "name": "Bad Rule",
+        "target_dir": "C:/Windows/System32"
+    }
+
+    draft_id = svc.generate_draft("put files in system dir", "D:/Archive")
+    draft = svc.draft_repo.get(draft_id)
+
+    assert draft.status == "failed"
+    assert "Invalid or unsafe target directory" in draft.validation_error
+
+    # Restore mock
+    svc.llm_service.generate_rule_draft = original_generate
+
+def test_accept_draft():
+    svc = AIRuleDraftService()
+    draft_id = svc.generate_draft("把论文归档", "D:/Archive")
+
+    rule = svc.accept_draft(draft_id)
+    assert rule is not None
+    assert rule.name == "AI生成的规则草案"
+    assert rule.target_dir == "University/Thesis"
+
+    draft = svc.draft_repo.get(draft_id)
+    assert draft.status == "converted"
+
+def test_preview_draft():
+    svc = AIRuleDraftService()
+    draft_id = svc.generate_draft("把论文归档", "D:/Archive")
+
+    preview = svc.get_preview(draft_id)
+    assert preview["draft_id"] == draft_id
+    assert preview["matched_count"] == 1
+    assert preview["items"][0]["target_path"] == "D:/Archive/University/Thesis/example.txt"

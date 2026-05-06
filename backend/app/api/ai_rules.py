@@ -1,0 +1,40 @@
+from fastapi import APIRouter, HTTPException
+from ..schemas.ai_rule_schema import CreateRuleDraftRequest, RuleDraftResponse, PreviewResponse
+from ..services.ai_rule_draft_service import AIRuleDraftService
+
+router = APIRouter(tags=["ai_rules"])
+draft_service = AIRuleDraftService()
+
+@router.post("/ai/rule-drafts", response_model=RuleDraftResponse)
+def create_rule_draft(body: CreateRuleDraftRequest):
+    draft_id = draft_service.generate_draft(body.prompt, body.archive_root)
+    draft = draft_service.draft_repo.get(draft_id)
+    if not draft:
+        raise HTTPException(status_code=500, detail="Failed to retrieve created draft")
+
+    return RuleDraftResponse(
+        draft_id=draft.id,
+        name=draft.name,
+        rule_type=draft.rule_type,
+        pattern=draft.pattern,
+        target_dir=draft.target_dir,
+        action=draft.action,
+        priority=draft.priority,
+        reason=draft.reason,
+        confidence=draft.confidence,
+        status=draft.status,
+        validation_error=draft.validation_error
+    )
+
+@router.get("/ai/rule-drafts/{draft_id}/preview", response_model=PreviewResponse)
+def preview_rule_draft(draft_id: int):
+    preview_data = draft_service.get_preview(draft_id)
+    return PreviewResponse(**preview_data)
+
+@router.post("/ai/rule-drafts/{draft_id}/accept")
+def accept_rule_draft(draft_id: int):
+    try:
+        rule = draft_service.accept_draft(draft_id)
+        return {"status": "success", "rule_id": rule.id if rule else None}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

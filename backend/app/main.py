@@ -39,6 +39,7 @@ from .api.extract_tasks import router as extract_tasks_router
 from .api.file_contents import router as file_contents_router
 from .api.search import router as search_router
 from .api.rules import router as rules_router
+from .api.ai_rules import router as ai_rules_router
 
 app.include_router(scan_router, prefix="/api")
 app.include_router(files_router, prefix="/api")
@@ -51,3 +52,4 @@ app.include_router(extract_tasks_router, prefix="/api")
 app.include_router(file_contents_router, prefix="/api")
 app.include_router(search_router, prefix="/api")
 app.include_router(rules_router, prefix="/api")
+app.include_router(ai_rules_router, prefix="/api")
