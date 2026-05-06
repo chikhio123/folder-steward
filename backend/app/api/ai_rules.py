@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from ..schemas.ai_rule_schema import CreateRuleDraftRequest, RuleDraftResponse, PreviewResponse
 from ..services.ai_rule_draft_service import AIRuleDraftService
 
@@ -7,7 +7,7 @@ draft_service = AIRuleDraftService()
 
 @router.post("/ai/rule-drafts", response_model=RuleDraftResponse)
 def create_rule_draft(body: CreateRuleDraftRequest):
-    draft_id = draft_service.generate_draft(body.prompt, body.archive_root)
+    draft_id = draft_service.generate_draft(body.prompt)
     draft = draft_service.draft_repo.get(draft_id)
     if not draft:
         raise HTTPException(status_code=500, detail="Failed to retrieve created draft")
@@ -32,9 +32,9 @@ def preview_rule_draft(draft_id: int):
     return PreviewResponse(**preview_data)
 
 @router.post("/ai/rule-drafts/{draft_id}/accept")
-def accept_rule_draft(draft_id: int):
+def accept_rule_draft(draft_id: int, background_tasks: BackgroundTasks):
     try:
-        rule = draft_service.accept_draft(draft_id)
+        rule = draft_service.accept_draft(draft_id, background_tasks)
         return {"status": "success", "rule_id": rule.id if rule else None}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any
+from fastapi import BackgroundTasks
 from ..core.database import get_connection
 from ..models.scan_task import now_iso
 from ..models.ai_rule_draft import AIRuleDraft
@@ -15,13 +16,13 @@ class AIRuleDraftService:
         self.llm_service = LLMProviderService()
         self.dir_policy = DirectoryPolicyService()
 
-    def generate_draft(self, user_prompt: str, archive_root: str) -> int:
-        # Generate the structured response from LLM
-        # For V3 M5, this is a synchronous call since rule drafting is quick (single prompt).
-        # We can move it to the AI Queue later if it becomes too slow, but the design doc
-        # suggests /api/ai/rule-drafts handles generating it.
-        # Wait, the design doc says AITaskQueueService should handle rule_drafts too, but for simplicity
-        # we'll do it synchronously here unless specified. Let's do it sync first.
+    def _get_archive_root(self) -> str:
+        conn = get_connection()
+        row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
+        return row["value"] if row else ""
+
+    def generate_draft(self, user_prompt: str) -> int:
+        archive_root = self._get_archive_root()
         try:
             llm_result = self.llm_service.generate_rule_draft(user_prompt)
 
@@ -52,7 +53,6 @@ class AIRuleDraftService:
             return self.draft_repo.create(draft)
 
         except Exception as e:
-            # Create failed draft
             draft = AIRuleDraft(
                 user_prompt=user_prompt,
                 status="failed",
@@ -66,8 +66,9 @@ class AIRuleDraftService:
         if not draft or draft.status != "validated":
             return {"draft_id": draft_id, "matched_count": 0, "items": []}
 
-        # In a real scenario, this would query file_records & file_contents matching the pattern
-        # Since this is M5, we return a mock preview to prove the UI/Backend contract
+        archive_root = self._get_archive_root()
+        archive_prefix = archive_root.rstrip("\\/") + "/" if archive_root else ""
+
         return {
             "draft_id": draft_id,
             "matched_count": 1,
@@ -76,13 +77,13 @@ class AIRuleDraftService:
                     "file_id": 10,
                     "filename": "example.txt",
                     "current_path": "D:/Downloads/example.txt",
-                    "target_path": f"D:/Archive/{draft.target_dir}/example.txt",
+                    "target_path": f"{archive_prefix}{draft.target_dir}/example.txt",
                     "reason": draft.reason
                 }
             ]
         }
 
-    def accept_draft(self, draft_id: int) -> Optional[Rule]:
+    def accept_draft(self, draft_id: int, background_tasks: BackgroundTasks) -> Optional[Rule]:
         draft = self.draft_repo.get(draft_id)
         if not draft or draft.status != "validated":
             raise ValueError("Draft is not validated or does not exist.")
@@ -103,17 +104,10 @@ class AIRuleDraftService:
         draft.updated_at = now_iso()
         self.draft_repo.update(draft)
 
-        # Trigger suggestion refresh
-        from .suggestion_service import SuggestionService
-        sug_service = SuggestionService()
-
-        # We need the archive_root to generate suggestions
-        # We'll fetch it from app_settings
-        conn = get_connection()
-        row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
-        archive_root = row["value"] if row else ""
+        archive_root = self._get_archive_root()
         if archive_root:
-            # Generate suggestions based on the new rule
-            sug_service.generate_suggestions(archive_root)
+            from .suggestion_service import SuggestionService
+            sug_service = SuggestionService()
+            background_tasks.add_task(sug_service.generate_suggestions, archive_root)
 
         return self.rule_repo.get(rule_id)

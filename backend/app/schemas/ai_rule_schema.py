@@ -3,7 +3,6 @@ from typing import Optional, List
 
 class CreateRuleDraftRequest(BaseModel):
     prompt: str
-    archive_root: str
 
 class RuleDraftResponse(BaseModel):
     draft_id: int
