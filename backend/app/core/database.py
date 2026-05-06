@@ -172,8 +172,17 @@ def init_db() -> None:
             DELETE FROM file_content_fts WHERE file_id = old.file_id;
         END;
 
+        CREATE TRIGGER IF NOT EXISTS idx_file_records_fts_insert AFTER INSERT ON file_records BEGIN
+            INSERT INTO file_content_fts(file_id, filename, current_path, text_content)
+            VALUES (new.id, new.filename, new.current_path, '');
+        END;
+
         CREATE TRIGGER IF NOT EXISTS idx_file_records_fts_update AFTER UPDATE OF filename, current_path ON file_records BEGIN
             UPDATE file_content_fts SET filename = new.filename, current_path = new.current_path WHERE file_id = new.id;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS idx_file_records_fts_delete AFTER DELETE ON file_records BEGIN
+            DELETE FROM file_content_fts WHERE file_id = old.id;
         END;
 
         CREATE TABLE IF NOT EXISTS rules (

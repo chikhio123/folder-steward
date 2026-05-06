@@ -1,3 +1,4 @@
+import html
 from typing import Optional
 from ..core.database import get_connection
 
@@ -13,15 +14,20 @@ class SearchService:
         if not query.strip():
             return [], 0
 
-        # Safe FTS5 query formatting: wrap in double quotes, escape existing quotes by doubling them
-        safe_query = query.replace('"', '""')
-        match_expr = f'"{safe_query}"'
+        # Relax exact phrase matching: split by spaces and wrap each word in quotes
+        words = [w.replace('"', '""') for w in query.split() if w.strip()]
+        if not words:
+            return [], 0
+
+        safe_query_parts = [f'"{w}"' for w in words]
+        safe_query = " ".join(safe_query_parts)
+        match_expr = safe_query
 
         # Modify match_expr based on scope
         if scope == "filename":
-            match_expr = f'filename : "{safe_query}"'
+            match_expr = f'filename : {safe_query}'
         elif scope == "content":
-            match_expr = f'text_content : "{safe_query}"'
+            match_expr = f'text_content : {safe_query}'
         # if scope == "all", match_expr searches all columns
 
         conn = get_connection()
@@ -76,13 +82,21 @@ class SearchService:
         for r in rows:
             # Determine match source roughly based on whether snippet is empty or just '...'
             match_source = "content"
-            snip = r["snippet"]
+            raw_snip = r["snippet"]
+
+            # HTML Escape the snippet to prevent XSS, but preserve the FTS5 <mark> tags
+            # We temporarily replace <mark> with a unique placeholder, escape the rest, and restore <mark>
+            snip = None
+            if raw_snip:
+                safe_snip = raw_snip.replace('<mark>', '[[[MARK_START]]]').replace('</mark>', '[[[MARK_END]]]')
+                safe_snip = html.escape(safe_snip)
+                snip = safe_snip.replace('[[[MARK_START]]]', '<mark>').replace('[[[MARK_END]]]', '</mark>')
 
             # If the search was restricted to filename, source is filename
             if scope == "filename":
                 match_source = "filename"
                 snip = None
-            elif not snip or snip == "..." or "<mark>" not in snip:
+            elif not raw_snip or raw_snip == "..." or "<mark>" not in raw_snip:
                 # If there's no highlight in the text_content snippet, it probably matched filename
                 match_source = "filename"
                 snip = None
