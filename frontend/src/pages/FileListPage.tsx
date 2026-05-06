@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getFiles } from "../services/api";
 import type { FileRecord } from "../types";
 import { formatSize, getFileIcon } from "../utils/format";
+import FileDetailPanel from "../components/FileDetailPanel";
 import {
   Search,
   Filter,
@@ -22,6 +23,7 @@ export default function FileListPage() {
   const [extension, setExtension] = useState("");
   const [sortBy, setSortBy] = useState("modified_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["files", page, keyword, extension, sortBy, sortOrder],
@@ -126,7 +128,11 @@ export default function FileListPage() {
           ) : data?.items?.length ? (
             <div className="divide-y divide-slate-100/60">
               {data.items.map((f: FileRecord) => (
-                <div key={f.id} className="grid grid-cols-[1fr_minmax(80px,100px)_minmax(100px,120px)_minmax(140px,160px)_100px_40px] gap-4 items-center px-6 py-3.5 hover:bg-slate-50/50 transition-colors group">
+                <div
+                  key={f.id}
+                  onClick={() => setSelectedFile(f)}
+                  className="grid grid-cols-[1fr_minmax(80px,100px)_minmax(100px,120px)_minmax(140px,160px)_100px_40px] gap-4 items-center px-6 py-3.5 hover:bg-slate-50/50 transition-colors group cursor-pointer"
+                >
                   <div className="flex flex-col min-w-0 gap-0.5">
                     <div className="flex items-center gap-3 min-w-0">
                       {getFileIcon(f.extension)}
@@ -160,7 +166,10 @@ export default function FileListPage() {
                   </div>
                   <div className="flex justify-end">
                     <button
-                      onClick={() => handleOpenFolder(f.current_path)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenFolder(f.current_path);
+                      }}
                       className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                       title="打开所在目录"
                     >
@@ -210,6 +219,23 @@ export default function FileListPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Slide-out File Detail Panel */}
+      <div
+        className={twMerge(
+          "fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 transition-opacity duration-300",
+          selectedFile ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onClick={() => setSelectedFile(null)}
+      />
+      <div
+        className={twMerge(
+          "fixed inset-y-0 right-0 w-[400px] z-50 transform transition-transform duration-300 ease-in-out",
+          selectedFile ? "translate-x-0" : "translate-x-full"
+        )}
+      >
+        <FileDetailPanel file={selectedFile} onClose={() => setSelectedFile(null)} />
       </div>
     </div>
   );

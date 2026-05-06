@@ -37,6 +37,16 @@ export const cancelScanTask = (taskId: number) =>
 export const getScanErrors = (taskId: number) =>
   request<{ items: import("../types").ScanError[] }>(`/scan-tasks/${taskId}/errors`);
 
+// Extraction
+export const forceExtractFile = (fileId: number) =>
+  request<{ created_count: number; skipped_count: number }>("/extract-tasks", {
+    method: "POST",
+    body: JSON.stringify({ file_ids: [fileId], mode: "force" }),
+  });
+
+export const getFileContent = (fileId: number) =>
+  request<{ file_id: number; extract_status: string; text_length: number; preview: string | null; extracted_at: string | null }>(`/files/${fileId}/content`);
+
 // Files
 export const getFiles = (params: {
   page?: number;
