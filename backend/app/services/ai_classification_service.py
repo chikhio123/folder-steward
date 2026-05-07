@@ -81,13 +81,13 @@ class AIClassificationService:
                 # Try batch classification with fallback
                 results = self._classify_with_fallback(contexts, rules_context, archive_root, batch_size)
 
-                # Save valid results, ignore ghost records (fid not in original input)
+                # Save valid results, ignore ghost records (fid not in current batch)
                 for item in results:
                     fid = item.get("file_id")
                     if fid is None:
                         continue
-                    if fid not in valid_file_ids:
-                        print(f"Ghost record ignored: LLM returned file_id={fid} which is not in batch")
+                    if fid not in context_fids:
+                        print(f"Ghost record ignored: LLM returned file_id={fid} which is not in this batch")
                         continue
                     target_dir = item.get("suggested_target_dir", "")
                     # Empty target_dir means classification failed — skip policy check

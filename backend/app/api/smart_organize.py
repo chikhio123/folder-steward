@@ -36,10 +36,12 @@ def create_classification_tasks(body: AIClassifyRequest):
 
     def handler(t: AITask):
         inputs = json.loads(t.input_json)
-        for fid in inputs["file_ids"]:
-            class_service.process_classification_task(fid, inputs["archive_root"])
-            t.processed_items += 1
-            queue_service.task_repo.update(t)
+        class_service.process_classification_batch(
+            inputs["file_ids"],
+            inputs["archive_root"],
+            batch_size=30,
+            task=t
+        )
 
     task_id = queue_service.enqueue_task(task, handler)
 

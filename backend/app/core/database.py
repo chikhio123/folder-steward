@@ -263,6 +263,7 @@ def init_db() -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             plan_id INTEGER NOT NULL,
             file_id INTEGER NOT NULL,
+            ai_suggestion_id INTEGER,
             source_path TEXT NOT NULL,
             target_dir TEXT NOT NULL,
             target_path TEXT NOT NULL,
@@ -274,7 +275,8 @@ def init_db() -> None:
             created_at TEXT NOT NULL,
             updated_at TEXT,
             FOREIGN KEY (plan_id) REFERENCES organize_plans(id) ON DELETE CASCADE,
-            FOREIGN KEY (file_id) REFERENCES file_records(id) ON DELETE CASCADE
+            FOREIGN KEY (file_id) REFERENCES file_records(id) ON DELETE CASCADE,
+            FOREIGN KEY (ai_suggestion_id) REFERENCES ai_classification_suggestions(id) ON DELETE SET NULL
         );
 
         CREATE INDEX IF NOT EXISTS idx_plan_items_plan_id ON organize_plan_items(plan_id);
@@ -391,6 +393,15 @@ def init_db() -> None:
     }
     if "retry_count" not in ai_tasks_cols and len(ai_tasks_cols) > 0:
         conn.execute("ALTER TABLE ai_tasks ADD COLUMN retry_count INTEGER DEFAULT 0")
+
+    # Migrations for organize_plan_items: add ai_suggestion_id
+    plan_item_cols = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(organize_plan_items)").fetchall()
+    }
+    if "ai_suggestion_id" not in plan_item_cols and len(plan_item_cols) > 0:
+        conn.execute("ALTER TABLE organize_plan_items ADD COLUMN ai_suggestion_id INTEGER")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_plan_items_suggestion ON organize_plan_items(ai_suggestion_id)")
 
     # Insert default rules if table is empty
     rule_count = conn.execute("SELECT COUNT(*) as cnt FROM rules").fetchone()["cnt"]

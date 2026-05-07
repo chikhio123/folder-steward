@@ -6,6 +6,7 @@ class OrganizePlanItem:
     id: Optional[int] = None
     plan_id: int = 0
     file_id: int = 0
+    ai_suggestion_id: Optional[int] = None
     source_path: str = ""
     target_dir: str = ""
     target_path: str = ""

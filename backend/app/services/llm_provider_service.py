@@ -70,9 +70,11 @@ class LLMProviderService:
                 if e.response.status_code == 429:
                     raise RateLimitException("Rate limited by provider")
                 raise Exception(f"API Error: {e.response.text}")
+            except RateLimitException:
+                raise
             except Exception as e:
                 raise Exception(f"Failed to call LLM: {str(e)}")
-                
+
         else: # openai, openai-raw, openai-response-format
             if not base_url.endswith("/v1"):
                 base_url = f"{base_url}/v1"
@@ -103,6 +105,8 @@ class LLMProviderService:
                 if e.response.status_code == 429:
                     raise RateLimitException("Rate limited by provider")
                 raise Exception(f"API Error: {e.response.text}")
+            except RateLimitException:
+                raise
             except Exception as e:
                 raise Exception(f"Failed to call LLM: {str(e)}")
 

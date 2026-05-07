@@ -69,7 +69,7 @@ class OrganizePlanService:
         # Fetch pending AI suggestions that meet confidence, limited to current file_ids
         placeholders = ",".join("?" for _ in file_ids)
         rows = conn.execute(
-            f"""SELECT a.*, f.current_path
+            f"""SELECT a.id as suggestion_id, a.*, f.current_path
                FROM ai_classification_suggestions a
                JOIN file_records f ON a.file_id = f.id
                WHERE a.status = 'pending' AND a.confidence >= ?
@@ -99,6 +99,7 @@ class OrganizePlanService:
             item = OrganizePlanItem(
                 plan_id=plan_id,
                 file_id=r["file_id"],
+                ai_suggestion_id=r["suggestion_id"],
                 source_path=r["current_path"],
                 target_dir=target_dir,
                 target_path=target_path,
@@ -112,7 +113,7 @@ class OrganizePlanService:
             self.plan_repo.create_item(item)
 
             # Mark AI suggestion as in_plan so it doesn't get picked up again
-            conn.execute("UPDATE ai_classification_suggestions SET status='in_plan' WHERE id=?", (r["id"],))
+            conn.execute("UPDATE ai_classification_suggestions SET status='in_plan' WHERE id=?", (r["suggestion_id"],))
 
         plan.summary_json = json.dumps(summary_counts, ensure_ascii=False)
         self.plan_repo.update_plan(plan)
@@ -182,8 +183,9 @@ class OrganizePlanService:
 
             # Mark item converted
             conn.execute("UPDATE organize_plan_items SET status='converted' WHERE id=?", (item.id,))
-            # Mark original suggestion as converted
-            conn.execute("UPDATE ai_classification_suggestions SET status='converted' WHERE file_id=? AND status='in_plan'", (item.file_id,))
+            # Mark original suggestion as converted, using ai_suggestion_id to avoid cross-plan contamination
+            if item.ai_suggestion_id:
+                conn.execute("UPDATE ai_classification_suggestions SET status='converted' WHERE id=?", (item.ai_suggestion_id,))
 
         # Mark plan converted
         plan.status = "converted"
@@ -202,7 +204,9 @@ class OrganizePlanService:
 
         for item in items:
             conn.execute("UPDATE organize_plan_items SET status='rejected' WHERE id=?", (item.id,))
-            conn.execute("UPDATE ai_classification_suggestions SET status='pending' WHERE file_id=? AND status='in_plan'", (item.file_id,))
+            # Restore suggestion using ai_suggestion_id to avoid cross-plan contamination
+            if item.ai_suggestion_id:
+                conn.execute("UPDATE ai_classification_suggestions SET status='pending' WHERE id=?", (item.ai_suggestion_id,))
 
         plan.status = "rejected"
         plan.updated_at = now_iso()

@@ -39,12 +39,12 @@ class OrganizePlanRepository:
         conn = get_connection()
         cur = conn.execute(
             """INSERT INTO organize_plan_items
-               (plan_id, file_id, source_path, target_dir, target_path, directory_status,
+               (plan_id, file_id, ai_suggestion_id, source_path, target_dir, target_path, directory_status,
                 confidence, reason, evidence_json, status, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (item.plan_id, item.file_id, item.source_path, item.target_dir, item.target_path,
-             item.directory_status, item.confidence, item.reason, item.evidence_json,
-             item.status, item.created_at, item.updated_at),
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (item.plan_id, item.file_id, item.ai_suggestion_id, item.source_path, item.target_dir,
+             item.target_path, item.directory_status, item.confidence, item.reason,
+             item.evidence_json, item.status, item.created_at, item.updated_at),
         )
         conn.commit()
         return cur.lastrowid
