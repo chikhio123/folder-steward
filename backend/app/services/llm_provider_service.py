@@ -276,9 +276,12 @@ IMPORTANT:
         for fc in file_contexts:
             path = fc.get("current_path", "")
             if not path:
-                continue
-            normalized = os.path.normpath(path).lower()
-            parent = os.path.dirname(normalized)
+                # Files without a valid path go to a special group
+                parent = "_ungrouped_"
+            else:
+                normalized = os.path.normpath(path).lower()
+                parent = os.path.dirname(normalized)
+                parent = parent or "_root_"
             if parent not in dirs:
                 dirs[parent] = {"files": 0, "exts": set(), "names": []}
             dirs[parent]["files"] += 1
