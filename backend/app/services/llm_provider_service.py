@@ -174,6 +174,90 @@ class LLMProviderService:
             "reason": reason
         }
 
+    def generate_classifications_batch(self, file_contexts: list[dict], rules_context: list, archive_root: str) -> list[dict]:
+        """Batch classify multiple files in a single LLM request.
+
+        Returns a list of dicts matching generate_classification() output format,
+        with an additional 'file_id' field for correlation.
+        """
+        s = self._get_settings()
+        if s["provider"] != "mock":
+            # Build batch prompt
+            files_desc = []
+            for fc in file_contexts:
+                fid = fc.get('file_id', 'unknown')
+                fname = fc.get('filename', '')
+                preview = (fc.get('content_preview') or '')[:500]
+                ext = fc.get('extension', '')
+                current_path = fc.get('current_path', '')
+                files_desc.append(
+                    f"File ID: {fid}\nFilename: {fname}\nExtension: {ext}\nCurrent Path: {current_path}\nContent Preview: {preview}"
+                )
+
+            files_block = "\n---\n".join(files_desc)
+
+            prompt = f"""
+You are a smart file organization assistant. Analyze the following files and suggest a target directory for EACH file.
+
+Archive Root: {archive_root}
+
+Files to classify:
+---
+{files_block}
+---
+
+Return ONLY raw JSON in this exact format, no markdown blocks, no other text:
+{{
+    "items": [
+        {{
+            "file_id": 1,
+            "suggested_target_dir": "Documents/Work",
+            "confidence": 0.95,
+            "reason": "Why did you choose this directory?"
+        }},
+        {{
+            "file_id": 2,
+            "suggested_target_dir": "Images/Photos",
+            "confidence": 0.88,
+            "reason": "Detected as image file with photo metadata"
+        }}
+    ]
+}}
+
+IMPORTANT:
+- Return one item for EVERY file_id in the input, in the same order.
+- Use the file_id values exactly as provided in the input.
+- suggested_target_dir should be a relative path from archive_root.
+"""
+            try:
+                result_str = self._call_api(
+                    [{"role": "user", "content": prompt}]
+                )
+                import json
+                # Clean markdown blocks if the model ignored our instructions
+                if result_str.startswith("```json"):
+                    result_str = result_str[7:]
+                if result_str.endswith("```"):
+                    result_str = result_str[:-3]
+                result = json.loads(result_str.strip())
+                items = result.get("items", [])
+                # Validate: ensure all items have file_id
+                for item in items:
+                    if "file_id" not in item:
+                        raise ValueError("LLM batch response missing file_id in items")
+                return items
+            except Exception as e:
+                print(f"LLM Batch Classification Error: {e}")
+                raise e
+
+        # Mock batch fallback - classify each file using the same logic as single
+        results = []
+        for fc in file_contexts:
+            single_result = self.generate_classification(fc, rules_context, archive_root)
+            single_result["file_id"] = fc.get("file_id", 0)
+            results.append(single_result)
+        return results
+
     def generate_rule_draft(self, user_prompt: str) -> Dict[str, Any]:
         s = self._get_settings()
         if s["provider"] != "mock":

@@ -60,12 +60,8 @@ class OrganizePlanService:
                 conn.execute(f"DELETE FROM ai_classification_suggestions WHERE status = 'pending' AND file_id IN ({placeholders})", chunk)
             conn.commit()
 
-        # Classify all target files
-        for fid in file_ids:
-            class_service.process_classification_task(fid, archive_root)
-            if task:
-                task.processed_items += 1
-                task_repo.update(task)
+        # Classify all target files in batches
+        class_service.process_classification_batch(file_ids, archive_root, batch_size=30, task=task)
 
         # Fetch pending AI suggestions that meet confidence
         rows = conn.execute(
