@@ -63,13 +63,15 @@ class OrganizePlanService:
         # Classify all target files in batches
         class_service.process_classification_batch(file_ids, archive_root, batch_size=30, task=task)
 
-        # Fetch pending AI suggestions that meet confidence
+        # Fetch pending AI suggestions that meet confidence, limited to current file_ids
+        placeholders = ",".join("?" for _ in file_ids)
         rows = conn.execute(
-            """SELECT a.*, f.current_path
+            f"""SELECT a.*, f.current_path
                FROM ai_classification_suggestions a
                JOIN file_records f ON a.file_id = f.id
                WHERE a.status = 'pending' AND a.confidence >= ?
-            """, (min_confidence,)
+                 AND a.file_id IN ({placeholders})
+            """, (min_confidence, *file_ids)
         ).fetchall()
 
         if not rows:
