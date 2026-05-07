@@ -34,7 +34,7 @@ export default function DashboardPage() {
     { label: "已索引文件", value: data?.total_files ?? 0, icon: Files, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "总文件大小", value: formatSize(data?.total_size ?? 0), icon: Database, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "重复文件组", value: data?.duplicate_groups ?? 0, icon: CopyX, color: "text-amber-600", bg: "bg-amber-50" },
-    { label: "待处理建议", value: data?.pending_suggestions ?? 0, icon: Sparkles, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "待处理建议", value: data?.pending_suggestions ?? 0, icon: Sparkles, color: "text-blue-600", bg: "bg-blue-50" },
   ];
 
   return (

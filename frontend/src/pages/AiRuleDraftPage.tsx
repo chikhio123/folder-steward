@@ -44,7 +44,7 @@ export default function AiRuleDraftPage() {
     <div className="max-w-4xl mx-auto animation-fade-in flex flex-col h-full">
       <div className="mb-6 shrink-0">
         <h2 className="text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-          <Sparkles className="w-8 h-8 text-indigo-500" />
+          <Sparkles className="w-8 h-8 text-blue-500" />
           自然语言规则生成
         </h2>
         <p className="text-slate-500 mt-1">告诉 AI 您想怎么整理文件，它会自动生成结构化的归档规则并预览受影响的文件。</p>
@@ -59,14 +59,14 @@ export default function AiRuleDraftPage() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="例如：把包含“发票”或“报销”的文件都移动到 Finance/Receipts 目录下..."
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-slate-400 min-h-[100px] resize-y shadow-inner"
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 min-h-[100px] resize-y shadow-inner"
             disabled={draftMutation.isPending}
           />
           <div className="flex justify-end">
             <button
               onClick={() => draftMutation.mutate()}
               disabled={!prompt.trim() || draftMutation.isPending}
-              className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-md active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2"
+              className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-blue-600/20 hover:bg-blue-700 hover:shadow-md active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2"
             >
               {draftMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
               AI 生成草案
@@ -109,7 +109,7 @@ export default function AiRuleDraftPage() {
                   </div>
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 col-span-2">
                     <div className="text-xs font-semibold text-slate-500 mb-1">关键词模式</div>
-                    <div className="text-sm text-indigo-600 font-mono bg-indigo-50 px-2 py-1 rounded inline-block border border-indigo-100">{draft.pattern}</div>
+                    <div className="text-sm text-blue-600 font-mono bg-blue-50 px-2 py-1 rounded inline-block border border-blue-100">{draft.pattern}</div>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 col-span-2">
                     <div className="text-xs font-semibold text-slate-500 mb-1">目标目录</div>
@@ -146,7 +146,7 @@ export default function AiRuleDraftPage() {
               <h3 className="text-lg font-bold text-slate-800 mb-4">预览命中结果</h3>
               {isPreviewLoading ? (
                 <div className="py-8 flex flex-col items-center justify-center text-slate-400 space-y-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                   <p className="text-sm">正在检索受影响的文件...</p>
                 </div>
               ) : previewData?.items?.length ? (

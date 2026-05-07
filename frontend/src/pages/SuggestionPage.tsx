@@ -287,7 +287,7 @@ export default function SuggestionPage() {
                       <span className="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-100 text-slate-600">
                         {s.reason || "系统默认策略"}
                       </span>
-                      <span className="text-[11px] px-2 py-0.5 rounded-md font-medium bg-indigo-50 text-indigo-600 border border-indigo-100">
+                      <span className="text-[11px] px-2 py-0.5 rounded-md font-medium bg-blue-50 text-blue-600 border border-blue-100">
                         置信度 {(s.confidence * 100).toFixed(0)}%
                       </span>
                       {s.conflict_status !== "none" && (

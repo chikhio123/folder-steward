@@ -135,8 +135,9 @@ class LLMProviderService:
                 return json.loads(result_str.strip())
             except Exception as e:
                 print(f"LLM Classification Error: {e}")
-                # Fallback to mock on error
-        
+                # Raise the error so it can be handled by the task queue
+                raise e
+
         # Mock Fallback
         filename = file_context.get("filename", "")
         content = file_context.get("content_preview") or ""
@@ -201,6 +202,7 @@ class LLMProviderService:
                 return json.loads(result_str.strip())
             except Exception as e:
                 print(f"LLM Rule Draft Error: {e}")
+                raise e
 
         # Mock generating a rule draft from a natural language prompt.
         target = "University/Thesis" if "论文" in user_prompt else "Custom/Target"

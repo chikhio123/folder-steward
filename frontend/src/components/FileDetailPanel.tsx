@@ -180,14 +180,14 @@ export default function FileDetailPanel({ file, onClose }: FileDetailPanelProps)
           <div className="mt-8 border-t border-slate-100 pt-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold text-slate-800 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-indigo-500" />
+                <Sparkles className="w-4 h-4 text-blue-500" />
                 AI 文件摘要
               </h4>
               {(!summaryData || summaryData.status !== "running") && (
                 <button
                   onClick={() => summaryMutation.mutate()}
                   disabled={summaryMutation.isPending}
-                  className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded transition-colors disabled:opacity-50"
                 >
                   {summaryMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSignature className="w-3.5 h-3.5" />}
                   {summaryData?.summary ? "重新生成" : "生成摘要"}
@@ -197,13 +197,13 @@ export default function FileDetailPanel({ file, onClose }: FileDetailPanelProps)
 
             {isSummaryLoading && !summaryData ? (
               <div className="py-6 flex flex-col items-center justify-center text-slate-400 space-y-2 border border-slate-100 rounded-xl bg-slate-50/50">
-                <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+                <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
                 <span className="text-xs">加载摘要中...</span>
               </div>
             ) : summaryData?.status === "pending" || summaryData?.status === "running" ? (
-              <div className="py-6 flex flex-col items-center justify-center text-slate-400 space-y-3 border border-indigo-100 rounded-xl bg-indigo-50/30">
-                <Sparkles className="w-6 h-6 animate-pulse text-indigo-400" />
-                <span className="text-xs text-indigo-600/80 font-medium">AI 正在深度阅读并总结...</span>
+              <div className="py-6 flex flex-col items-center justify-center text-slate-400 space-y-3 border border-blue-100 rounded-xl bg-blue-50/30">
+                <Sparkles className="w-6 h-6 animate-pulse text-blue-400" />
+                <span className="text-xs text-blue-600/80 font-medium">AI 正在深度阅读并总结...</span>
               </div>
             ) : summaryData?.status === "failed" ? (
               <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-700">
@@ -211,7 +211,7 @@ export default function FileDetailPanel({ file, onClose }: FileDetailPanelProps)
                 {summaryData.error_message}
               </div>
             ) : summaryData?.summary ? (
-              <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl text-sm text-slate-700 leading-relaxed shadow-inner">
+              <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl text-sm text-slate-700 leading-relaxed shadow-inner">
                 {summaryData.summary}
               </div>
             ) : (

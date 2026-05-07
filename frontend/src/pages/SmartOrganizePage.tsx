@@ -73,7 +73,7 @@ export default function SmartOrganizePage() {
     <div className="max-w-6xl mx-auto animation-fade-in flex flex-col h-full">
       <div className="mb-6 shrink-0">
         <h2 className="text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-          <BrainCircuit className="w-8 h-8 text-indigo-500" />
+          <BrainCircuit className="w-8 h-8 text-blue-500" />
           AI 智能整理大盘
         </h2>
         <p className="text-slate-500 mt-1">
@@ -93,7 +93,7 @@ export default function SmartOrganizePage() {
               onChange={(e) => setArchiveRoot(e.target.value)}
               placeholder="例如：D:/Archive"
               disabled={isRunning}
-              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
           <div>
@@ -104,7 +104,7 @@ export default function SmartOrganizePage() {
               value={scope}
               onChange={(e) => setScope(e.target.value)}
               disabled={isRunning}
-              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             >
               <option value="others">仅未识别分类的文件 (Others)</option>
               <option value="all">库中所有未操作的文件</option>
@@ -120,7 +120,7 @@ export default function SmartOrganizePage() {
               value={minConfidence}
               onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
               disabled={isRunning}
-              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function SmartOrganizePage() {
           <button
             onClick={() => planMutation.mutate()}
             disabled={isRunning || !!planId}
-            className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 active:translate-y-0 disabled:opacity-50 transition-all flex items-center gap-2"
+            className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-blue-600/20 hover:bg-blue-700 active:translate-y-0 disabled:opacity-50 transition-all flex items-center gap-2"
           >
             {planMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" fill="currentColor" />}
             生成整理方案
@@ -147,13 +147,13 @@ export default function SmartOrganizePage() {
              </div>
           ) : (
              <div className="text-center w-full max-w-md">
-               <BrainCircuit className="w-12 h-12 text-indigo-400 mx-auto mb-4 animate-pulse" />
+               <BrainCircuit className="w-12 h-12 text-blue-400 mx-auto mb-4 animate-pulse" />
                <h3 className="text-lg font-bold text-slate-800 mb-2">AI 正在深度阅读并分类文件</h3>
                <p className="text-sm text-slate-500 mb-6">正在分析正文特征与上下文...</p>
 
                <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden ring-1 ring-inset ring-slate-200/50 mb-2">
                  <div
-                   className="bg-indigo-500 h-full rounded-full transition-all duration-500 relative"
+                   className="bg-blue-500 h-full rounded-full transition-all duration-500 relative"
                    style={{ width: task.total_items > 0 ? `${(task.processed_items / task.total_items) * 100}%` : "0%" }}
                  >
                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
@@ -198,7 +198,7 @@ export default function SmartOrganizePage() {
             {Object.entries(planData.groups || {}).map(([dir, items]: [string, any]) => (
               <div key={dir} className="border border-slate-200 rounded-2xl overflow-hidden">
                 <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center gap-3">
-                  <FolderTree className="w-5 h-5 text-indigo-500" />
+                  <FolderTree className="w-5 h-5 text-blue-500" />
                   <h4 className="font-semibold text-slate-800 text-base">{dir}</h4>
                   <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-xs font-bold text-slate-500">
                     {items.length} 个文件
@@ -219,7 +219,7 @@ export default function SmartOrganizePage() {
                             <span className="text-emerald-600 truncate font-medium flex-1">{item.target_path}</span>
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-100">
                               置信度: {(item.confidence * 100).toFixed(0)}%
                             </span>
                             <span className="text-xs text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-sm">

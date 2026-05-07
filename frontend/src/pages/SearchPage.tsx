@@ -122,7 +122,7 @@ export default function SearchPage() {
                           </h4>
                           <span className={twMerge(
                             "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
-                            item.match_source === "content" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                            item.match_source === "content" ? "bg-blue-50 text-blue-600 border border-blue-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
                           )}>
                             {item.match_source === "content" ? "正文命中" : "文件名命中"}
                           </span>

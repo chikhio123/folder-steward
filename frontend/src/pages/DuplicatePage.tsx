@@ -87,7 +87,7 @@ export default function DuplicatePage() {
                           "shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 border",
                           suggestMutation.isPending && processingKey === (group.sha256 + group.files[0].filename)
                             ? "bg-slate-100 text-slate-400 border-slate-200"
-                            : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300"
+                            : "bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
                         )}
                       >
                         {suggestMutation.isPending && processingKey === (group.sha256 + group.files[0].filename) ? (

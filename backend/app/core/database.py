@@ -20,7 +20,8 @@ def get_connection() -> sqlite3.Connection:
 
     if conn is None:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(db_path)
+        # Use isolation_level=None for autocommit mode so read transactions don't stay open
+        conn = sqlite3.connect(db_path, isolation_level=None)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
