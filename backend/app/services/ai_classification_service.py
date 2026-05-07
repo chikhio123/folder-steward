@@ -4,7 +4,7 @@ from ..models.scan_task import now_iso
 from ..models.ai_classification_suggestion import AIClassificationSuggestion
 from ..repositories.ai_classification_repository import AIClassificationRepository
 from .prompt_context_service import PromptContextService
-from .llm_provider_service import LLMProviderService
+from .llm_provider_service import LLMProviderService, RateLimitException
 from .directory_policy_service import DirectoryPolicyService
 
 class AIClassificationService:
@@ -59,7 +59,6 @@ class AIClassificationService:
         No file is silently skipped.
         """
         rules_context = self.context_service.build_rules_context()
-        valid_file_ids = set(file_ids)
         classified_fids: set[int] = set()
         processed = 0
 
@@ -81,11 +80,19 @@ class AIClassificationService:
                 # Try batch classification with fallback
                 results = self._classify_with_fallback(contexts, rules_context, archive_root, batch_size)
 
+                # Track seen file_ids to detect duplicates
+                seen_fids = set()
+
                 # Save valid results, ignore ghost records (fid not in current batch)
                 for item in results:
                     fid = item.get("file_id")
                     if fid is None:
                         continue
+                    if fid in seen_fids:
+                        print(f"Duplicate classification result ignored: file_id={fid}")
+                        continue
+                    seen_fids.add(fid)
+
                     if fid not in context_fids:
                         print(f"Ghost record ignored: LLM returned file_id={fid} which is not in this batch")
                         continue
@@ -159,6 +166,8 @@ class AIClassificationService:
         # Try full batch first
         try:
             return self.llm_service.generate_classifications_batch(contexts, rules_context, archive_root)
+        except RateLimitException:
+            raise
         except Exception as e:
             print(f"Batch classification failed ({len(contexts)} files): {e}")
 
@@ -194,6 +203,8 @@ class AIClassificationService:
                 result = self.llm_service.generate_classification(fc, rules_context, archive_root)
                 result["file_id"] = fid
                 results.append(result)
+            except RateLimitException:
+                raise
             except Exception as e:
                 print(f"Single file classification failed for file_id={fid}: {e}")
                 # Return a failed entry so the caller can still record it
