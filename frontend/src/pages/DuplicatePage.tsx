@@ -12,13 +12,13 @@ export default function DuplicatePage() {
     queryFn: getDuplicates,
   });
 
-  const [processingSha, setProcessingSha] = useState<string | null>(null);
+  const [processingKey, setProcessingKey] = useState<string | null>(null);
 
   const suggestMutation = useMutation({
-    mutationFn: ({ sha256, keepFileId }: { sha256: string; keepFileId: number }) =>
-      createDuplicateSuggestions(sha256, keepFileId),
+    mutationFn: ({ sha256, filename, keepFileId }: { sha256: string; filename: string; keepFileId: number }) =>
+      createDuplicateSuggestions(sha256, filename, keepFileId),
     onMutate: (variables) => {
-      setProcessingSha(variables.sha256);
+      setProcessingKey(variables.sha256 + variables.filename);
     },
     onSuccess: (data) => {
       toast.success(`成功生成 ${data.created_count} 条建议！`);
@@ -27,13 +27,13 @@ export default function DuplicatePage() {
       toast.error(`生成建议失败: ${err.message}`);
     },
     onSettled: () => {
-      setProcessingSha(null);
+      setProcessingKey(null);
     }
   });
 
   return (
-    <div className="max-w-4xl mx-auto animation-fade-in flex flex-col h-full">
-      <div className="mb-6 shrink-0">
+    <div className="max-w-4xl mx-auto animation-fade-in flex flex-col h-full relative">
+      <div className="mb-6 shrink-0 sticky top-0 z-20 bg-white/60 backdrop-blur-xl border-b border-slate-200/50 pb-4 pt-2 -mx-4 px-4 sm:-mx-0 sm:px-0">
         <h2 className="text-3xl font-bold text-slate-800 tracking-tight">重复文件清理</h2>
         <p className="text-slate-500 mt-1">基于 SHA-256 哈希值精确查找出的完全相同的文件副本。点击右侧“保留此副本”即可生成其他副本的整理建议。</p>
       </div>
@@ -81,16 +81,16 @@ export default function DuplicatePage() {
                       </div>
 
                       <button
-                        onClick={() => suggestMutation.mutate({ sha256: group.sha256, keepFileId: f.id })}
-                        disabled={suggestMutation.isPending && processingSha === group.sha256}
+                        onClick={() => suggestMutation.mutate({ sha256: group.sha256, filename: group.files[0].filename, keepFileId: f.id })}
+                        disabled={suggestMutation.isPending && processingKey === (group.sha256 + group.files[0].filename)}
                         className={twMerge(
                           "shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 border",
-                          suggestMutation.isPending && processingSha === group.sha256
+                          suggestMutation.isPending && processingKey === (group.sha256 + group.files[0].filename)
                             ? "bg-slate-100 text-slate-400 border-slate-200"
                             : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300"
                         )}
                       >
-                        {suggestMutation.isPending && processingSha === group.sha256 ? (
+                        {suggestMutation.isPending && processingKey === (group.sha256 + group.files[0].filename) ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
                           <CheckCircle2 className="w-3.5 h-3.5" />

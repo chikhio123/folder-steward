@@ -117,24 +117,25 @@ class FileRepository:
         conn.commit()
 
     def find_duplicate_groups(self) -> list[dict]:
-        """Return groups of files sharing the same sha256 (and non-null)."""
+        """Return groups of files sharing the same sha256 and filename."""
         conn = get_connection()
         rows = conn.execute(
-            """SELECT sha256, size_bytes, COUNT(*) as cnt
+            """SELECT sha256, filename, size_bytes, COUNT(*) as cnt
                FROM file_records
                WHERE status='active' AND sha256 IS NOT NULL
-               GROUP BY sha256
+               GROUP BY sha256, filename
                HAVING COUNT(*) > 1
                ORDER BY size_bytes DESC"""
         ).fetchall()
         groups = []
         for r in rows:
             files = conn.execute(
-                "SELECT id, filename, current_path, modified_at FROM file_records WHERE sha256 = ? ORDER BY id",
-                (r["sha256"],),
+                "SELECT id, filename, current_path, modified_at FROM file_records WHERE sha256 = ? AND filename = ? AND status = 'active' ORDER BY id",
+                (r["sha256"], r["filename"]),
             ).fetchall()
             groups.append({
                 "sha256": r["sha256"],
+                "filename": r["filename"],
                 "size_bytes": r["size_bytes"],
                 "count": r["cnt"],
                 "files": [dict(f) for f in files],
@@ -144,9 +145,9 @@ class FileRepository:
     def count_duplicate_groups(self) -> int:
         row = get_connection().execute(
             """SELECT COUNT(*) as cnt FROM (
-                SELECT sha256 FROM file_records
+                SELECT sha256, filename FROM file_records
                 WHERE status='active' AND sha256 IS NOT NULL
-                GROUP BY sha256 HAVING COUNT(*) > 1
+                GROUP BY sha256, filename HAVING COUNT(*) > 1
             )"""
         ).fetchone()
         return row["cnt"]

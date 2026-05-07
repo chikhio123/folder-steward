@@ -12,10 +12,10 @@ class DuplicateService:
     def find_groups(self) -> list[dict]:
         return self.file_repo.find_duplicate_groups()
 
-    def create_duplicate_suggestions(self, sha256: str, keep_file_id: int) -> int:
+    def create_duplicate_suggestions(self, sha256: str, filename: str, keep_file_id: int) -> int:
         """Move all files in a duplicate group (except the kept one) to Duplicates/."""
         groups = self.file_repo.find_duplicate_groups()
-        group = next((g for g in groups if g["sha256"] == sha256), None)
+        group = next((g for g in groups if g["sha256"] == sha256 and g["filename"] == filename), None)
         if not group:
             return 0
 

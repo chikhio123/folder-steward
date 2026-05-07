@@ -339,6 +339,43 @@ def init_db() -> None:
             WHERE file_id = new.file_id
               AND status = 'completed';
         END;
+
+        CREATE TABLE IF NOT EXISTS tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS file_tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_id INTEGER NOT NULL,
+            tag_id INTEGER NOT NULL,
+            confidence REAL DEFAULT 1.0,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (file_id) REFERENCES file_records(id) ON DELETE CASCADE,
+            FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE,
+            UNIQUE(file_id, tag_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS semantic_groups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS semantic_group_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            group_id INTEGER NOT NULL,
+            file_id INTEGER NOT NULL,
+            similarity REAL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (group_id) REFERENCES semantic_groups(id) ON DELETE CASCADE,
+            FOREIGN KEY (file_id) REFERENCES file_records(id) ON DELETE CASCADE,
+            UNIQUE(group_id, file_id)
+        );
     """)
     columns = {
         row["name"]

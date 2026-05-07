@@ -72,10 +72,10 @@ export const getFiles = (params: {
 export const getDuplicates = () =>
   request<{ groups: import("../types").DuplicateGroup[] }>("/duplicates");
 
-export const createDuplicateSuggestions = (sha256: string, keepFileId: number) =>
+export const createDuplicateSuggestions = (sha256: string, filename: string, keepFileId: number) =>
   request<{ created_count: number }>("/duplicates/suggestions", {
     method: "POST",
-    body: JSON.stringify({ sha256, keep_file_id: keepFileId }),
+    body: JSON.stringify({ sha256, filename, keep_file_id: keepFileId }),
   });
 
 // Suggestions
@@ -126,6 +126,13 @@ export const updateSettings = (settings: Record<string, string>) =>
     method: "PUT",
     body: JSON.stringify(settings),
   });
+
+export const getAvailableModels = (baseUrl: string, apiKey: string) => {
+  const qs = new URLSearchParams();
+  qs.set("base_url", baseUrl);
+  qs.set("api_key", apiKey);
+  return request<{ models: string[] }>(`/settings/models?${qs}`);
+};
 
 // Search
 export const searchFiles = (params: { q: string; scope?: string; extension?: string; page?: number; page_size?: number }) => {

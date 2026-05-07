@@ -64,7 +64,8 @@ class AITaskQueueService:
 
         try:
             # Respect rate limit
-            self._rate_limiter.wait_if_needed()
+            is_interactive = task.task_type in ("chat", "rule_draft", "organize_plan_generation")
+            self._rate_limiter.wait_if_needed(is_interactive)
 
             # Execute the actual LLM logic via the passed handler
             handler(task)

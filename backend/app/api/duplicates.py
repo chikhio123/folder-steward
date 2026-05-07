@@ -16,10 +16,11 @@ def list_duplicates():
 
 class GenerateDuplicateSuggestionsRequest(BaseModel):
     sha256: str
+    filename: str
     keep_file_id: int
 
 @router.post("/duplicates/suggestions")
 def create_duplicate_suggestions(body: GenerateDuplicateSuggestionsRequest):
     svc = DuplicateService()
-    created = svc.create_duplicate_suggestions(body.sha256, body.keep_file_id)
+    created = svc.create_duplicate_suggestions(body.sha256, body.filename, body.keep_file_id)
     return {"created_count": created}

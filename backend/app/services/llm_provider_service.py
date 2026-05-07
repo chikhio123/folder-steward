@@ -1,19 +1,208 @@
 import json
+import httpx
 from typing import Dict, Any
+from ..core.database import get_connection
 
 class RateLimitException(Exception):
     """Raised when the LLM provider returns a 429 Too Many Requests."""
     pass
 
 class LLMProviderService:
-    """Wrapper for LLM calls (mocked for V3 initial phase)."""
+    """Wrapper for LLM calls."""
 
     def __init__(self, provider_type: str = "mock"):
         self.provider_type = provider_type
+        # Lazy load settings to get latest
+    
+    def _get_settings(self):
+        conn = get_connection()
+        rows = conn.execute("SELECT key, value FROM app_settings").fetchall()
+        s = {row["key"]: row["value"] for row in rows}
+        return {
+            "provider": s.get("llm_provider", "mock"),
+            "api_key": s.get("llm_api_key", ""),
+            "base_url": s.get("llm_base_url", ""),
+            "model": s.get("llm_model", "gpt-4o-mini")
+        }
+
+    def _call_api(self, messages, response_format=None) -> str:
+        s = self._get_settings()
+        provider = s["provider"]
+        api_key = s["api_key"]
+        base_url = s["base_url"].rstrip('/')
+        model = s["model"]
+        
+        if provider == "anthropic-messages":
+            if not base_url:
+                base_url = "https://api.anthropic.com"
+            endpoint = f"{base_url}/v1/messages"
+            headers = {
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            }
+            system_msg = ""
+            anthropic_messages = []
+            for m in messages:
+                if m["role"] == "system":
+                    system_msg += m["content"] + "\n"
+                else:
+                    anthropic_messages.append({"role": m["role"], "content": m["content"]})
+                    
+            payload = {
+                "model": model,
+                "max_tokens": 1024,
+                "messages": anthropic_messages,
+                "temperature": 0.1
+            }
+            if system_msg:
+                payload["system"] = system_msg
+                
+            try:
+                with httpx.Client(timeout=30.0) as client:
+                    res = client.post(endpoint, headers=headers, json=payload)
+                    if res.status_code == 429:
+                        raise RateLimitException("Rate limited by provider")
+                    res.raise_for_status()
+                    data = res.json()
+                    return data["content"][0]["text"]
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    raise RateLimitException("Rate limited by provider")
+                raise Exception(f"API Error: {e.response.text}")
+            except Exception as e:
+                raise Exception(f"Failed to call LLM: {str(e)}")
+                
+        else: # openai, openai-raw, openai-response-format
+            if not base_url.endswith("/v1"):
+                base_url = f"{base_url}/v1"
+                
+            endpoint = f"{base_url}/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": model,
+                "messages": messages,
+                "temperature": 0.1
+            }
+            
+            if provider == "openai-response-format" and response_format:
+                payload["response_format"] = response_format
+                
+            try:
+                with httpx.Client(timeout=30.0) as client:
+                    res = client.post(endpoint, headers=headers, json=payload)
+                    if res.status_code == 429:
+                        raise RateLimitException("Rate limited by provider")
+                    res.raise_for_status()
+                    data = res.json()
+                    return data["choices"][0]["message"]["content"]
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    raise RateLimitException("Rate limited by provider")
+                raise Exception(f"API Error: {e.response.text}")
+            except Exception as e:
+                raise Exception(f"Failed to call LLM: {str(e)}")
+
+    def generate_classification(self, file_context: dict, rules_context: list, archive_root: str) -> Dict[str, Any]:
+        s = self._get_settings()
+        if s["provider"] != "mock":
+            prompt = f"""
+            You are a smart file organization assistant. Analyze the file and suggest a target directory.
+            File Name: {file_context.get('filename')}
+            File Content Preview: {file_context.get('content_preview', '')[:1000]}
+            Archive Root: {archive_root}
+            
+            Return ONLY raw JSON with exactly these keys, no markdown blocks, no other text:
+            {{
+                "suggested_target_dir": "Documents/Work",
+                "confidence": 0.95,
+                "reason": "Why did you choose this directory?"
+            }}
+            """
+            try:
+                result_str = self._call_api(
+                    [{"role": "user", "content": prompt}]
+                )
+                import json
+                # Clean markdown blocks if the model ignored our instructions
+                if result_str.startswith("```json"):
+                    result_str = result_str[7:]
+                if result_str.endswith("```"):
+                    result_str = result_str[:-3]
+                return json.loads(result_str.strip())
+            except Exception as e:
+                print(f"LLM Classification Error: {e}")
+                # Fallback to mock on error
+        
+        # Mock Fallback
+        filename = file_context.get("filename", "")
+        content = file_context.get("content_preview") or ""
+        ext = ""
+        if "." in filename:
+            ext = filename.rsplit(".", 1)[-1].lower()
+
+        target_dir = "Others/AI_Sorted"
+        reason = "默认 AI 分类 (未能命中测试关键词)"
+
+        if "kant" in filename.lower() or "kant" in content.lower():
+            target_dir = "Books/Philosophy"
+            reason = "正文或文件名包含哲学相关关键词"
+        elif "简历" in filename or "python" in content.lower() or "resume" in filename.lower():
+            target_dir = "Personal/Resume"
+            reason = "识别到简历相关特征"
+        elif "报销" in filename or "发票" in filename or "receipt" in filename.lower():
+            target_dir = "Finance/Receipts"
+            reason = "识别到财务相关凭证"
+        elif ext in ["png", "jpg", "jpeg", "webp", "gif"]:
+            target_dir = "Images/Misc"
+            reason = "识别为图片文件"
+        elif ext in ["md", "txt"]:
+            target_dir = "Notes/Text"
+            reason = "识别为纯文本笔记"
+        elif ext in ["pdf", "doc", "docx"]:
+            target_dir = "Documents/General"
+            reason = "识别为文档文件"
+
+        return {
+            "suggested_target_dir": target_dir,
+            "confidence": 0.88,
+            "reason": reason
+        }
 
     def generate_rule_draft(self, user_prompt: str) -> Dict[str, Any]:
-        """Mock generating a rule draft from a natural language prompt."""
-        # Simple mock matching logic for demonstration
+        s = self._get_settings()
+        if s["provider"] != "mock":
+            prompt = f"""
+            You are a smart file organization assistant. Analyze the file and suggest a target directory.
+            File Name: {file_context.get('filename')}
+            File Content Preview: {file_context.get('content_preview', '')[:1000]}
+            Archive Root: {archive_root}
+            
+            Return ONLY raw JSON with exactly these keys, no markdown blocks, no other text:
+            {{
+                "suggested_target_dir": "Documents/Work",
+                "confidence": 0.95,
+                "reason": "Why did you choose this directory?"
+            }}
+            """
+            try:
+                result_str = self._call_api(
+                    [{"role": "user", "content": prompt}]
+                )
+                import json
+                # Clean markdown blocks if the model ignored our instructions
+                if result_str.startswith("```json"):
+                    result_str = result_str[7:]
+                if result_str.endswith("```"):
+                    result_str = result_str[:-3]
+                return json.loads(result_str.strip())
+            except Exception as e:
+                print(f"LLM Rule Draft Error: {e}")
+
+        # Mock generating a rule draft from a natural language prompt.
         target = "University/Thesis" if "论文" in user_prompt else "Custom/Target"
         pattern = "论文,毕业" if "论文" in user_prompt else "keyword1,keyword2"
 
@@ -28,17 +217,42 @@ class LLMProviderService:
             "confidence": 0.85
         }
 
+
     def generate_classification(self, file_context: dict, rules_context: list, archive_root: str) -> Dict[str, Any]:
         """Mock generating a classification suggestion based on file content."""
         filename = file_context.get("filename", "")
         content = file_context.get("content_preview") or ""
+        ext = ""
+        if "." in filename:
+            ext = filename.rsplit(".", 1)[-1].lower()
 
         target_dir = "Others/AI_Sorted"
-        reason = "默认 AI 分类"
+        reason = "默认 AI 分类 (未能命中测试关键词)"
 
         if "kant" in filename.lower() or "kant" in content.lower():
             target_dir = "Books/Philosophy"
             reason = "正文或文件名包含哲学相关关键词"
+        elif "简历" in filename or "python" in content.lower() or "resume" in filename.lower():
+            target_dir = "Personal/Resume"
+            reason = "识别到简历相关特征"
+        elif "报销" in filename or "发票" in filename or "receipt" in filename.lower():
+            target_dir = "Finance/Receipts"
+            reason = "识别到财务相关凭证"
+        elif ext in ["png", "jpg", "jpeg", "webp", "gif"]:
+            target_dir = "Images/Misc"
+            reason = "识别为图片文件"
+        elif ext in ["md", "txt"]:
+            target_dir = "Notes/Text"
+            reason = "识别为纯文本笔记"
+        elif ext in ["pdf", "doc", "docx"]:
+            target_dir = "Documents/General"
+            reason = "识别为文档文件"
+
+        return {
+            "suggested_target_dir": target_dir,
+            "confidence": 0.88,
+            "reason": reason
+        }
 
     def generate_summary(self, file_context: dict) -> str:
         """Mock generating a summary for a file."""

@@ -16,11 +16,48 @@ class OrganizePlanService:
         self.ai_sug_repo = AIClassificationRepository()
         self.sug_repo = SuggestionRepository()
 
-    def generate_plan(self, scope: str, min_confidence: float = 0.65) -> int:
-        """Aggregates recent pending AI classification suggestions into a structured plan."""
+
+    def generate_plan(self, scope: str, min_confidence: float = 0.65, task=None) -> int:
+        """Classifies files and aggregates suggestions into a structured plan."""
+        from .ai_classification_service import AIClassificationService
+        class_service = AIClassificationService()
+        
         conn = get_connection()
         row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
         archive_root = row["value"] if row else ""
+
+        # Find files to classify based on scope
+        if scope == "others":
+            # Files not matched by any rules yet (this is simplified)
+            # We exclude files already inside the archive_root
+            if archive_root:
+                archive_prefix = str(Path(archive_root).resolve())
+                # SQLite doesn't have a great path prefix check, so we do it in Python
+                all_rows = conn.execute("SELECT id, current_path FROM file_records WHERE status = 'active'").fetchall()
+                file_ids = [r["id"] for r in all_rows if not str(Path(r["current_path"]).resolve()).startswith(archive_prefix)]
+            else:
+                file_rows = conn.execute("SELECT id FROM file_records WHERE status = 'active'").fetchall()
+                file_ids = [r["id"] for r in file_rows]
+        else:
+            file_rows = conn.execute("SELECT id FROM file_records WHERE status = 'active'").fetchall()
+            file_ids = [r["id"] for r in file_rows]
+
+        if task:
+            task.total_items = len(file_ids)
+            from ..repositories.ai_task_repository import AITaskRepository
+            task_repo = AITaskRepository()
+            task_repo.update(task)
+
+        # Clear existing pending suggestions so we start fresh
+        conn.execute("DELETE FROM ai_classification_suggestions WHERE status = 'pending'")
+        conn.commit()
+
+        # Classify all target files
+        for fid in file_ids:
+            class_service.process_classification_task(fid, archive_root)
+            if task:
+                task.processed_items += 1
+                task_repo.update(task)
 
         # Fetch pending AI suggestions that meet confidence
         rows = conn.execute(
@@ -33,7 +70,6 @@ class OrganizePlanService:
 
         if not rows:
             raise ValueError("No pending AI classification suggestions found with sufficient confidence.")
-
         plan = OrganizePlan(
             title=f"AI Organize Plan ({scope})",
             scope=scope,

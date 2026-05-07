@@ -57,7 +57,7 @@ def create_organize_plan(body: OrganizePlanRequest):
 
     def handler(t: AITask):
         inputs = json.loads(t.input_json)
-        plan_id = plan_service.generate_plan(inputs["scope"], inputs["min_confidence"])
+        plan_id = plan_service.generate_plan(inputs["scope"], inputs["min_confidence"], task=t)
         t.result_ref_id = plan_id
         t.result_ref_type = "organize_plan"
 

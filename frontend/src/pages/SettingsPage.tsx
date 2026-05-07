@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSettings, updateSettings } from "../services/api";
+import { getSettings, updateSettings, getAvailableModels } from "../services/api";
 import { useState, useEffect } from "react";
-import { Save, Loader2, FolderArchive, ShieldAlert, FileDigit, EyeOff, Bot, Key, Link2 } from "lucide-react";
+import { Save, Loader2, FolderArchive, ShieldAlert, FileDigit, EyeOff, Bot, Key, Link2, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 
 const defaultSettings = {
@@ -22,7 +22,32 @@ export default function SettingsPage() {
     queryFn: getSettings,
   });
 
+  
   const [values, setValues] = useState<Record<string, string>>(defaultSettings);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+
+  const fetchModels = async () => {
+    if (!values.llm_base_url) {
+      toast.error("请先填写 Base URL");
+      return;
+    }
+    setIsFetchingModels(true);
+    try {
+      const res = await getAvailableModels(values.llm_base_url, values.llm_api_key || "");
+      if (res.models && res.models.length > 0) {
+        setAvailableModels(res.models);
+        toast.success(`成功获取 ${res.models.length} 个模型！`);
+      } else {
+        toast.error("未找到可用的模型列表");
+      }
+    } catch (err: any) {
+      toast.error(`获取模型失败: ${err.message}`);
+    } finally {
+      setIsFetchingModels(false);
+    }
+  };
+
 
   useEffect(() => {
     if (data) setValues({ ...defaultSettings, ...data });
@@ -47,7 +72,7 @@ export default function SettingsPage() {
   ];
 
   const aiFields = [
-    { key: "llm_provider", label: "AI 引擎", desc: "选择调用的大模型接口提供商", type: "select", options: ["mock", "openai"], icon: Bot },
+    { key: "llm_provider", label: "AI 引擎", desc: "选择大模型接口的请求格式，兼容不同中转或本地代理", type: "select", options: ["mock", "openai-response-format", "openai-raw", "anthropic-messages"], icon: Bot },
     { key: "llm_api_key", label: "API Key", desc: "大模型接口密钥 (如使用 mock 引擎可留空)", type: "password", placeholder: "sk-...", icon: Key },
     { key: "llm_base_url", label: "Base URL", desc: "接口基础地址，用于支持兼容 OpenAI 格式的其他厂商或本地模型", type: "text", placeholder: "https://api.openai.com/v1", icon: Link2 },
     { key: "llm_model", label: "Model Name", desc: "使用的具体模型名称", type: "text", placeholder: "gpt-4o-mini", icon: Bot },
@@ -85,13 +110,50 @@ export default function SettingsPage() {
             </div>
           </div>
         ) : (
-          <input
-            type={f.type}
-            value={values[f.key] ?? ""}
-            onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-            placeholder={f.placeholder}
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm"
-          />
+          <>
+            <div className={f.key === "llm_model" ? "flex items-center gap-2" : ""}>
+              <input
+                type={f.type}
+                value={values[f.key] ?? ""}
+                onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                placeholder={f.placeholder}
+                className="flex-1 w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm"
+              />
+              {f.key === "llm_model" && (
+                <button
+                  onClick={fetchModels}
+                  disabled={isFetchingModels}
+                  className="shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
+                  title="拉取可用模型"
+                >
+                  {isFetchingModels ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  拉取
+                </button>
+              )}
+            </div>
+            {f.key === "llm_base_url" && (
+              <div className="mt-1.5 px-3 py-1.5 bg-slate-100/80 rounded-lg border border-slate-200/60 text-xs font-mono text-slate-500 overflow-x-auto">
+                {(values[f.key] || "").replace(/\/$/, "") + (!(values[f.key] || "").replace(/\/$/, "").endsWith("/v1") ? "/v1" : "") + "/chat/completions"}
+              </div>
+            )}
+            {f.key === "llm_model" && availableModels.length > 0 && (
+              <div className="relative mt-2">
+                <select
+                  value={values[f.key] ?? ""}
+                  onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                  className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 appearance-none cursor-pointer transition-all shadow-sm"
+                >
+                  <option value="">-- 请选择下拉模型 --</option>
+                  {availableModels.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

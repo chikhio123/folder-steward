@@ -51,8 +51,8 @@ export default function FileListPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto animation-fade-in flex flex-col h-full">
-      <div className="mb-6 shrink-0">
+    <div className="max-w-6xl mx-auto animation-fade-in flex flex-col h-full relative">
+      <div className="mb-6 shrink-0 sticky top-0 z-20 bg-white/60 backdrop-blur-xl border-b border-slate-200/50 pb-4 pt-2 -mx-4 px-4 sm:-mx-0 sm:px-0">
         <h2 className="text-3xl font-bold text-slate-800 tracking-tight">文件索引库</h2>
         <p className="text-slate-500 mt-1">浏览已建立索引的所有文件记录，支持多维度检索与排序。</p>
       </div>

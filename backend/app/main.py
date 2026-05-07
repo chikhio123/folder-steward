@@ -2,12 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
+# Initialize DB first, before importing routers that instantiate services
 from .core.database import init_db
+init_db()
+
 from .services.extract_service import ExtractService
+# Initialize other things if needed
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
     ExtractService.cleanup_ghost_tasks()
     yield
 

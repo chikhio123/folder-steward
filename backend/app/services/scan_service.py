@@ -67,6 +67,33 @@ class ScanService:
     def get_errors(self, task_id: int) -> list:
         return self.error_repo.list_by_task(task_id)
 
+
+    def _cleanup_missing_files(self, root: Path) -> int:
+        """Check active files under root and mark as deleted if missing from disk."""
+        from ..core.database import get_connection
+        conn = get_connection()
+        rows = conn.execute("SELECT id, current_path FROM file_records WHERE status = 'active'").fetchall()
+        
+        root_str = str(root.resolve())
+        deleted_ids = []
+        for r in rows:
+            path_str = r["current_path"]
+            if path_str.startswith(root_str):
+                if not Path(path_str).exists():
+                    deleted_ids.append(r["id"])
+                    
+        if deleted_ids:
+            # Batch update in chunks of 500 to avoid sqlite limits
+            chunk_size = 500
+            for i in range(0, len(deleted_ids), chunk_size):
+                chunk = deleted_ids[i:i+chunk_size]
+                placeholders = ",".join("?" for _ in chunk)
+                conn.execute(f"UPDATE file_records SET status = 'deleted' WHERE id IN ({placeholders})", chunk)
+            conn.commit()
+            
+            # Also clean up FTS for deleted files using triggers we added
+        return len(deleted_ids)
+
     def _run_scan(self, task_id: int) -> None:
         task = self.task_repo.get(task_id)
         if not task:
@@ -125,10 +152,14 @@ class ScanService:
             self._finish_cancelled(task)
             return
 
+        # Cleanup missing files (e.g. deleted from file explorer)
+        cleaned = self._cleanup_missing_files(root)
+
         task.status = "completed"
         task.total_files = scanned + failed
         task.scanned_files = scanned
         task.failed_files = failed
+        task.error_message = f"Cleaned {cleaned} missing files." if cleaned > 0 else None
         task.finished_at = now_iso()
         self.task_repo.complete_if_running(task)
 
