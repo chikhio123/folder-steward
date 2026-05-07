@@ -45,6 +45,9 @@ class OrganizePlanService:
             file_rows = conn.execute("SELECT id FROM file_records WHERE status = 'active'").fetchall()
             file_ids = [r["id"] for r in file_rows]
 
+        if not file_ids:
+            raise ValueError("No files to organize")
+
         if task:
             task.total_items = len(file_ids)
             from ..repositories.ai_task_repository import AITaskRepository
