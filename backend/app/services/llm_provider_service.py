@@ -1,5 +1,6 @@
 import json
 import httpx
+import os
 from typing import Dict, Any
 from ..core.database import get_connection
 
@@ -186,6 +187,9 @@ class LLMProviderService:
         """
         s = self._get_settings()
         if s["provider"] != "mock":
+            # Compute folder summary from file_contexts
+            folder_summary = self._compute_folder_summary(file_contexts)
+
             # Build batch prompt
             files_desc = []
             for fc in file_contexts:
@@ -204,6 +208,9 @@ class LLMProviderService:
 You are a smart file organization assistant. Analyze the following files and suggest a target directory for EACH file.
 
 Archive Root: {archive_root}
+
+Folder Context:
+{folder_summary}
 
 Files to classify:
 ---
@@ -261,6 +268,42 @@ IMPORTANT:
             single_result["file_id"] = fc.get("file_id", 0)
             results.append(single_result)
         return results
+
+    def _compute_folder_summary(self, file_contexts: list[dict]) -> str:
+        """Compute a summary of folder context from file_contexts."""
+        # Group by parent directory
+        dirs = {}
+        for fc in file_contexts:
+            path = fc.get("current_path", "")
+            if not path:
+                continue
+            normalized = os.path.normpath(path).lower()
+            parent = os.path.dirname(normalized)
+            if parent not in dirs:
+                dirs[parent] = {"files": 0, "exts": set(), "names": []}
+            dirs[parent]["files"] += 1
+            ext = fc.get("extension", "")
+            if ext:
+                dirs[parent]["exts"].add(ext)
+            fname = fc.get("filename", "")
+            if fname:
+                dirs[parent]["names"].append(fname)
+
+        # Build summary text
+        lines = []
+        for dir_path in sorted(dirs.keys()):
+            info = dirs[dir_path]
+            ext_str = ", ".join(sorted(info["exts"])) if info["exts"] else "none"
+            lines.append(f"Folder: {dir_path}")
+            lines.append(f"  File count: {info['files']}")
+            lines.append(f"  Common extensions: {ext_str}")
+            # Show up to 5 filenames as sample
+            samples = info["names"][:5]
+            if samples:
+                lines.append(f"  Sample files: {', '.join(samples)}")
+            if len(info["names"]) > 5:
+                lines.append(f"  ... and {len(info['names']) - 5} more")
+        return "\n".join(lines)
 
     def generate_rule_draft(self, user_prompt: str) -> Dict[str, Any]:
         s = self._get_settings()
