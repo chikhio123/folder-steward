@@ -26,6 +26,9 @@ class OrganizePlanService:
         row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
         archive_root = row["value"] if row else ""
 
+        if not archive_root:
+            raise ValueError("archive_root is not configured")
+
         # Find files to classify based on scope
         if scope == "others":
             # Files not matched by any rules yet (this is simplified)
@@ -48,9 +51,14 @@ class OrganizePlanService:
             task_repo = AITaskRepository()
             task_repo.update(task)
 
-        # Clear existing pending suggestions so we start fresh
-        conn.execute("DELETE FROM ai_classification_suggestions WHERE status = 'pending'")
-        conn.commit()
+        # Clear existing pending suggestions for these files so we start fresh
+        if file_ids:
+            chunk_size = 500
+            for i in range(0, len(file_ids), chunk_size):
+                chunk = file_ids[i:i+chunk_size]
+                placeholders = ",".join("?" for _ in chunk)
+                conn.execute(f"DELETE FROM ai_classification_suggestions WHERE status = 'pending' AND file_id IN ({placeholders})", chunk)
+            conn.commit()
 
         # Classify all target files
         for fid in file_ids:

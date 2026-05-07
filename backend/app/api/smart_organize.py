@@ -20,10 +20,18 @@ def create_classification_tasks(body: AIClassifyRequest):
     if not body.file_ids:
         raise HTTPException(400, "No files specified")
 
+    from ..core.database import get_connection
+    conn = get_connection()
+    row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
+    archive_root = row["value"] if row else ""
+
+    if not archive_root:
+        raise HTTPException(400, "archive_root is not configured in settings")
+
     task = AITask(
         task_type="classification",
         total_items=len(body.file_ids),
-        input_json=json.dumps({"file_ids": body.file_ids, "archive_root": body.archive_root})
+        input_json=json.dumps({"file_ids": body.file_ids, "archive_root": archive_root})
     )
 
     def handler(t: AITask):

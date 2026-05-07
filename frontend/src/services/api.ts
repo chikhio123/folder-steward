@@ -164,19 +164,19 @@ export const acceptRuleDraft = (draftId: number) =>
   });
 
 // Smart Organize
-export const createClassificationTasks = (fileIds: number[], archiveRoot: string) =>
+export const createClassificationTasks = (fileIds: number[]) =>
   request<{ task_id: number; status: string; queued_count: number }>("/ai/classify", {
     method: "POST",
-    body: JSON.stringify({ file_ids: fileIds, archive_root: archiveRoot }),
+    body: JSON.stringify({ file_ids: fileIds }),
   });
 
 export const getAiTask = (taskId: number) =>
   request<any>(`/ai/tasks/${taskId}`);
 
-export const createOrganizePlan = (scope: string, archiveRoot: string, minConfidence: number = 0.65) =>
+export const createOrganizePlan = (scope: string, minConfidence: number = 0.65) =>
   request<{ task_id: number; status: string }>("/ai/organize-plans", {
     method: "POST",
-    body: JSON.stringify({ scope, archive_root: archiveRoot, min_confidence: minConfidence }),
+    body: JSON.stringify({ scope, min_confidence: minConfidence }),
   });
 
 export const getOrganizePlanPreview = (planId: number) =>

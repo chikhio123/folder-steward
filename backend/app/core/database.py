@@ -385,6 +385,13 @@ def init_db() -> None:
     if "archive_root" not in columns:
         conn.execute("ALTER TABLE file_suggestions ADD COLUMN archive_root TEXT")
 
+    ai_tasks_cols = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(ai_tasks)").fetchall()
+    }
+    if "retry_count" not in ai_tasks_cols and len(ai_tasks_cols) > 0:
+        conn.execute("ALTER TABLE ai_tasks ADD COLUMN retry_count INTEGER DEFAULT 0")
+
     # Insert default rules if table is empty
     rule_count = conn.execute("SELECT COUNT(*) as cnt FROM rules").fetchone()["cnt"]
     if rule_count == 0:

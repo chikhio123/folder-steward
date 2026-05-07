@@ -109,12 +109,13 @@ class LLMProviderService:
     def generate_classification(self, file_context: dict, rules_context: list, archive_root: str) -> Dict[str, Any]:
         s = self._get_settings()
         if s["provider"] != "mock":
+
             prompt = f"""
             You are a smart file organization assistant. Analyze the file and suggest a target directory.
             File Name: {file_context.get('filename')}
-            File Content Preview: {file_context.get('content_preview', '')[:1000]}
+            File Content Preview: {(file_context.get('content_preview') or '')[:1000]}
             Archive Root: {archive_root}
-            
+
             Return ONLY raw JSON with exactly these keys, no markdown blocks, no other text:
             {{
                 "suggested_target_dir": "Documents/Work",
@@ -177,16 +178,19 @@ class LLMProviderService:
         s = self._get_settings()
         if s["provider"] != "mock":
             prompt = f"""
-            You are a smart file organization assistant. Analyze the file and suggest a target directory.
-            File Name: {file_context.get('filename')}
-            File Content Preview: {file_context.get('content_preview', '')[:1000]}
-            Archive Root: {archive_root}
+            You are a smart file organization assistant. Create a file matching rule based on the user's prompt.
+            User Prompt: {user_prompt}
             
             Return ONLY raw JSON with exactly these keys, no markdown blocks, no other text:
             {{
-                "suggested_target_dir": "Documents/Work",
-                "confidence": 0.95,
-                "reason": "Why did you choose this directory?"
+                "name": "Short rule name",
+                "rule_type": "One of: extension, filename_keyword, content_keyword",
+                "pattern": "Comma separated values",
+                "target_dir": "e.g. Documents/Work",
+                "action": "move_to",
+                "priority": 95,
+                "reason": "string",
+                "confidence": 0.85
             }}
             """
             try:
@@ -194,7 +198,6 @@ class LLMProviderService:
                     [{"role": "user", "content": prompt}]
                 )
                 import json
-                # Clean markdown blocks if the model ignored our instructions
                 if result_str.startswith("```json"):
                     result_str = result_str[7:]
                 if result_str.endswith("```"):
@@ -203,6 +206,8 @@ class LLMProviderService:
             except Exception as e:
                 print(f"LLM Rule Draft Error: {e}")
                 raise e
+
+        # Mock generating a rule draft from a natural language prompt.
 
         # Mock generating a rule draft from a natural language prompt.
         target = "University/Thesis" if "论文" in user_prompt else "Custom/Target"
@@ -219,42 +224,6 @@ class LLMProviderService:
             "confidence": 0.85
         }
 
-
-    def generate_classification(self, file_context: dict, rules_context: list, archive_root: str) -> Dict[str, Any]:
-        """Mock generating a classification suggestion based on file content."""
-        filename = file_context.get("filename", "")
-        content = file_context.get("content_preview") or ""
-        ext = ""
-        if "." in filename:
-            ext = filename.rsplit(".", 1)[-1].lower()
-
-        target_dir = "Others/AI_Sorted"
-        reason = "默认 AI 分类 (未能命中测试关键词)"
-
-        if "kant" in filename.lower() or "kant" in content.lower():
-            target_dir = "Books/Philosophy"
-            reason = "正文或文件名包含哲学相关关键词"
-        elif "简历" in filename or "python" in content.lower() or "resume" in filename.lower():
-            target_dir = "Personal/Resume"
-            reason = "识别到简历相关特征"
-        elif "报销" in filename or "发票" in filename or "receipt" in filename.lower():
-            target_dir = "Finance/Receipts"
-            reason = "识别到财务相关凭证"
-        elif ext in ["png", "jpg", "jpeg", "webp", "gif"]:
-            target_dir = "Images/Misc"
-            reason = "识别为图片文件"
-        elif ext in ["md", "txt"]:
-            target_dir = "Notes/Text"
-            reason = "识别为纯文本笔记"
-        elif ext in ["pdf", "doc", "docx"]:
-            target_dir = "Documents/General"
-            reason = "识别为文档文件"
-
-        return {
-            "suggested_target_dir": target_dir,
-            "confidence": 0.88,
-            "reason": reason
-        }
 
     def generate_summary(self, file_context: dict) -> str:
         """Mock generating a summary for a file."""

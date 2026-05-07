@@ -13,7 +13,7 @@ export default function SmartOrganizePage() {
   const [planId, setPlanId] = useState<number | null>(null);
 
   const planMutation = useMutation({
-    mutationFn: () => createOrganizePlan(scope, archiveRoot, typeof minConfidence === "number" ? minConfidence : parseFloat(minConfidence) || 0),
+    mutationFn: () => createOrganizePlan(scope, typeof minConfidence === "number" ? minConfidence : parseFloat(minConfidence) || 0),
     onSuccess: (data) => {
       setTaskId(data.task_id);
       localStorage.setItem("fs_last_archive_root", archiveRoot);

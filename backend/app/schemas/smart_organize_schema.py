@@ -3,7 +3,6 @@ from typing import List, Optional, Any, Dict
 
 class AIClassifyRequest(BaseModel):
     file_ids: List[int]
-    archive_root: str
 
 class AIClassifyResponse(BaseModel):
     task_id: int
