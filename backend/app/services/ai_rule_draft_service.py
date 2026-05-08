@@ -21,10 +21,40 @@ class AIRuleDraftService:
         row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
         return row["value"] if row else ""
 
+    def _get_directories_context(self) -> list:
+        conn = get_connection()
+        # 聚合生成当前库真实目录摘要
+        rows = conn.execute("SELECT current_path FROM file_records WHERE status='active'").fetchall()
+        import os
+        dir_counts = {}
+        for r in rows:
+            path = r["current_path"]
+            if not path:
+                continue
+            normalized = os.path.normpath(path).replace("\\", "/")
+            parent = os.path.dirname(normalized)
+            if parent and parent != ".":
+                dir_counts[parent] = dir_counts.get(parent, 0) + 1
+
+        # 选取文件数最多的 top 30 目录
+        sorted_dirs = sorted(dir_counts.items(), key=lambda x: x[1], reverse=True)[:30]
+        return [f"{d[0]} ({d[1]} files)" for d in sorted_dirs]
+
     def generate_draft(self, user_prompt: str) -> int:
         archive_root = self._get_archive_root()
         try:
-            llm_result = self.llm_service.generate_rule_draft(user_prompt)
+            # 提取现存活跃规则
+            rules = self.rule_repo.list_rules()
+            active_rules = [r.__dict__ for r in rules if r.enabled]
+
+            # 提取现存目录摘要
+            directories = self._get_directories_context()
+
+            llm_result = self.llm_service.generate_rule_draft(
+                user_prompt,
+                rules_context=active_rules,
+                directories_context=directories
+            )
 
             target_dir = llm_result.get("target_dir", "")
             policy_status = self.dir_policy.evaluate(target_dir, archive_root)

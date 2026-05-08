@@ -308,13 +308,35 @@ IMPORTANT:
                 lines.append(f"  ... and {len(info['names']) - 5} more")
         return "\n".join(lines)
 
-    def generate_rule_draft(self, user_prompt: str) -> Dict[str, Any]:
+    def generate_rule_draft(
+        self,
+        user_prompt: str,
+        rules_context: list | None = None,
+        directories_context: list | None = None
+    ) -> Dict[str, Any]:
         s = self._get_settings()
         if s["provider"] != "mock":
+            context_block = ""
+            if rules_context:
+                # 只传核心摘要，不传长篇大论
+                context_block += "Existing Active Rules:\n"
+                for r in rules_context:
+                    context_block += f"- Rule: {r.get('name')} -> moves to '{r.get('target_dir')}' (Pattern: {r.get('pattern')})\n"
+                context_block += "\n"
+
+            if directories_context:
+                context_block += "Known Common Directories in Library:\n"
+                for d in directories_context:
+                    context_block += f"- {d}\n"
+                context_block += "\n"
+
             prompt = f"""
             You are a smart file organization assistant. Create a file matching rule based on the user's prompt.
             User Prompt: {user_prompt}
-            
+
+            {context_block}
+            Important: Prefer reusing existing Known Common Directories as target_dir if they conceptually match the user's request. Avoid creating slightly different synonyms (e.g. if 'Finance/Receipts' exists, don't invent 'Financial/Invoices' unless necessary).
+
             Return ONLY raw JSON with exactly these keys, no markdown blocks, no other text:
             {{
                 "name": "Short rule name",
