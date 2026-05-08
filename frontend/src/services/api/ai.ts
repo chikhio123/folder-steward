@@ -68,3 +68,18 @@ export const createSummaryTask = (fileId: number) =>
 
 export const getFileSummary = (fileId: number) =>
   request<any>(`/files/${fileId}/summary`);
+
+// Rules
+export const listRules = (onlyEnabled: boolean = false) =>
+  request<any[]>(`/rules${onlyEnabled ? "?only_enabled=true" : ""}`);
+
+export const updateRule = (ruleId: number, data: any) =>
+  request<any>(`/rules/${ruleId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+
+export const deleteRule = (ruleId: number) =>
+  request<{ status: string }>(`/rules/${ruleId}`, {
+    method: "DELETE",
+  });

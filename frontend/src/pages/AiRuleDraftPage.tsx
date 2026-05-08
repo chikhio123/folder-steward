@@ -1,10 +1,14 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { previewRuleDraft, acceptRuleDraft } from "../services/api";
-import { Wand2, Save, FileBox, AlertCircle, CheckCircle2, ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { previewRuleDraft, acceptRuleDraft, listRules, updateRule, deleteRule } from "../services/api";
+import { Wand2, Save, FileBox, AlertCircle, CheckCircle2, ArrowRight, Loader2, Sparkles, Settings2, Power, Trash2, ShieldAlert } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 import toast from "react-hot-toast";
 import { useDraftContext } from "../contexts/DraftContext";
 
 export default function AiRuleDraftPage() {
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<"create" | "manage">("create");
+
   const {
     prompt,
     setPrompt,
@@ -36,20 +40,85 @@ export default function AiRuleDraftPage() {
 
   const draft = draftMutation.data;
 
+  // Rules Management
+  const { data: rulesList, isLoading: isRulesLoading } = useQuery({
+    queryKey: ["rules", "all"],
+    queryFn: () => listRules(false),
+    enabled: activeTab === "manage",
+  });
+
+  const toggleRuleMutation = useMutation({
+    mutationFn: ({ id, enabled }: { id: number, enabled: boolean }) => updateRule(id, { enabled: enabled ? 1 : 0 }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rules", "all"] });
+      toast.success("规则状态已更新");
+    },
+    onError: (err: any) => toast.error(`状态更新失败: ${err.message}`)
+  });
+
+  const deleteRuleMutation = useMutation({
+    mutationFn: (id: number) => deleteRule(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rules", "all"] });
+      toast.success("规则已永久删除");
+    },
+    onError: (err: any) => toast.error(`删除失败: ${err.message}`)
+  });
+
   return (
     <div className="max-w-4xl mx-auto animation-fade-in flex flex-col h-full relative">
       {/* 背景光晕 */}
       <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div className="mb-6 shrink-0 relative z-10">
-        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight flex items-center gap-2 pb-1">
-          <Sparkles className="w-8 h-8 text-blue-500 shrink-0" />
-          自然语言规则生成
-        </h2>
-        <p className="text-slate-500 mt-1 font-medium">告诉 AI 您想怎么整理文件，它会自动生成结构化的归档规则并预览受影响的文件。</p>
+      <div className="mb-6 shrink-0 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight flex items-center gap-2 pb-1">
+            <Sparkles className="w-8 h-8 text-blue-500 shrink-0" />
+            AI 自动化规则
+          </h2>
+          <p className="text-slate-500 mt-1 font-medium">让 AI 把您的整理习惯转化成自动化规则，一劳永逸。</p>
+        </div>
+
+        {/* 苹果风 Segmented Control */}
+        <div className="flex bg-slate-200/50 p-1 rounded-xl w-fit">
+          <button
+            onClick={() => setActiveTab("create")}
+            className={twMerge(
+              "px-5 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2",
+              activeTab === "create"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            <Wand2 className="w-4 h-4" />
+            写新规则
+          </button>
+          <button
+            onClick={() => setActiveTab("manage")}
+            className={twMerge(
+              "px-5 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2",
+              activeTab === "manage"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            <Settings2 className="w-4 h-4" />
+            管理规则
+            {rulesList && rulesList.length > 0 && (
+              <span className={twMerge(
+                "px-1.5 py-0.5 rounded-md text-[10px]",
+                activeTab === "manage" ? "bg-blue-100 text-blue-700" : "bg-slate-200 text-slate-500"
+              )}>
+                {rulesList.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-6 mb-6 shadow-sm hover:shadow-md transition-all duration-300 shrink-0 relative z-10">
+      {activeTab === "create" ? (
+        <>
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-6 mb-6 shadow-sm hover:shadow-md transition-all duration-300 shrink-0 relative z-10">
         <label className="block text-sm font-semibold text-slate-700 mb-3">
           描述您的整理意图
         </label>
@@ -178,6 +247,89 @@ export default function AiRuleDraftPage() {
                   当前规则没有命中任何文件
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto pb-8 relative z-10">
+          {isRulesLoading ? (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-3">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              <p>加载规则列表中...</p>
+            </div>
+          ) : rulesList && rulesList.length > 0 ? (
+            <div className="space-y-4">
+              {rulesList.map((r: any) => (
+                <div key={r.id} className={twMerge(
+                  "bg-white/80 backdrop-blur-xl rounded-2xl border p-5 shadow-sm transition-all duration-300",
+                  r.enabled ? "border-slate-200/60" : "border-slate-100 opacity-60 bg-slate-50/50"
+                )}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-lg font-bold text-slate-800 truncate" title={r.name}>{r.name}</h3>
+                        {!r.enabled && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200 text-slate-500 tracking-wider">
+                            已停用
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 text-sm mb-3 flex-wrap">
+                        <span className="px-2 py-1 rounded bg-slate-100 text-slate-600 font-medium">
+                          {r.rule_type === "extension" ? "按后缀名" : r.rule_type === "filename_keyword" ? "按文件名" : "按正文内容"}
+                        </span>
+                        <span className="text-slate-400">匹配</span>
+                        <span className="font-mono text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 break-all">
+                          {r.pattern}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-slate-500">移动至</span>
+                        <ArrowRight className="w-4 h-4 text-emerald-500" />
+                        <span className="font-mono text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100 break-all font-medium">
+                          {r.target_dir}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-3 shrink-0">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={r.enabled}
+                          onChange={(e) => toggleRuleMutation.mutate({ id: r.id, enabled: e.target.checked })}
+                          disabled={toggleRuleMutation.isPending}
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                      </label>
+
+                      <button
+                        onClick={() => {
+                          if (window.confirm("确定要永久删除这条规则吗？")) {
+                            deleteRuleMutation.mutate(r.id);
+                          }
+                        }}
+                        disabled={deleteRuleMutation.isPending}
+                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors mt-auto"
+                        title="删除规则"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 py-20">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                <Settings2 className="w-8 h-8 text-slate-300" />
+              </div>
+              <p className="font-medium text-slate-500">暂无任何自动化规则</p>
+              <p className="text-sm mt-1">请前往“写新规则”页面，让 AI 帮您生成</p>
             </div>
           )}
         </div>
