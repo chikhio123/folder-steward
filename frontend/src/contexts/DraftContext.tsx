@@ -13,6 +13,7 @@ interface DraftContextType {
   draftMutation: any;
   handleGenerate: () => void;
   handleCancel: () => void;
+  handleReset: () => void;
 }
 
 const DraftContext = createContext<DraftContextType | null>(null);
@@ -51,6 +52,12 @@ export function DraftProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const handleReset = () => {
+    draftMutation.reset();
+    setDraftId(null);
+    handleGenerate();
+  };
+
   return (
     <DraftContext.Provider
       value={{
@@ -63,6 +70,7 @@ export function DraftProvider({ children }: { children: ReactNode }) {
         draftMutation,
         handleGenerate,
         handleCancel,
+        handleReset,
       }}
     >
       {children}

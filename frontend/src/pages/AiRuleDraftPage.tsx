@@ -18,6 +18,7 @@ export default function AiRuleDraftPage() {
     draftMutation,
     handleGenerate,
     handleCancel,
+    handleReset,
   } = useDraftContext();
 
   const acceptMutation = useMutation({
@@ -200,10 +201,16 @@ export default function AiRuleDraftPage() {
 
                 <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
                   <button
-                    onClick={() => { setDraftId(null); setPrompt(""); }}
+                    onClick={() => { draftMutation.reset(); setDraftId(null); setPrompt(""); }}
                     className="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-sm rounded-xl transition-all"
                   >
                     丢弃草案
+                  </button>
+                  <button
+                    onClick={() => handleReset()}
+                    className="px-5 py-2.5 text-sm font-semibold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:shadow-sm rounded-xl transition-all"
+                  >
+                    重新生成
                   </button>
                   <button
                     onClick={() => acceptMutation.mutate()}
