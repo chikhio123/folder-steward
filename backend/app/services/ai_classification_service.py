@@ -10,11 +10,19 @@ from .directory_policy_service import DirectoryPolicyService
 from .path_protection_service import PathProtectionService
 
 class AIClassificationService:
-    def __init__(self):
-        self.class_repo = AIClassificationRepository()
-        self.context_service = PromptContextService()
-        self.llm_service = LLMProviderService()
-        self.dir_policy = DirectoryPolicyService()
+    def __init__(
+        self,
+        class_repo=None,
+        context_service=None,
+        llm_service=None,
+        dir_policy=None,
+        path_protection=None,
+    ):
+        self.class_repo = class_repo or AIClassificationRepository()
+        self.context_service = context_service or PromptContextService()
+        self.llm_service = llm_service or LLMProviderService()
+        self.dir_policy = dir_policy or DirectoryPolicyService()
+        self.path_protection = path_protection or PathProtectionService()
 
     def process_classification_task(self, file_id: int, archive_root: str) -> None:
         """Processes an AI classification task for a single file and saves the result."""
@@ -59,7 +67,7 @@ class AIClassificationService:
         No file is silently skipped.
         """
         # 防御性过滤：排除目录（防线3）
-        path_protection = PathProtectionService()
+        path_protection = self.path_protection
         file_ids, skipped = path_protection.filter_file_ids(file_ids)
         if skipped > 0:
             print(f"Skipped {skipped} files due to AI exclude paths (defense layer)")

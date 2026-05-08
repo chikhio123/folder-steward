@@ -59,6 +59,7 @@ export default function SmartOrganizePage() {
     mutationFn: () => createOrganizePlan(scope, typeof minConfidence === "number" ? minConfidence : parseFloat(minConfidence) || 0),
     onSuccess: (data) => {
       setTaskId(data.task_id);
+      setPlanId(null);
       localStorage.setItem("fs_last_archive_root", archiveRoot);
       toast.success("AI 分类任务已提交后台处理");
     },

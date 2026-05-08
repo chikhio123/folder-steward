@@ -12,17 +12,26 @@ from ..repositories.suggestion_repository import SuggestionRepository
 from .path_protection_service import PathProtectionService
 
 class OrganizePlanService:
-    def __init__(self):
-        self.plan_repo = OrganizePlanRepository()
-        self.ai_sug_repo = AIClassificationRepository()
-        self.sug_repo = SuggestionRepository()
+    def __init__(
+        self,
+        plan_repo=None,
+        class_repo=None,
+        suggestion_repo=None,
+        path_protection=None,
+        classification_service=None,
+    ):
+        self.plan_repo = plan_repo or OrganizePlanRepository()
+        self.ai_sug_repo = class_repo or AIClassificationRepository()
+        self.sug_repo = suggestion_repo or SuggestionRepository()
+        self.path_protection = path_protection or PathProtectionService()
+        self.classification_service = classification_service or None
 
 
     def generate_plan(self, scope: str, min_confidence: float = 0.65, task=None) -> int:
         """Classifies files and aggregates suggestions into a structured plan."""
         from .ai_classification_service import AIClassificationService
-        class_service = AIClassificationService()
-        
+        class_service = self.classification_service or AIClassificationService()
+
         conn = get_connection()
         row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
         archive_root = row["value"] if row else ""
@@ -47,7 +56,7 @@ class OrganizePlanService:
             file_ids = [r["id"] for r in file_rows]
 
         # 过滤排除目录（防线2：generate_plan 入口）
-        path_protection = PathProtectionService()
+        path_protection = self.path_protection
         file_ids, skipped = path_protection.filter_file_ids(file_ids)
         if skipped > 0:
             print(f"Skipped {skipped} files due to AI exclude paths")
@@ -93,6 +102,7 @@ class OrganizePlanService:
             created_at=now_iso()
         )
         plan_id = self.plan_repo.create_plan(plan)
+        plan.id = plan_id
 
         summary_counts = {}
 

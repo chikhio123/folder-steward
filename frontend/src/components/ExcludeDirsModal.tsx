@@ -15,13 +15,13 @@ function isRootPath(path: string): boolean {
 }
 
 function isSameOrDescendant(path: string, ancestor: string): boolean {
-  const p = normalizePath(path);
-  const a = normalizePath(ancestor).replace(/\/+$/, "");
+  const p = normalizePath(path).toLowerCase();
+  const a = normalizePath(ancestor).toLowerCase().replace(/\/+$/, "");
   return p === a || p.startsWith(a + "/");
 }
 
 function simplifyPaths(paths: string[]): string[] {
-  const sorted = [...paths].map(normalizePath).sort();
+  const sorted = [...paths].map(normalizePath).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   const result: string[] = [];
   for (const p of sorted) {
     if (result.length === 0 || !isSameOrDescendant(p, result[result.length - 1])) {
@@ -96,13 +96,16 @@ function buildTree(paths: string[]): TreeNodeData[] {
 
 function getNodeState(path: string, existingExcluded: string[], selectedDirs: Set<string>) {
   const isExistingExcluded = existingExcluded.some(ex => isSameOrDescendant(path, ex));
+  const normPathLower = normalizePath(path).toLowerCase();
+
   if (isExistingExcluded) {
-    return { checked: true, indeterminate: false, disabled: true, isDirect: existingExcluded.includes(normalizePath(path)) };
+    const isDirect = existingExcluded.some(ex => normalizePath(ex).toLowerCase() === normPathLower);
+    return { checked: true, indeterminate: false, disabled: true, isDirect };
   }
 
   const isSelected = Array.from(selectedDirs).some(sel => isSameOrDescendant(path, sel));
   if (isSelected) {
-    const isDirect = selectedDirs.has(normalizePath(path));
+    const isDirect = Array.from(selectedDirs).some(sel => normalizePath(sel).toLowerCase() === normPathLower);
     return { checked: true, indeterminate: false, disabled: !isDirect, isDirect };
   }
 

@@ -10,11 +10,20 @@ from .llm_provider_service import LLMProviderService
 from .directory_policy_service import DirectoryPolicyService
 
 class AIRuleDraftService:
-    def __init__(self):
-        self.draft_repo = AIRuleDraftRepository()
-        self.rule_repo = RuleRepository()
-        self.llm_service = LLMProviderService()
-        self.dir_policy = DirectoryPolicyService()
+    def __init__(
+        self,
+        draft_repo=None,
+        rule_repo=None,
+        llm_service=None,
+        dir_policy=None,
+        path_protection=None,
+    ):
+        self.draft_repo = draft_repo or AIRuleDraftRepository()
+        self.rule_repo = rule_repo or RuleRepository()
+        self.llm_service = llm_service or LLMProviderService()
+        self.dir_policy = dir_policy or DirectoryPolicyService()
+        from .path_protection_service import PathProtectionService
+        self.path_protection = path_protection or PathProtectionService()
 
     def _get_archive_root(self) -> str:
         conn = get_connection()
@@ -44,7 +53,7 @@ class AIRuleDraftService:
         archive_root = self._get_archive_root()
         try:
             # 提取现存活跃规则
-            rules = self.rule_repo.list_rules()
+            rules = self.rule_repo.list_all(only_enabled=True)
             active_rules = [r.__dict__ for r in rules if r.enabled]
 
             # 提取现存目录摘要
@@ -135,8 +144,7 @@ class AIRuleDraftService:
             rows = []
 
         # 在 Python 层进行路径保护过滤
-        from .path_protection_service import PathProtectionService
-        protection = PathProtectionService()
+        protection = self.path_protection
         exclude_paths = protection.get_exclude_paths()
 
         valid_rows = []

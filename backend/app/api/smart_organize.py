@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from ..schemas.smart_organize_schema import (
     AIClassifyRequest, AIClassifyResponse,
     OrganizePlanRequest, OrganizePlanResponse,
@@ -9,15 +9,23 @@ from ..services.organize_plan_service import OrganizePlanService
 from ..services.path_protection_service import PathProtectionService
 from ..services.ai_task_queue_service import AITaskQueueService
 from ..models.ai_task import AITask
+from ..dependencies import (
+    get_ai_classification_service,
+    get_organize_plan_service,
+    get_path_protection_service,
+    get_ai_task_queue_service
+)
 import json
 
 router = APIRouter(tags=["smart_organize"])
-class_service = AIClassificationService()
-plan_service = OrganizePlanService()
-queue_service = AITaskQueueService()
 
 @router.post("/ai/classify", response_model=AIClassifyResponse)
-def create_classification_tasks(body: AIClassifyRequest):
+def create_classification_tasks(
+    body: AIClassifyRequest,
+    class_service: AIClassificationService = Depends(get_ai_classification_service),
+    path_protection: PathProtectionService = Depends(get_path_protection_service),
+    queue_service: AITaskQueueService = Depends(get_ai_task_queue_service)
+):
     if not body.file_ids:
         raise HTTPException(400, "No files specified")
 
@@ -39,7 +47,6 @@ def create_classification_tasks(body: AIClassifyRequest):
         inputs = json.loads(t.input_json)
         file_ids = inputs["file_ids"]
         # 过滤排除目录（防线1：/ai/classify 入口）
-        path_protection = PathProtectionService()
         file_ids, skipped = path_protection.filter_file_ids(file_ids)
         if skipped > 0:
             print(f"Skipped {skipped} files due to AI exclude paths")
@@ -63,14 +70,21 @@ def create_classification_tasks(body: AIClassifyRequest):
     )
 
 @router.get("/ai/tasks/{task_id}")
-def get_ai_task(task_id: int):
+def get_ai_task(
+    task_id: int,
+    queue_service: AITaskQueueService = Depends(get_ai_task_queue_service)
+):
     task = queue_service.task_repo.get(task_id)
     if not task:
         raise HTTPException(404, "Task not found")
     return task
 
 @router.post("/ai/organize-plans", response_model=OrganizePlanResponse)
-def create_organize_plan(body: OrganizePlanRequest):
+def create_organize_plan(
+    body: OrganizePlanRequest,
+    plan_service: OrganizePlanService = Depends(get_organize_plan_service),
+    queue_service: AITaskQueueService = Depends(get_ai_task_queue_service)
+):
     task = AITask(
         task_type="organize_plan",
         input_json=json.dumps({"scope": body.scope, "min_confidence": body.min_confidence})
@@ -90,14 +104,20 @@ def create_organize_plan(body: OrganizePlanRequest):
     )
 
 @router.get("/ai/organize-plans/{plan_id}", response_model=PlanPreviewResponse)
-def get_plan_preview(plan_id: int):
+def get_plan_preview(
+    plan_id: int,
+    plan_service: OrganizePlanService = Depends(get_organize_plan_service)
+):
     data = plan_service.get_plan_preview(plan_id)
     if not data:
         raise HTTPException(404, "Plan not found")
     return PlanPreviewResponse(**data)
 
 @router.post("/ai/organize-plans/{plan_id}/accept")
-def accept_organize_plan(plan_id: int):
+def accept_organize_plan(
+    plan_id: int,
+    plan_service: OrganizePlanService = Depends(get_organize_plan_service)
+):
     try:
         plan_service.accept_plan(plan_id)
         return {"status": "success"}
@@ -105,7 +125,10 @@ def accept_organize_plan(plan_id: int):
         raise HTTPException(400, str(e))
 
 @router.post("/ai/organize-plans/{plan_id}/reject")
-def reject_organize_plan(plan_id: int):
+def reject_organize_plan(
+    plan_id: int,
+    plan_service: OrganizePlanService = Depends(get_organize_plan_service)
+):
     try:
         plan_service.reject_plan(plan_id)
         return {"status": "success"}
@@ -113,16 +136,19 @@ def reject_organize_plan(plan_id: int):
         raise HTTPException(400, str(e))
 
 @router.get("/ai/exclude-paths")
-def get_exclude_paths():
-    service = PathProtectionService()
+def get_exclude_paths(
+    service: PathProtectionService = Depends(get_path_protection_service)
+):
     return {"exclude_paths": service.get_exclude_paths()}
 
 @router.post("/ai/exclude-paths", response_model=ExcludePathsResponse)
-def update_exclude_paths(body: ExcludePathsRequest):
+def update_exclude_paths(
+    body: ExcludePathsRequest,
+    service: PathProtectionService = Depends(get_path_protection_service)
+):
     paths = body.exclude_paths
     if not isinstance(paths, list):
         raise HTTPException(400, "exclude_paths must be an array")
-    service = PathProtectionService()
     normalized = [service.normalize_path(p) for p in paths if isinstance(p, str) and p.strip()]
 
     import json
