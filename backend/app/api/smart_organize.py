@@ -13,8 +13,10 @@ from ..dependencies import (
     get_ai_classification_service,
     get_organize_plan_service,
     get_path_protection_service,
-    get_ai_task_queue_service
+    get_ai_task_queue_service,
+    get_settings_repository
 )
+from ..repositories.settings_repository import SettingsRepository
 import json
 
 router = APIRouter(tags=["smart_organize"])
@@ -24,15 +26,13 @@ def create_classification_tasks(
     body: AIClassifyRequest,
     class_service: AIClassificationService = Depends(get_ai_classification_service),
     path_protection: PathProtectionService = Depends(get_path_protection_service),
-    queue_service: AITaskQueueService = Depends(get_ai_task_queue_service)
+    queue_service: AITaskQueueService = Depends(get_ai_task_queue_service),
+    settings_repo: SettingsRepository = Depends(get_settings_repository)
 ):
     if not body.file_ids:
         raise HTTPException(400, "No files specified")
 
-    from ..core.database import get_connection
-    conn = get_connection()
-    row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
-    archive_root = row["value"] if row else ""
+    archive_root = settings_repo.get("archive_root") or ""
 
     if not archive_root:
         raise HTTPException(400, "archive_root is not configured in settings")
@@ -154,20 +154,14 @@ def get_exclude_paths(
 @router.post("/ai/exclude-paths", response_model=ExcludePathsResponse)
 def update_exclude_paths(
     body: ExcludePathsRequest,
-    service: PathProtectionService = Depends(get_path_protection_service)
+    service: PathProtectionService = Depends(get_path_protection_service),
+    settings_repo: SettingsRepository = Depends(get_settings_repository)
 ):
     paths = body.exclude_paths
     if not isinstance(paths, list):
         raise HTTPException(400, "exclude_paths must be an array")
     normalized = [service.normalize_path(p) for p in paths if isinstance(p, str) and p.strip()]
 
-    import json
-    from ..core.database import get_connection
-    from ..models.scan_task import now_iso
-    conn = get_connection()
-    conn.execute(
-        "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)",
-        (service.SETTING_KEY, json.dumps(normalized), now_iso())
-    )
-    conn.commit()
+    settings_repo.set(service.SETTING_KEY, json.dumps(normalized))
+    
     return ExcludePathsResponse(status="success", exclude_paths=normalized)

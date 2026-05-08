@@ -7,6 +7,8 @@ from .services.ai_classification_service import AIClassificationService
 from .services.organize_plan_service import OrganizePlanService
 from .services.ai_rule_draft_service import AIRuleDraftService
 from .services.ai_task_queue_service import AITaskQueueService
+from .repositories.settings_repository import SettingsRepository
+from .repositories.file_repository import FileRepository
 
 def get_path_protection_service() -> PathProtectionService:
     return PathProtectionService()
@@ -44,3 +46,9 @@ def get_ai_rule_draft_service(
 @lru_cache()
 def get_ai_task_queue_service() -> AITaskQueueService:
     return AITaskQueueService()
+
+def get_settings_repository() -> SettingsRepository:
+    return SettingsRepository()
+
+def get_file_repository() -> FileRepository:
+    return FileRepository()
