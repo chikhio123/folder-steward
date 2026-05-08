@@ -32,8 +32,9 @@ class AIRuleDraftService:
 
     def _get_directories_context(self) -> list:
         conn = get_connection()
-        # 聚合生成当前库真实目录摘要
-        rows = conn.execute("SELECT current_path FROM file_records WHERE status='active'").fetchall()
+        # 聚合生成当前库真实目录摘要，限制扫描行数防止 OOM
+        # 优先选择最近修改的活跃文件路径
+        rows = conn.execute("SELECT current_path FROM file_records WHERE status='active' ORDER BY modified_at DESC LIMIT 5000").fetchall()
         import os
         dir_counts = {}
         for r in rows:
