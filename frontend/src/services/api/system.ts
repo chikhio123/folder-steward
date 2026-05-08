@@ -19,6 +19,13 @@ export const searchFiles = (params: { q: string; scope?: string; extension?: str
   return request<SearchResponse>(`/search?${qs}`);
 };
 
+export const getSearchSuggestions = (q: string, limit: number = 8) => {
+  const qs = new URLSearchParams();
+  qs.set("q", q);
+  qs.set("limit", String(limit));
+  return request<{ items: { type: string; text: string; file_id?: number; path?: string }[] }>(`/search/suggestions?${qs}`);
+};
+
 export const getDashboard = () =>
   request<{
     total_files: number;

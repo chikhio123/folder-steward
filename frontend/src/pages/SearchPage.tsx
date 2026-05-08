@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { CustomSelect } from "../components/CustomSelect";
+import { SearchAutocomplete } from "../components/SearchAutocomplete";
 
 export default function SearchPage() {
   const [queryInput, setQueryInput] = useState("");
@@ -29,6 +30,12 @@ export default function SearchPage() {
     }, 500);
     return () => clearTimeout(timer);
   }, [queryInput]);
+
+  const handleSearchSubmit = (val: string) => {
+    setQueryInput(val);
+    setDebouncedQuery(val);
+    setPage(1);
+  };
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["search", debouncedQuery, scope, page],
@@ -59,19 +66,11 @@ export default function SearchPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/60 p-5 mb-6 shadow-sm shrink-0 flex flex-wrap gap-4 items-center">
-        <div className="relative flex-1 min-w-[240px]">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <SearchIcon className="h-5 w-5 text-blue-500" />
-          </div>
-          <input
-            type="text"
-            value={queryInput}
-            onChange={(e) => setQueryInput(e.target.value)}
-            placeholder="输入搜索关键词..."
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl pl-11 pr-4 py-3 text-base font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-inner"
-            autoFocus
-          />
-        </div>
+        <SearchAutocomplete
+          value={queryInput}
+          onChange={setQueryInput}
+          onSubmit={handleSearchSubmit}
+        />
 
         <div className="relative flex items-center w-48">
           <CustomSelect

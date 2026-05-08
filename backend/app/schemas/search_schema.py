@@ -13,3 +13,12 @@ class SearchResultItem(BaseModel):
 class SearchResponse(BaseModel):
     items: List[SearchResultItem]
     total: int
+
+class SearchSuggestionItem(BaseModel):
+    type: str  # "filename" or "history"
+    text: str
+    file_id: Optional[int] = None
+    path: Optional[str] = None
+
+class SearchSuggestionResponse(BaseModel):
+    items: List[SearchSuggestionItem]

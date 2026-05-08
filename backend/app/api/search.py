@@ -1,11 +1,21 @@
 from fastapi import APIRouter, Query
 from typing import Optional
 
-from ..schemas.search_schema import SearchResponse, SearchResultItem
+from ..schemas.search_schema import SearchResponse, SearchResultItem, SearchSuggestionResponse, SearchSuggestionItem
 from ..services.search_service import SearchService
 
 router = APIRouter(tags=["search"])
 search_service = SearchService()
+
+@router.get("/search/suggestions", response_model=SearchSuggestionResponse)
+def get_search_suggestions(
+    q: str = Query(..., min_length=2),
+    limit: int = Query(8, ge=1, le=10),
+):
+    items = search_service.get_suggestions(query=q, limit=limit)
+    return SearchSuggestionResponse(
+        items=[SearchSuggestionItem(**item) for item in items]
+    )
 
 @router.get("/search", response_model=SearchResponse)
 def search_files(

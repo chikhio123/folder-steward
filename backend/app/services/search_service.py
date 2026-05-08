@@ -112,3 +112,56 @@ class SearchService:
             })
 
         return items, total
+
+    def get_suggestions(self, query: str, limit: int = 8) -> list[dict]:
+        query = query.strip()
+        if len(query) < 2:
+            return []
+
+        conn = get_connection()
+
+        # 优先前缀匹配
+        prefix_sql = """
+            SELECT id, filename, current_path
+            FROM file_records
+            WHERE status = 'active' AND filename LIKE ?
+            LIMIT ?
+        """
+        prefix_rows = conn.execute(prefix_sql, (f"{query}%", limit)).fetchall()
+
+        results = []
+        seen_files = set()
+
+        for r in prefix_rows:
+            results.append({
+                "type": "filename",
+                "text": r["filename"],
+                "file_id": r["id"],
+                "path": r["current_path"]
+            })
+            seen_files.add(r["id"])
+
+        # 如果不够，补充包含匹配
+        remaining = limit - len(results)
+        if remaining > 0:
+            contains_sql = """
+                SELECT id, filename, current_path
+                FROM file_records
+                WHERE status = 'active' AND filename LIKE ?
+                LIMIT ?
+            """
+            contains_rows = conn.execute(contains_sql, (f"%{query}%", remaining + len(results))).fetchall()
+
+            for r in contains_rows:
+                if r["id"] not in seen_files:
+                    results.append({
+                        "type": "filename",
+                        "text": r["filename"],
+                        "file_id": r["id"],
+                        "path": r["current_path"]
+                    })
+                    seen_files.add(r["id"])
+                    if len(results) >= limit:
+                        break
+
+        return results
