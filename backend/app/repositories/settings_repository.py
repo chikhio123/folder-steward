@@ -1,5 +1,5 @@
-from app.core.database import get_connection
-from app.models.scan_task import now_iso
+from ..core.database import get_connection
+from ..models.scan_task import now_iso
 
 class SettingsRepository:
     def get(self, key: str) -> str | None:
