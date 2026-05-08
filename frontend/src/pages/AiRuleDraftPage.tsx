@@ -117,8 +117,8 @@ export default function AiRuleDraftPage() {
       </div>
 
       {activeTab === "create" ? (
-        <>
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-6 mb-6 shadow-sm hover:shadow-md transition-all duration-300 shrink-0 relative z-10">
+        <div className="flex-1 overflow-y-auto pb-8 relative z-10 flex flex-col min-h-0">
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-6 mb-6 shadow-sm hover:shadow-md transition-all duration-300 shrink-0">
         <label className="block text-sm font-semibold text-slate-700 mb-3">
           描述您的整理意图
         </label>
@@ -251,7 +251,7 @@ export default function AiRuleDraftPage() {
           )}
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto pb-8 relative z-10">
+        <div className="flex-1 overflow-y-auto pb-8 relative z-10 flex flex-col min-h-0">
           {isRulesLoading ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-3">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
