@@ -201,7 +201,7 @@ export default function AiRuleDraftPage() {
 
                 <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
                   <button
-                    onClick={() => { draftMutation.reset(); setDraftId(null); setPrompt(""); }}
+                    onClick={() => { draftMutation.reset(); setDraftId(null); }}
                     className="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-sm rounded-xl transition-all"
                   >
                     丢弃草案
