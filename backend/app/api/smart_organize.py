@@ -2,10 +2,11 @@ from fastapi import APIRouter, HTTPException
 from ..schemas.smart_organize_schema import (
     AIClassifyRequest, AIClassifyResponse,
     OrganizePlanRequest, OrganizePlanResponse,
-    PlanPreviewResponse
+    PlanPreviewResponse, ExcludePathsRequest, ExcludePathsResponse
 )
 from ..services.ai_classification_service import AIClassificationService
 from ..services.organize_plan_service import OrganizePlanService
+from ..services.path_protection_service import PathProtectionService
 from ..services.ai_task_queue_service import AITaskQueueService
 from ..models.ai_task import AITask
 import json
@@ -36,8 +37,18 @@ def create_classification_tasks(body: AIClassifyRequest):
 
     def handler(t: AITask):
         inputs = json.loads(t.input_json)
+        file_ids = inputs["file_ids"]
+        # 过滤排除目录（防线1：/ai/classify 入口）
+        path_protection = PathProtectionService()
+        file_ids, skipped = path_protection.filter_file_ids(file_ids)
+        if skipped > 0:
+            print(f"Skipped {skipped} files due to AI exclude paths")
+        if not file_ids:
+            raise ValueError("应用 AI 排除目录后，没有可处理的文件。")
+        # 更新任务总数（过滤后）
+        t.total_items = len(file_ids)
         class_service.process_classification_batch(
-            inputs["file_ids"],
+            file_ids,
             inputs["archive_root"],
             batch_size=30,
             task=t
@@ -100,3 +111,27 @@ def reject_organize_plan(plan_id: int):
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(400, str(e))
+
+@router.get("/ai/exclude-paths")
+def get_exclude_paths():
+    service = PathProtectionService()
+    return {"exclude_paths": service.get_exclude_paths()}
+
+@router.post("/ai/exclude-paths", response_model=ExcludePathsResponse)
+def update_exclude_paths(body: ExcludePathsRequest):
+    paths = body.exclude_paths
+    if not isinstance(paths, list):
+        raise HTTPException(400, "exclude_paths must be an array")
+    service = PathProtectionService()
+    normalized = [service.normalize_path(p) for p in paths if isinstance(p, str) and p.strip()]
+
+    import json
+    from ..core.database import get_connection
+    from ..models.scan_task import now_iso
+    conn = get_connection()
+    conn.execute(
+        "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)",
+        (service.SETTING_KEY, json.dumps(normalized), now_iso())
+    )
+    conn.commit()
+    return ExcludePathsResponse(status="success", exclude_paths=normalized)

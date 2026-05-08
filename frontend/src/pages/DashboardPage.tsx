@@ -38,15 +38,18 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto animation-fade-in">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-slate-800 tracking-tight">工作台概览</h2>
-        <p className="text-slate-500 mt-1">欢迎回来，这里是您的文件夹整理中心。</p>
+    <div className="max-w-6xl mx-auto animation-fade-in relative">
+      {/* 背景光晕 */}
+      <div className="absolute top-[-10%] left-[-5%] w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div className="mb-8 relative z-10">
+        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight pb-1">工作台概览</h2>
+        <p className="text-slate-500 mt-1 font-medium">欢迎回来，这里是您的文件夹整理中心。</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10 relative z-10">
         {stats.map((s) => (
-          <div key={s.label} className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col justify-between relative overflow-hidden group">
+          <div key={s.label} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between relative overflow-hidden group hover:-translate-y-1">
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-sm font-medium text-slate-500">{s.label}</div>
@@ -63,11 +66,11 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
         {/* Recent Scan Tasks */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden flex flex-col">
-          <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
-            <Activity className="w-5 h-5 text-slate-400" />
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-all duration-300">
+          <div className="px-6 py-5 border-b border-slate-100/80 flex items-center gap-2 bg-slate-50/40">
+            <Activity className="w-5 h-5 text-blue-500" />
             <h3 className="text-base font-semibold text-slate-800">最近扫描任务</h3>
           </div>
           <div className="p-6 flex-1">
@@ -104,9 +107,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Operations */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden flex flex-col">
-          <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
-            <History className="w-5 h-5 text-slate-400" />
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-all duration-300">
+          <div className="px-6 py-5 border-b border-slate-100/80 flex items-center gap-2 bg-slate-50/40">
+            <History className="w-5 h-5 text-emerald-500" />
             <h3 className="text-base font-semibold text-slate-800">最近文件操作</h3>
           </div>
           <div className="p-6 flex-1">

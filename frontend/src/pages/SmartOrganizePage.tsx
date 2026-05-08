@@ -1,16 +1,58 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createOrganizePlan, getOrganizePlanPreview, acceptOrganizePlan, rejectOrganizePlan, getAiTask } from "../services/api";
-import { BrainCircuit, Loader2, ListChecks, CheckCircle2, Play, Settings, AlertCircle, FileBox, Archive, FolderTree, XCircle, ArrowRight } from "lucide-react";
+import { BrainCircuit, Loader2, ListChecks, CheckCircle2, Play, Settings, AlertCircle, FileBox, Archive, FolderTree, XCircle, ArrowRight, ShieldAlert } from "lucide-react";
 import toast from "react-hot-toast";
+import { ExcludeDirsModal } from "../components/ExcludeDirsModal";
 
 export default function SmartOrganizePage() {
   const queryClient = useQueryClient();
   const [archiveRoot, setArchiveRoot] = useState(() => localStorage.getItem("fs_last_archive_root") || "D:/Archive");
   const [scope, setScope] = useState("all");
   const [minConfidence, setMinConfidence] = useState<number | string>(0.65);
-  const [taskId, setTaskId] = useState<number | null>(null);
-  const [planId, setPlanId] = useState<number | null>(null);
+  const [showExcludeModal, setShowExcludeModal] = useState(false);
+  const [taskId, setTaskId] = useState<number | null>(
+    () => {
+        const saved = localStorage.getItem("fs_task_id");
+        if (!saved) return null;
+        const val = parseInt(saved);
+        if (isNaN(val)) {
+            localStorage.removeItem("fs_task_id");
+            return null;
+        }
+        return val;
+    }
+  );
+  const [planId, setPlanId] = useState<number | null>(
+    () => {
+        const saved = localStorage.getItem("fs_plan_id");
+        if (!saved) return null;
+        const val = parseInt(saved);
+        if (isNaN(val)) {
+            localStorage.removeItem("fs_plan_id");
+            return null;
+        }
+        return val;
+    }
+  );
+
+  // Sync taskId to localStorage
+  useEffect(() => {
+    if (taskId !== null) {
+      localStorage.setItem("fs_task_id", taskId.toString());
+    } else {
+      localStorage.removeItem("fs_task_id");
+    }
+  }, [taskId]);
+
+  // Sync planId to localStorage
+  useEffect(() => {
+    if (planId !== null) {
+      localStorage.setItem("fs_plan_id", planId.toString());
+    } else {
+      localStorage.removeItem("fs_plan_id");
+    }
+  }, [planId]);
 
   const planMutation = useMutation({
     mutationFn: () => createOrganizePlan(scope, typeof minConfidence === "number" ? minConfidence : parseFloat(minConfidence) || 0),
@@ -52,7 +94,6 @@ export default function SmartOrganizePage() {
       toast.success("整理方案已成功转化为实际移动建议！");
       setTaskId(null);
       setPlanId(null);
-      queryClient.invalidateQueries();
     },
     onError: (err: any) => toast.error(`确认失败: ${err.message}`)
   });
@@ -67,21 +108,29 @@ export default function SmartOrganizePage() {
     onError: (err: any) => toast.error(`拒绝失败: ${err.message}`)
   });
 
+  // Cleanup on task failure
+  useEffect(() => {
+    if (task?.status === "failed" || task?.status === "rate_limited") {
+      setTaskId(null);
+      setPlanId(null);
+    }
+  }, [task?.status]);
+
   const isRunning = task?.status === "running" || task?.status === "pending" || planMutation.isPending;
 
   return (
-    <div className="max-w-6xl mx-auto animation-fade-in flex flex-col h-full">
-      <div className="mb-6 shrink-0">
-        <h2 className="text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-          <BrainCircuit className="w-8 h-8 text-blue-500" />
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 animation-fade-in flex flex-col min-h-0">
+      <div className="mb-8 shrink-0">
+        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight flex items-center gap-2 pb-1">
+          <BrainCircuit className="w-8 h-8 text-blue-500 shrink-0" />
           AI 智能整理大盘
         </h2>
-        <p className="text-slate-500 mt-1">
+        <p className="text-slate-500 mt-1 font-medium">
           将未分类的文件批量丢给大模型，生成结构化的分组整理方案。
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/60 p-6 mb-6 shadow-sm shrink-0">
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-6 mb-6 shadow-sm hover:shadow-md transition-all duration-300 shrink-0">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
@@ -128,7 +177,7 @@ export default function SmartOrganizePage() {
           <button
             onClick={() => planMutation.mutate()}
             disabled={isRunning || !!planId}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-blue-600/20 hover:bg-blue-700 active:translate-y-0 disabled:opacity-50 transition-all flex items-center gap-2"
+            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2"
           >
             {planMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" fill="currentColor" />}
             生成整理方案
@@ -143,7 +192,7 @@ export default function SmartOrganizePage() {
                <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
                <p className="text-rose-700 font-semibold text-lg">{task.status === "rate_limited" ? "触发 API 限流，请稍后重试" : "分类任务执行失败"}</p>
                <p className="text-sm text-slate-500 mt-2">{task.error_message}</p>
-               <button onClick={() => setTaskId(null)} className="mt-4 px-4 py-2 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">关闭</button>
+               <button onClick={() => { setTaskId(null); localStorage.removeItem("fs_task_id"); }} className="mt-4 px-4 py-2 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">关闭</button>
              </div>
           ) : (
              <div className="text-center w-full max-w-md">
@@ -170,12 +219,18 @@ export default function SmartOrganizePage() {
 
       {planData && (
         <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-2xl border border-slate-200/60 shadow-sm relative">
-          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold text-slate-800">{planData.title}</h3>
               <p className="text-xs text-slate-500 mt-0.5">请审查 AI 自动分组结果，确认无误后转化为执行建议。</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => setShowExcludeModal(true)}
+                className="px-4 py-2 flex items-center gap-1.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors"
+              >
+                <ShieldAlert className="w-4 h-4 text-slate-400" /> 管理排除目录
+              </button>
               <button
                 onClick={() => rejectMutation.mutate()}
                 disabled={rejectMutation.isPending || acceptMutation.isPending}
@@ -189,17 +244,17 @@ export default function SmartOrganizePage() {
                 className="px-5 py-2 flex items-center gap-1.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 rounded-xl transition-colors disabled:opacity-50"
               >
                 {acceptMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                同意计划，生成执行建议
+                同意计划
               </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-8">
             {Object.entries(planData.groups || {}).map(([dir, items]: [string, any]) => (
               <div key={dir} className="border border-slate-200 rounded-2xl overflow-hidden">
                 <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center gap-3">
                   <FolderTree className="w-5 h-5 text-blue-500" />
-                  <h4 className="font-semibold text-slate-800 text-base">{dir}</h4>
+                  <h4 className="font-semibold text-slate-800 text-base truncate min-w-0">{dir}</h4>
                   <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-xs font-bold text-slate-500">
                     {items.length} 个文件
                   </span>
@@ -213,7 +268,7 @@ export default function SmartOrganizePage() {
                           <div className="font-medium text-slate-700 truncate" title={item.source_path}>
                             {item.source_path.split(/[/\\]/).pop()}
                           </div>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                          <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 min-w-0">
                             <span className="truncate max-w-[40%]" title={item.source_path}>{item.source_path}</span>
                             <ArrowRight className="w-3 h-3 text-emerald-500 shrink-0" />
                             <span className="text-emerald-600 truncate font-medium flex-1">{item.target_path}</span>
@@ -222,7 +277,7 @@ export default function SmartOrganizePage() {
                             <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-100">
                               置信度: {(item.confidence * 100).toFixed(0)}%
                             </span>
-                            <span className="text-xs text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-sm">
+                            <span className="text-xs text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-sm break-all max-w-full">
                               {item.reason || "无解释"}
                             </span>
                             {item.directory_status === "proposed_new" && (
@@ -241,6 +296,12 @@ export default function SmartOrganizePage() {
           </div>
         </div>
       )}
+
+      <ExcludeDirsModal
+        isOpen={showExcludeModal}
+        onClose={() => setShowExcludeModal(false)}
+        planGroups={planData?.groups}
+      />
     </div>
   );
 }

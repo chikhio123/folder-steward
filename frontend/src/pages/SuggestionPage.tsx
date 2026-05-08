@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSuggestions, generateSuggestions, updateSuggestion, executeSuggestions } from "../services/api";
+import { getSuggestions, generateSuggestions, updateSuggestion, executeSuggestions, bulkRejectSuggestions } from "../services/api";
 import type { FileSuggestion } from "../types";
 import toast from "react-hot-toast";
 import {
@@ -21,6 +21,7 @@ import {
   X
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import { ConfirmModal } from "../components/ConfirmModal";
 
 export default function SuggestionPage() {
   const queryClient = useQueryClient();
@@ -30,6 +31,7 @@ export default function SuggestionPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editPath, setEditPath] = useState("");
+  const [showConfirmCancel, setShowConfirmCancel] = useState(false);
 
   useEffect(() => {
     if (archiveRoot.trim()) {
@@ -55,11 +57,21 @@ export default function SuggestionPage() {
 
   const acceptMutation = useMutation({
     mutationFn: (id: number) => updateSuggestion(id, { status: "accepted" }),
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ["suggestions"] });
-      toast.success("已同意该建议");
+      setSelected((prev) => new Set(prev).add(id));
+      toast.success("已同意并选中");
     },
     onError: (err) => toast.error(`操作失败: ${err.message}`),
+  });
+
+  const rejectOneMutation = useMutation({
+    mutationFn: (id: number) => updateSuggestion(id, { status: "rejected" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["suggestions"] });
+      toast.success("已拒绝该建议");
+    },
+    onError: (err) => toast.error(`拒绝失败: ${err.message}`),
   });
 
   const savePathMutation = useMutation({
@@ -86,6 +98,21 @@ export default function SuggestionPage() {
       }
     },
     onError: (err) => toast.error(`执行出错: ${err.message}`),
+  });
+
+  const bulkRejectMutation = useMutation({
+    mutationFn: () => bulkRejectSuggestions(filter === "all" ? "pending" : filter),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["suggestions"] });
+      setSelected(new Set());
+      setPage(1);
+      setShowConfirmCancel(false);
+      toast.success(`已取消 ${data.rejected_count} 条建议`);
+    },
+    onError: (err) => {
+      setShowConfirmCancel(false);
+      toast.error(`取消失败: ${err.message}`);
+    },
   });
 
   const toggle = (id: number) => {
@@ -120,17 +147,39 @@ export default function SuggestionPage() {
   };
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / 50)) : 1;
-  const pendingItemsOnPage = data?.items?.filter((s: FileSuggestion) => s.status === "pending" || s.status === "accepted") || [];
-  const allSelected = pendingItemsOnPage.length > 0 && selected.size === pendingItemsOnPage.length;
+  const pendingItemsOnPage = useMemo(() =>
+    data?.items?.filter((s: FileSuggestion) => s.status === "pending" || s.status === "accepted") || [],
+    [data?.items]
+  );
+  const allSelected = useMemo(() =>
+    pendingItemsOnPage.length > 0 && selected.size === pendingItemsOnPage.length,
+    [pendingItemsOnPage, selected.size]
+  );
+
+  const groupedItems = useMemo(() => {
+    if (!data?.items) return [];
+    const groups: Record<string, FileSuggestion[]> = {};
+    data.items.forEach((s: FileSuggestion) => {
+      // 提取目标路径所在的目录名
+      const dir = s.target_path.replace(/[/\\][^/\\]+$/, "") || "根目录";
+      if (!groups[dir]) groups[dir] = [];
+      groups[dir].push(s);
+    });
+    // 转为数组并按目录名排序
+    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [data?.items]);
 
   return (
-    <div className="max-w-6xl mx-auto animation-fade-in flex flex-col h-full">
-      <div className="mb-6 shrink-0">
-        <h2 className="text-3xl font-bold text-slate-800 tracking-tight">整理建议</h2>
-        <p className="text-slate-500 mt-1">AI 引擎根据文件类型、命名规则自动为您生成的移动分类建议。</p>
+    <div className="max-w-6xl mx-auto animation-fade-in flex flex-col h-full relative">
+      {/* 柔和的背景光晕效果 */}
+      <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div className="mb-8 shrink-0 relative z-10">
+        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight pb-1">整理建议</h2>
+        <p className="text-slate-500 mt-1 font-medium">AI 引擎根据文件类型、命名规则自动为您生成的移动分类建议。</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/60 p-5 mb-6 shadow-sm shrink-0 flex flex-col sm:flex-row gap-4 items-center justify-between">
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-5 mb-6 shadow-sm hover:shadow-md transition-all duration-300 shrink-0 flex flex-col sm:flex-row gap-4 items-center justify-between relative z-10">
         <div className="flex-1 w-full flex items-center gap-3">
           <div className="relative flex-1 max-w-md">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -147,14 +196,14 @@ export default function SuggestionPage() {
           <button
             onClick={() => generateMutation.mutate()}
             disabled={generateMutation.isPending}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-blue-600/20 hover:bg-blue-700 hover:shadow-md active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2 whitespace-nowrap"
+            className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2 whitespace-nowrap"
           >
             {generateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
             生成最新建议
           </button>
         </div>
 
-        <div className="flex items-center gap-4 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
           <div className="relative flex items-center">
             <Filter className="absolute left-3 w-4 h-4 text-slate-400" />
@@ -171,17 +220,25 @@ export default function SuggestionPage() {
           </div>
 
           <button
+            onClick={() => setShowConfirmCancel(true)}
+            disabled={bulkRejectMutation.isPending || data?.total === 0}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2 whitespace-nowrap bg-rose-50 text-rose-600 hover:bg-rose-100 hover:shadow-md shadow-rose-600/20 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            {bulkRejectMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+            取消所有
+          </button>
+          <button
             onClick={() => executeMutation.mutate()}
             disabled={selected.size === 0 || executeMutation.isPending}
             className={twMerge(
-              "px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2 whitespace-nowrap",
+              "px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap",
               selected.size > 0
-                ? "bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-md shadow-emerald-600/20"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0"
                 : "bg-slate-100 text-slate-400 pointer-events-none"
             )}
           >
             {executeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" fill="currentColor" />}
-            执行选中项 {selected.size > 0 && `(${selected.size})`}
+            执行 {selected.size > 0 && `(${selected.size})`}
           </button>
         </div>
       </div>
@@ -203,132 +260,137 @@ export default function SuggestionPage() {
         </div>
 
         {/* Table Body */}
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-4">
           {isLoading ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-3">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
               <p>正在加载建议...</p>
             </div>
           ) : data?.items?.length ? (
-            <div className="space-y-1.5">
-              {data.items.map((s: FileSuggestion) => (
-                <div
-                  key={s.id}
-                  className={twMerge(
-                    "grid grid-cols-[auto_1fr_auto] gap-4 items-center px-4 py-3 rounded-xl transition-all duration-200 group",
-                    selected.has(s.id)
-                      ? "bg-blue-50/50 ring-1 ring-blue-200 shadow-sm"
-                      : "hover:bg-slate-50 border border-transparent hover:border-slate-100"
-                  )}
-                >
-                  <div className="w-6 flex justify-center mt-1 self-start">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(s.id)}
-                      onChange={() => toggle(s.id)}
-                      disabled={s.status !== "pending" && s.status !== "accepted"}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50 disabled:opacity-50 cursor-pointer"
-                    />
+            <div className="space-y-6">
+              {groupedItems.map(([dir, items]) => (
+                <div key={dir} className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm">
+                  <div className="bg-slate-50/80 px-4 py-3 border-b border-slate-200/80 flex items-center gap-3">
+                    <FolderOpen className="w-5 h-5 text-blue-500" />
+                    <h4 className="font-semibold text-slate-800 text-sm truncate flex-1">{dir}</h4>
+                    <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-xs font-bold text-slate-500">
+                      {items.length} 项
+                    </span>
                   </div>
-
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <FileBox className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span className="text-sm font-medium text-slate-700 truncate" title={s.source_path}>
-                        {s.source_path.split(/[/\\]/).pop()}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 ml-1 mb-2 text-xs">
-                      <div className="text-slate-400 max-w-[40%] truncate" title={s.source_path}>
-                        {s.source_path}
-                      </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-
-                      {editingId === s.id ? (
-                        <div className="flex items-center gap-1 flex-1">
+                  <div className="divide-y divide-slate-100/50">
+                    {items.map((s: FileSuggestion) => (
+                      <div
+                        key={s.id}
+                        className={twMerge(
+                          "grid grid-cols-[auto_1fr_auto] gap-4 items-center px-4 py-3 transition-all duration-200 group hover:bg-slate-50/50",
+                          selected.has(s.id) ? "bg-blue-50/30" : ""
+                        )}
+                      >
+                        <div className="w-6 flex justify-center mt-1 self-start">
                           <input
-                            type="text"
-                            value={editPath}
-                            onChange={(e) => setEditPath(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveEdit(s.id);
-                              if (e.key === 'Escape') setEditingId(null);
-                            }}
-                            className="flex-1 bg-white border border-blue-300 text-slate-800 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
-                            autoFocus
+                            type="checkbox"
+                            checked={selected.has(s.id)}
+                            onChange={() => toggle(s.id)}
+                            disabled={s.status !== "pending" && s.status !== "accepted"}
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50 disabled:opacity-50 cursor-pointer"
                           />
-                          <button onClick={() => saveEdit(s.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded">
-                            <Save className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => setEditingId(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-1 flex-1 min-w-0">
-                          <div className="text-blue-600 font-medium truncate" title={s.target_path}>
-                            {s.target_path}
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <FileBox className="w-4 h-4 text-slate-400 shrink-0" />
+                            <span className="text-sm font-medium text-slate-700 truncate" title={s.source_path}>
+                              {s.source_path.split(/[/\\]/).pop()}
+                            </span>
                           </div>
-                          {s.status === "pending" && (
-                            <button
-                              onClick={() => startEdit(s)}
-                              className="p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-blue-600 hover:bg-blue-50 rounded transition-all shrink-0"
-                              title="修改目标路径"
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </button>
+
+                          <div className="flex items-center gap-2 ml-1 mb-2 text-xs">
+                            <div className="text-slate-400 max-w-[40%] truncate" title={s.source_path}>
+                              {s.source_path}
+                            </div>
+                            <ArrowRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+
+                            {editingId === s.id ? (
+                              <div className="flex items-center gap-1 flex-1">
+                                <input
+                                  type="text"
+                                  value={editPath}
+                                  onChange={(e) => setEditPath(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveEdit(s.id);
+                                    if (e.key === 'Escape') setEditingId(null);
+                                  }}
+                                  className="flex-1 bg-white border border-blue-300 text-slate-800 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+                                  autoFocus
+                                />
+                                <button onClick={() => saveEdit(s.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded">
+                                  <Save className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => setEditingId(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 flex-1 min-w-0">
+                                <div className="text-blue-600 font-medium truncate" title={s.target_path}>
+                                  {s.target_path.split(/[/\\]/).pop()}
+                                </div>
+                                {s.status === "pending" && (
+                                  <button
+                                    onClick={() => startEdit(s)}
+                                    className="p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-blue-600 hover:bg-blue-50 rounded transition-all shrink-0"
+                                    title="修改目标路径"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <span className="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-100 text-slate-600">
+                              {s.reason || "系统默认策略"}
+                            </span>
+                            <span className="text-[11px] px-2 py-0.5 rounded-md font-medium bg-blue-50 text-blue-600 border border-blue-100">
+                              置信度 {(s.confidence * 100).toFixed(0)}%
+                            </span>
+                            {s.conflict_status !== "none" && (
+                              <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                <AlertTriangle className="w-3 h-3" />
+                                目标已存在
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-start mt-1">
+                          {s.status === "pending" ? (
+                            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => acceptMutation.mutate(s.id)}
+                                className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors tooltip-trigger"
+                                title="同意建议"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => rejectOneMutation.mutate(s.id)}
+                                disabled={rejectOneMutation.isPending}
+                                className="p-1.5 text-slate-500 bg-slate-100 hover:bg-rose-100 hover:text-rose-600 rounded-lg transition-colors disabled:opacity-50"
+                                title="拒绝建议"
+                              >
+                                {rejectOneMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          ) : (
+                            <span className={twMerge("px-2.5 py-1 text-xs font-semibold rounded-lg border", statusBadgeStyle(s.status))}>
+                              {statusText(s.status)}
+                            </span>
                           )}
                         </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <span className="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-100 text-slate-600">
-                        {s.reason || "系统默认策略"}
-                      </span>
-                      <span className="text-[11px] px-2 py-0.5 rounded-md font-medium bg-blue-50 text-blue-600 border border-blue-100">
-                        置信度 {(s.confidence * 100).toFixed(0)}%
-                      </span>
-                      {s.conflict_status !== "none" && (
-                        <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                          <AlertTriangle className="w-3 h-3" />
-                          目标已存在
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0 self-start mt-1">
-                    {s.status === "pending" ? (
-                      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => acceptMutation.mutate(s.id)}
-                          className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors tooltip-trigger"
-                          title="同意建议"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            updateSuggestion(s.id, { status: "rejected" })
-                              .then(() => {
-                                queryClient.invalidateQueries({ queryKey: ["suggestions"] });
-                                toast.success("已拒绝该建议");
-                              })
-                              .catch((err) => toast.error(`拒绝失败: ${err.message}`));
-                          }}
-                          className="p-1.5 text-slate-500 bg-slate-100 hover:bg-rose-100 hover:text-rose-600 rounded-lg transition-colors"
-                          title="拒绝建议"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
                       </div>
-                    ) : (
-                      <span className={twMerge("px-2.5 py-1 text-xs font-semibold rounded-lg border", statusBadgeStyle(s.status))}>
-                        {statusText(s.status)}
-                      </span>
-                    )}
+                    ))}
                   </div>
                 </div>
               ))}
@@ -369,6 +431,18 @@ export default function SuggestionPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showConfirmCancel}
+        title="取消所有建议"
+        message={`确定要取消所有${filter === "all" ? "待处理" : filter}建议吗？此操作不可撤销。`}
+        confirmText="确认取消"
+        isLoading={bulkRejectMutation.isPending}
+        onConfirm={() => {
+          bulkRejectMutation.mutate();
+        }}
+        onCancel={() => setShowConfirmCancel(false)}
+      />
     </div>
   );
 }

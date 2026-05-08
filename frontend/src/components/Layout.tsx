@@ -119,7 +119,7 @@ export default function Layout() {
       </nav>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full bg-slate-50/50 relative">
+      <main className="flex-1 flex flex-col h-full bg-slate-50/50 relative min-w-0">
         {/* Top Drag Region for Main Content */}
         <div className="h-10 w-full shrink-0" style={{ WebkitAppRegion: "drag" } as React.CSSProperties} />
         <div className="flex-1 overflow-y-auto px-8 pb-8">

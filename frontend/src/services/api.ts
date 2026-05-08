@@ -99,6 +99,12 @@ export const updateSuggestion = (id: number, data: { status?: string; target_pat
     body: JSON.stringify(data),
   });
 
+export const bulkRejectSuggestions = (status: string = "pending") =>
+  request<{ status: string; rejected_count: number }>("/suggestions/bulk-reject", {
+    method: "POST",
+    body: JSON.stringify({ status }),
+  });
+
 // Operations
 export const executeSuggestions = (suggestionIds: number[]) =>
   request<{ success_count: number; failed_count: number; results: unknown[] }>(
@@ -190,6 +196,15 @@ export const acceptOrganizePlan = (planId: number) =>
 export const rejectOrganizePlan = (planId: number) =>
   request<{ status: string }>(`/ai/organize-plans/${planId}/reject`, {
     method: "POST"
+  });
+
+export const getExcludePaths = () =>
+  request<{ exclude_paths: string[] }>("/ai/exclude-paths");
+
+export const updateExcludePaths = (paths: string[]) =>
+  request<{ status: string; exclude_paths: string[] }>("/ai/exclude-paths", {
+    method: "POST",
+    body: JSON.stringify({ exclude_paths: paths })
   });
 
 // AI Summaries

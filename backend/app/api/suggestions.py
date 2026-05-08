@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..core.database import get_connection
+from ..models.scan_task import now_iso
 from ..schemas.suggestion_schema import (
     GenerateSuggestionsRequest,
     GenerateSuggestionsResponse,
@@ -57,6 +58,19 @@ def _get_archive_root(suggestion_archive_root: Optional[str] = None) -> str:
         "SELECT value FROM app_settings WHERE key = 'archive_root'"
     ).fetchone()
     return row["value"] if row else ""
+
+
+@router.post("/suggestions/bulk-reject")
+def bulk_reject_suggestions(body: dict):
+    """Reject all suggestions matching the optional status filter."""
+    status_filter = body.get("status", "pending")
+    conn = get_connection()
+    cursor = conn.execute(
+        "UPDATE file_suggestions SET status='rejected', updated_at=? WHERE status=?",
+        (now_iso(), status_filter),
+    )
+    conn.commit()
+    return {"status": "success", "rejected_count": cursor.rowcount}
 
 
 @router.patch("/suggestions/{suggestion_id}", response_model=FileSuggestionResponse)

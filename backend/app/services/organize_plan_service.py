@@ -9,6 +9,7 @@ from ..models.file_suggestion import FileSuggestion
 from ..repositories.organize_plan_repository import OrganizePlanRepository
 from ..repositories.ai_classification_repository import AIClassificationRepository
 from ..repositories.suggestion_repository import SuggestionRepository
+from .path_protection_service import PathProtectionService
 
 class OrganizePlanService:
     def __init__(self):
@@ -45,8 +46,14 @@ class OrganizePlanService:
             file_rows = conn.execute("SELECT id FROM file_records WHERE status = 'active'").fetchall()
             file_ids = [r["id"] for r in file_rows]
 
+        # 过滤排除目录（防线2：generate_plan 入口）
+        path_protection = PathProtectionService()
+        file_ids, skipped = path_protection.filter_file_ids(file_ids)
+        if skipped > 0:
+            print(f"Skipped {skipped} files due to AI exclude paths")
+
         if not file_ids:
-            raise ValueError("No files to organize")
+            raise ValueError("应用 AI 排除目录后，没有可处理的文件。")
 
         if task:
             task.total_items = len(file_ids)

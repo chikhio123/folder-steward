@@ -7,6 +7,7 @@ from ..repositories.ai_classification_repository import AIClassificationReposito
 from .prompt_context_service import PromptContextService
 from .llm_provider_service import LLMProviderService, RateLimitException
 from .directory_policy_service import DirectoryPolicyService
+from .path_protection_service import PathProtectionService
 
 class AIClassificationService:
     def __init__(self):
@@ -57,6 +58,21 @@ class AIClassificationService:
         Every file in file_ids will get a suggestion record (pending or failed).
         No file is silently skipped.
         """
+        # 防御性过滤：排除目录（防线3）
+        path_protection = PathProtectionService()
+        file_ids, skipped = path_protection.filter_file_ids(file_ids)
+        if skipped > 0:
+            print(f"Skipped {skipped} files due to AI exclude paths (defense layer)")
+        if task:
+            task.total_items = len(file_ids)
+        if not file_ids:
+            print("No files to classify after applying exclude paths (defense layer)")
+            if task:
+                task.status = "failed"
+                task.error_message = "应用 AI 排除目录后，没有可处理的文件。"
+                from ..repositories.ai_task_repository import AITaskRepository
+                AITaskRepository().update(task)
+            return
         rules_context = self.context_service.build_rules_context()
         classified_fids: set[int] = set()
         processed = 0

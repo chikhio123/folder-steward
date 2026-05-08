@@ -22,3 +22,10 @@ class PlanPreviewResponse(BaseModel):
     title: str
     status: str
     groups: Dict[str, Any]
+
+class ExcludePathsRequest(BaseModel):
+    exclude_paths: List[str]
+
+class ExcludePathsResponse(BaseModel):
+    status: str
+    exclude_paths: List[str]

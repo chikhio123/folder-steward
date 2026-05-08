@@ -193,6 +193,18 @@ export default function SettingsPage() {
         llm_profiles: JSON.stringify(finalProfiles),
         active_llm_profile_id: activeProfileId
       };
+
+      let parsedAiPaths: string[] = [];
+      if (payload.ai_exclude_paths) {
+        parsedAiPaths = payload.ai_exclude_paths
+          .split(/[,\n]/)
+          .map(p => p.trim())
+          .filter(p => p);
+        payload.ai_exclude_paths = JSON.stringify(parsedAiPaths);
+      } else {
+        payload.ai_exclude_paths = "[]";
+      }
+
       // 移除临时用于双向绑定的 name 字段，防止存入多余字段
       delete payload.llm_profile_name;
 
