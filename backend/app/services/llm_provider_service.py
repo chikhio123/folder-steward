@@ -350,10 +350,11 @@ IMPORTANT:
             Important: Prefer reusing existing Known Common Directories as target_dir if they conceptually match the user's request. Avoid creating slightly different synonyms (e.g. if 'Finance/Receipts' exists, don't invent 'Financial/Invoices' unless necessary).
             If the user asks to use a specific naming convention (e.g. "use Chinese directory names" or "name everything in Chinese"), ensure the `target_dir` you generate strictly adheres to that instruction.
 
-            Return ONLY raw JSON with exactly these keys, no markdown blocks, no other text:
+            Return ONLY raw JSON with exactly these keys, no markdown blocks, no other text.
+            The "rule_type" MUST be exactly one of the following strings: "extension", "filename_keyword", or "content_keyword". Do not include any other text in the rule_type value.
             {{
                 "name": "Short rule name",
-                "rule_type": "One of: extension, filename_keyword, content_keyword",
+                "rule_type": "content_keyword",
                 "pattern": "Comma separated values",
                 "target_dir": "e.g. Documents/Work",
                 "action": "move_to",
