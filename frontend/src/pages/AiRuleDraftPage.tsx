@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { previewRuleDraft, acceptRuleDraft, listRules, updateRule, deleteRule } from "../services/api";
-import { Wand2, Save, FileBox, AlertCircle, CheckCircle2, ArrowRight, Loader2, Sparkles, Settings2, Power, Trash2, ShieldAlert } from "lucide-react";
+import { Wand2, Save, FileBox, AlertCircle, CheckCircle2, ArrowRight, Loader2, Sparkles, Settings2, Trash2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import toast from "react-hot-toast";
 import { useDraftContext } from "../contexts/DraftContext";
@@ -250,7 +251,8 @@ export default function AiRuleDraftPage() {
             </div>
           )}
         </div>
-        </div>
+      )}
+      </div>
       ) : (
         <div className="flex-1 overflow-y-auto pb-8 relative z-10 flex flex-col min-h-0">
           {isRulesLoading ? (
