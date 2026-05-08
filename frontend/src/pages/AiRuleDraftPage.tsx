@@ -61,16 +61,19 @@ export default function AiRuleDraftPage() {
   const draft = draftMutation.data;
 
   return (
-    <div className="max-w-4xl mx-auto animation-fade-in flex flex-col h-full">
-      <div className="mb-6 shrink-0">
-        <h2 className="text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-          <Sparkles className="w-8 h-8 text-blue-500" />
+    <div className="max-w-4xl mx-auto animation-fade-in flex flex-col h-full relative">
+      {/* 背景光晕 */}
+      <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div className="mb-6 shrink-0 relative z-10">
+        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight flex items-center gap-2 pb-1">
+          <Sparkles className="w-8 h-8 text-blue-500 shrink-0" />
           自然语言规则生成
         </h2>
-        <p className="text-slate-500 mt-1">告诉 AI 您想怎么整理文件，它会自动生成结构化的归档规则并预览受影响的文件。</p>
+        <p className="text-slate-500 mt-1 font-medium">告诉 AI 您想怎么整理文件，它会自动生成结构化的归档规则并预览受影响的文件。</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/60 p-6 mb-6 shadow-sm shrink-0">
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-6 mb-6 shadow-sm hover:shadow-md transition-all duration-300 shrink-0 relative z-10">
         <label className="block text-sm font-semibold text-slate-700 mb-3">
           描述您的整理意图
         </label>
@@ -79,14 +82,14 @@ export default function AiRuleDraftPage() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="例如：把包含“发票”或“报销”的文件都移动到 Finance/Receipts 目录下..."
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 min-h-[100px] resize-y shadow-inner"
+            className="w-full bg-white/60 backdrop-blur-md border border-slate-200/60 text-slate-800 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all placeholder:text-slate-400/80 min-h-[100px] resize-y shadow-sm hover:bg-white/80 hover:border-slate-300/80 hover:shadow"
             disabled={draftMutation.isPending}
           />
           <div className="flex justify-end gap-3">
             {draftMutation.isPending && (
               <button
                 onClick={handleCancel}
-                className="px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                className="px-5 py-2.5 text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 hover:shadow-md shadow-rose-600/20 rounded-xl transition-all"
               >
                 停止生成
               </button>
@@ -94,7 +97,7 @@ export default function AiRuleDraftPage() {
             <button
               onClick={handleGenerate}
               disabled={!prompt.trim() || draftMutation.isPending}
-              className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-blue-600/20 hover:bg-blue-700 hover:shadow-md active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2"
+              className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2"
             >
               {draftMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
               AI 生成草案
@@ -152,14 +155,14 @@ export default function AiRuleDraftPage() {
                 <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
                   <button
                     onClick={() => { setDraftId(null); setPrompt(""); }}
-                    className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                    className="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-sm rounded-xl transition-all"
                   >
                     丢弃草案
                   </button>
                   <button
                     onClick={() => acceptMutation.mutate()}
                     disabled={acceptMutation.isPending}
-                    className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-emerald-600/20 hover:bg-emerald-700 hover:shadow-md active:translate-y-0 disabled:opacity-50 transition-all flex items-center gap-2"
+                    className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2"
                   >
                     {acceptMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     保存为正式规则
