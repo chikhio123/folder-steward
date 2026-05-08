@@ -1,23 +1,7 @@
-const BASE_URL = "/api";
+import { request } from './api/client';
 
-class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body.detail || res.statusText);
-  }
-  return res.json();
-}
+export * from './api/client';
+export * from './api/system';
 
 // Scan tasks
 export const createScanTask = (rootPath: string) =>
@@ -124,36 +108,6 @@ export const rollbackOperation = (operationId: number) =>
     method: "POST",
   });
 
-// Settings
-export const getSettings = () => request<Record<string, string>>("/settings");
-
-export const updateSettings = (settings: Record<string, string>) =>
-  request<Record<string, string>>("/settings", {
-    method: "PUT",
-    body: JSON.stringify(settings),
-  });
-
-export const getAvailableModels = (baseUrl: string, apiKey: string) => {
-  const qs = new URLSearchParams();
-  qs.set("base_url", baseUrl);
-  qs.set("api_key", apiKey);
-  return request<{ models: string[] }>(`/settings/models?${qs}`);
-};
-
-// Search
-export const searchFiles = (params: { q: string; scope?: string; extension?: string; page?: number; page_size?: number }) => {
-  const qs = new URLSearchParams();
-  qs.set("q", params.q);
-  if (params.scope) qs.set("scope", params.scope);
-  if (params.extension) qs.set("extension", params.extension);
-  if (params.page) qs.set("page", String(params.page));
-  if (params.page_size) qs.set("page_size", String(params.page_size));
-  return request<import("../types").SearchResponse>(`/search?${qs}`);
-};
-
-export const rebuildSearchIndex = () =>
-  request<{ indexed_count: number; failed_count: number }>("/search/rebuild-index", { method: "POST" });
-
 // AI Rule Drafts
 export const createRuleDraft = (prompt: string) =>
   request<import("../types").RuleDraftResponse>("/ai/rule-drafts", {
@@ -217,13 +171,4 @@ export const createSummaryTask = (fileId: number) =>
 export const getFileSummary = (fileId: number) =>
   request<any>(`/files/${fileId}/summary`);
 
-// Dashboard
-export const getDashboard = () =>
-  request<{
-    total_files: number;
-    total_size: number;
-    duplicate_groups: number;
-    pending_suggestions: number;
-    recent_tasks: import("../types").ScanTask[];
-    recent_operations: import("../types").OperationLog[];
-  }>("/dashboard");
+

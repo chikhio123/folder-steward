@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { createOrganizePlan, getOrganizePlanPreview, acceptOrganizePlan, rejectOrganizePlan, getAiTask } from "../services/api";
 import { BrainCircuit, Loader2, ListChecks, CheckCircle2, Play, Settings, AlertCircle, FileBox, Archive, FolderTree, XCircle, ArrowRight, ShieldAlert } from "lucide-react";
 import toast from "react-hot-toast";
@@ -7,7 +7,6 @@ import { ExcludeDirsModal } from "../components/ExcludeDirsModal";
 import { CustomSelect } from "../components/CustomSelect";
 
 export default function SmartOrganizePage() {
-  const queryClient = useQueryClient();
   const [archiveRoot, setArchiveRoot] = useState(() => localStorage.getItem("fs_last_archive_root") || "D:/Archive");
   const [scope, setScope] = useState("all");
   const [minConfidence, setMinConfidence] = useState<number | string>(0.65);
