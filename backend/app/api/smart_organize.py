@@ -162,7 +162,6 @@ def update_exclude_paths(
         raise HTTPException(400, "exclude_paths must be an array")
     normalized = [service.normalize_path(p) for p in paths if isinstance(p, str) and p.strip()]
 
-    import json
     settings_repo.set(service.SETTING_KEY, json.dumps(normalized))
     
     return ExcludePathsResponse(status="success", exclude_paths=normalized)
