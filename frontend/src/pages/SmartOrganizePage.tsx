@@ -1,131 +1,14 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { createOrganizePlan, getOrganizePlanPreview, acceptOrganizePlan, rejectOrganizePlan, getAiTask, cancelAiTask } from "../services/api";
-import { BrainCircuit, Loader2, ListChecks, CheckCircle2, Play, Settings, AlertCircle, FileBox, Archive, FolderTree, XCircle, ArrowRight, ShieldAlert } from "lucide-react";
-import toast from "react-hot-toast";
+import { BrainCircuit, Loader2, ListChecks, CheckCircle2, Play, Settings, AlertCircle, Archive, XCircle, ShieldAlert } from "lucide-react";
 import { ExcludeDirsModal } from "../components/ExcludeDirsModal";
 import { CustomSelect } from "../components/CustomSelect";
+import { useSmartOrganize } from '../hooks/useSmartOrganize';
+import { PlanPreviewGroup } from '../components/PlanPreviewGroup';
 
 export default function SmartOrganizePage() {
-  const [archiveRoot, setArchiveRoot] = useState(() => localStorage.getItem("fs_last_archive_root") || "D:/Archive");
-  const [scope, setScope] = useState("all");
-  const [minConfidence, setMinConfidence] = useState<number | string>(0.65);
-  const [showExcludeModal, setShowExcludeModal] = useState(false);
-  const [taskId, setTaskId] = useState<number | null>(
-    () => {
-        const saved = localStorage.getItem("fs_task_id");
-        if (!saved) return null;
-        const val = parseInt(saved);
-        if (isNaN(val)) {
-            localStorage.removeItem("fs_task_id");
-            return null;
-        }
-        return val;
-    }
-  );
-  const [planId, setPlanId] = useState<number | null>(
-    () => {
-        const saved = localStorage.getItem("fs_plan_id");
-        if (!saved) return null;
-        const val = parseInt(saved);
-        if (isNaN(val)) {
-            localStorage.removeItem("fs_plan_id");
-            return null;
-        }
-        return val;
-    }
-  );
-
-  // Sync taskId to localStorage
-  useEffect(() => {
-    if (taskId !== null) {
-      localStorage.setItem("fs_task_id", taskId.toString());
-    } else {
-      localStorage.removeItem("fs_task_id");
-    }
-  }, [taskId]);
-
-  // Sync planId to localStorage
-  useEffect(() => {
-    if (planId !== null) {
-      localStorage.setItem("fs_plan_id", planId.toString());
-    } else {
-      localStorage.removeItem("fs_plan_id");
-    }
-  }, [planId]);
-
-  const planMutation = useMutation({
-    mutationFn: () => createOrganizePlan(scope, typeof minConfidence === "number" ? minConfidence : parseFloat(minConfidence) || 0),
-    onSuccess: (data) => {
-      setTaskId(data.task_id);
-      setPlanId(null);
-      localStorage.setItem("fs_last_archive_root", archiveRoot);
-      toast.success("AI 分类任务已提交后台处理");
-    },
-    onError: (err: any) => toast.error(`生成失败: ${err.message}`)
-  });
-
-  const cancelMutation = useMutation({
-    mutationFn: () => cancelAiTask(taskId!),
-    onSuccess: () => {
-        toast.success("正在请求取消任务...");
-    },
-    onError: (err: any) => toast.error(`取消失败: ${err.message}`)
-  });
-
-  const { data: task } = useQuery({
-    queryKey: ["ai-task", taskId],
-    queryFn: () => getAiTask(taskId!),
-    enabled: taskId !== null && planId === null,
-    refetchInterval: (query) => {
-      const s = query.state.data?.status;
-      if (s === "pending" || s === "running") return 1000;
-      return false;
-    }
-  });
-
-  // Safely update planId outside of rendering phase
-  useEffect(() => {
-    if (task?.status === "completed" && task?.result_ref_id && planId === null) {
-      setPlanId(task.result_ref_id);
-    }
-  }, [task, planId]);
-
-  const { data: planData } = useQuery({
-    queryKey: ["organize-plan", planId],
-    queryFn: () => getOrganizePlanPreview(planId!),
-    enabled: planId !== null,
-  });
-
-  const acceptMutation = useMutation({
-    mutationFn: () => acceptOrganizePlan(planId!),
-    onSuccess: () => {
-      toast.success("整理方案已成功转化为实际移动建议！");
-      setTaskId(null);
-      setPlanId(null);
-    },
-    onError: (err: any) => toast.error(`确认失败: ${err.message}`)
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: () => rejectOrganizePlan(planId!),
-    onSuccess: () => {
-      toast.success("已拒绝此整理方案，释放所有分类建议");
-      setTaskId(null);
-      setPlanId(null);
-    },
-    onError: (err: any) => toast.error(`拒绝失败: ${err.message}`)
-  });
-
-  // Cleanup on task failure
-  useEffect(() => {
-    if (task?.status === "failed" || task?.status === "rate_limited") {
-      setTaskId(null);
-      setPlanId(null);
-    }
-  }, [task?.status]);
-
-  const isRunning = task?.status === "running" || task?.status === "pending" || planMutation.isPending;
+  const { state, actions, mutations } = useSmartOrganize();
+  const { archiveRoot, scope, minConfidence, showExcludeModal, planId, isRunning, task, planData } = state;
+  const { setArchiveRoot, setScope, setMinConfidence, setShowExcludeModal, setTaskId } = actions;
+  const { planMutation, cancelMutation, acceptMutation, rejectMutation } = mutations;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 animation-fade-in flex flex-col relative min-h-full">
@@ -280,47 +163,7 @@ export default function SmartOrganizePage() {
 
           <div className="p-6 space-y-8">
             {Object.entries(planData.groups || {}).map(([dir, items]: [string, any]) => (
-              <div key={dir} className="border border-slate-200 rounded-2xl overflow-hidden">
-                <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center gap-3">
-                  <FolderTree className="w-5 h-5 text-blue-500" />
-                  <h4 className="font-semibold text-slate-800 text-base truncate min-w-0">{dir}</h4>
-                  <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-xs font-bold text-slate-500">
-                    {items.length} 个文件
-                  </span>
-                </div>
-                <div className="divide-y divide-slate-100">
-                  {items.map((item: any) => (
-                    <div key={item.item_id} className="p-4 hover:bg-slate-50/50 transition-colors">
-                      <div className="flex items-start gap-3">
-                        <FileBox className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-slate-700 truncate" title={item.source_path}>
-                            {item.source_path.split(/[/\\]/).pop()}
-                          </div>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 min-w-0">
-                            <span className="truncate max-w-[40%]" title={item.source_path}>{item.source_path}</span>
-                            <ArrowRight className="w-3 h-3 text-emerald-500 shrink-0" />
-                            <span className="text-emerald-600 truncate font-medium flex-1">{item.target_path}</span>
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-100">
-                              置信度: {(item.confidence * 100).toFixed(0)}%
-                            </span>
-                            <span className="text-xs text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-sm break-all max-w-full">
-                              {item.reason || "无解释"}
-                            </span>
-                            {item.directory_status === "proposed_new" && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-200">
-                                拟建新目录
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <PlanPreviewGroup dir={dir} items={items} key={dir} />
             ))}
           </div>
         </div>
