@@ -1,16 +1,38 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
+import asyncio
+import threading
+from fastapi.concurrency import run_in_threadpool
 from ..schemas.ai_rule_schema import CreateRuleDraftRequest, RuleDraftResponse, PreviewResponse
 from ..services.ai_rule_draft_service import AIRuleDraftService
 from ..dependencies import get_ai_rule_draft_service
+from ..services.ai_task_queue_service import cancel_event_var
 
 router = APIRouter(tags=["ai_rules"])
 
 @router.post("/ai/rule-drafts", response_model=RuleDraftResponse)
-def create_rule_draft(
+async def create_rule_draft(
+    request: Request,
     body: CreateRuleDraftRequest,
     draft_service: AIRuleDraftService = Depends(get_ai_rule_draft_service)
 ):
-    draft_id = draft_service.generate_draft(body.prompt)
+    cancel_event = threading.Event()
+
+    async def watch_disconnect():
+        while True:
+            if await request.is_disconnected():
+                cancel_event.set()
+                break
+            await asyncio.sleep(0.5)
+
+    watcher_task = asyncio.create_task(watch_disconnect())
+    token = cancel_event_var.set(cancel_event)
+
+    try:
+        draft_id = await run_in_threadpool(draft_service.generate_draft, body.prompt)
+    finally:
+        watcher_task.cancel()
+        cancel_event_var.reset(token)
+
     draft = draft_service.draft_repo.get(draft_id)
     if not draft:
         raise HTTPException(status_code=500, detail="Failed to retrieve created draft")

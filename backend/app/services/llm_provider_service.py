@@ -1,8 +1,14 @@
 import json
 import httpx
 import os
+import asyncio
 from typing import Dict, Any
 from ..core.database import get_connection
+from .ai_task_queue_service import cancel_event_var
+
+class TaskCancelledException(Exception):
+    """Raised when an AI task is cancelled by the user mid-flight."""
+    pass
 
 class RateLimitException(Exception):
     """Raised when the LLM provider returns a 429 Too Many Requests."""
@@ -32,84 +38,86 @@ class LLMProviderService:
         api_key = s["api_key"]
         base_url = s["base_url"].rstrip('/')
         model = s["model"]
-        
-        if provider == "anthropic-messages":
-            if not base_url:
-                base_url = "https://api.anthropic.com"
-            endpoint = f"{base_url}/v1/messages"
-            headers = {
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json"
-            }
-            system_msg = ""
-            anthropic_messages = []
-            for m in messages:
-                if m["role"] == "system":
-                    system_msg += m["content"] + "\n"
-                else:
-                    anthropic_messages.append({"role": m["role"], "content": m["content"]})
-                    
-            payload = {
-                "model": model,
-                "max_tokens": 1024,
-                "messages": anthropic_messages,
-                "temperature": 0.1
-            }
-            if system_msg:
-                payload["system"] = system_msg
-                
+
+        async def do_request():
+            cancel_event = cancel_event_var.get()
+
+            if provider == "anthropic-messages":
+                nonlocal base_url
+                if not base_url:
+                    base_url = "https://api.anthropic.com"
+                endpoint = f"{base_url}/v1/messages"
+                headers = {
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json"
+                }
+                system_msg = ""
+                anthropic_messages = []
+                for m in messages:
+                    if m["role"] == "system":
+                        system_msg += m["content"] + "\n"
+                    else:
+                        anthropic_messages.append({"role": m["role"], "content": m["content"]})
+
+                payload = {
+                    "model": model,
+                    "max_tokens": 1024,
+                    "messages": anthropic_messages,
+                    "temperature": 0.1
+                }
+                if system_msg:
+                    payload["system"] = system_msg
+            else:
+                if not base_url.endswith("/v1"):
+                    base_url = f"{base_url}/v1"
+                endpoint = f"{base_url}/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": model,
+                    "messages": messages,
+                    "temperature": 0.1
+                }
+                if provider == "openai-response-format" and response_format:
+                    payload["response_format"] = response_format
+
             try:
-                with httpx.Client(timeout=120.0) as client:
-                    res = client.post(endpoint, headers=headers, json=payload)
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    req_task = asyncio.create_task(client.post(endpoint, headers=headers, json=payload))
+
+                    while not req_task.done():
+                        if cancel_event and cancel_event.is_set():
+                            req_task.cancel()
+                            raise TaskCancelledException("Task was cancelled by user")
+                        await asyncio.sleep(0.5)
+
+                    res = await req_task
+
                     if res.status_code == 429:
                         raise RateLimitException("Rate limited by provider")
                     res.raise_for_status()
                     data = res.json()
-                    return data["content"][0]["text"]
+
+                    if provider == "anthropic-messages":
+                        return data["content"][0]["text"]
+                    else:
+                        return data["choices"][0]["message"]["content"]
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
                     raise RateLimitException("Rate limited by provider")
                 raise Exception(f"API Error: {e.response.text}")
             except RateLimitException:
+                raise
+            except TaskCancelledException:
                 raise
             except Exception as e:
                 raise Exception(f"Failed to call LLM: {str(e)}")
 
-        else: # openai, openai-raw, openai-response-format
-            if not base_url.endswith("/v1"):
-                base_url = f"{base_url}/v1"
-                
-            endpoint = f"{base_url}/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model,
-                "messages": messages,
-                "temperature": 0.1
-            }
-            
-            if provider == "openai-response-format" and response_format:
-                payload["response_format"] = response_format
-                
-            try:
-                with httpx.Client(timeout=120.0) as client:
-                    res = client.post(endpoint, headers=headers, json=payload)
-                    if res.status_code == 429:
-                        raise RateLimitException("Rate limited by provider")
-                    res.raise_for_status()
-                    data = res.json()
-                    return data["choices"][0]["message"]["content"]
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    raise RateLimitException("Rate limited by provider")
-                raise Exception(f"API Error: {e.response.text}")
-            except RateLimitException:
-                raise
-            except Exception as e:
-                raise Exception(f"Failed to call LLM: {str(e)}")
+        # Run the async request in a new event loop for this thread
+        return asyncio.run(do_request())
 
     def generate_classification(self, file_context: dict, rules_context: list, archive_root: str) -> Dict[str, Any]:
         s = self._get_settings()
