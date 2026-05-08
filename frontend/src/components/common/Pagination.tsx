@@ -19,7 +19,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   }
 
   return (
-    <div className="flex items-center justify-between bg-slate-50 px-4 py-3 border-t border-slate-100 sm:px-6">
+    <div className="flex items-center justify-between bg-slate-50/40 px-4 py-3 border-t border-slate-100/80 sm:px-6 rounded-b-2xl">
       <div className="flex flex-1 items-center justify-between">
         <div>
           <p className="text-sm text-slate-500 font-medium">

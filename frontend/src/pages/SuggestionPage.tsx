@@ -82,7 +82,7 @@ export default function SuggestionPage() {
   }, [data?.items]);
 
   return (
-    <div className="max-w-6xl mx-auto animation-fade-in flex flex-col h-full relative">
+    <div className="max-w-6xl mx-auto animation-fade-in flex flex-col relative min-h-full">
       {/* 柔和的背景光晕效果 */}
       <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -156,9 +156,9 @@ export default function SuggestionPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-2xl border border-slate-200/60 shadow-sm relative">
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm relative flex flex-col mb-8">
         {/* Table Header */}
-        <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-center px-6 py-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10 text-sm font-semibold text-slate-600">
+        <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-center px-6 py-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10 text-sm font-semibold text-slate-600 rounded-t-2xl">
           <div className="w-6 flex justify-center">
             <input
               type="checkbox"
@@ -169,11 +169,11 @@ export default function SuggestionPage() {
             />
           </div>
           <div className="pl-2">整理详情</div>
-          <div className="w-40 text-right pr-2">操作 / 状态</div>
+          <div className="w-40 sm:w-32 text-right pr-2">操作 / 状态</div>
         </div>
 
         {/* Table Body */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="p-4">
           {isLoading ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-3">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500" />

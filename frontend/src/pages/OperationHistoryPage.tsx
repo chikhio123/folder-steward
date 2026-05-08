@@ -39,15 +39,18 @@ export default function OperationHistoryPage() {
   const totalPages = data ? Math.max(1, Math.ceil(data.total / 50)) : 1;
 
   return (
-    <div className="max-w-6xl mx-auto animation-fade-in flex flex-col h-full">
-      <div className="mb-6 shrink-0">
-        <h2 className="text-3xl font-bold text-slate-800 tracking-tight">操作历史</h2>
-        <p className="text-slate-500 mt-1">查看最近对文件执行的整理操作，或一键撤销（回滚）意外移动的文件。</p>
+    <div className="max-w-6xl mx-auto animation-fade-in flex flex-col relative min-h-full">
+      {/* 背景光晕 */}
+      <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div className="mb-6 shrink-0 relative z-10">
+        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight pb-1">操作历史</h2>
+        <p className="text-slate-500 mt-1 font-medium">查看最近对文件执行的整理操作，或一键撤销（回滚）意外移动的文件。</p>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-2xl border border-slate-200/60 shadow-sm relative">
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 shadow-sm relative flex flex-col mb-8">
         {/* Table Header */}
-        <div className="grid grid-cols-[1fr_minmax(120px,2fr)_minmax(120px,2fr)_100px_140px_100px] gap-4 items-center px-6 py-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10 text-sm font-semibold text-slate-600">
+        <div className="grid grid-cols-[1fr_minmax(120px,2fr)_minmax(120px,2fr)_100px_140px_100px] gap-4 items-center px-6 py-4 border-b border-slate-100/80 bg-slate-50/40 sticky top-0 z-10 text-sm font-semibold text-slate-600 rounded-t-2xl">
           <div className="pl-2">操作类型</div>
           <div>源路径</div>
           <div>目标路径</div>
@@ -57,7 +60,7 @@ export default function OperationHistoryPage() {
         </div>
 
         {/* Table Body */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="p-2">
           {isLoading ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-3 py-20">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500" />

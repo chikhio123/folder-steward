@@ -52,7 +52,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto animation-fade-in flex flex-col h-full">
+    <div className="max-w-5xl mx-auto animation-fade-in flex flex-col min-h-full">
       <div className="mb-6 shrink-0">
         <h2 className="text-3xl font-bold text-slate-800 tracking-tight">全局搜索</h2>
         <p className="text-slate-500 mt-1">在文件名称和已提取的纯文本内容中进行极速匹配与搜索。</p>
@@ -88,9 +88,9 @@ export default function SearchPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-2xl border border-slate-200/60 shadow-sm relative">
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm relative flex flex-col mb-8">
         {/* Results Area */}
-        <div className="flex-1 overflow-y-auto">
+        <div>
           {!debouncedQuery.trim() ? (
              <div className="h-full flex flex-col items-center justify-center text-slate-400 py-20">
                <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4">

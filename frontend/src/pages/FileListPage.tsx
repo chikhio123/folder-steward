@@ -34,10 +34,13 @@ export default function FileListPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto animation-fade-in flex flex-col h-full relative">
-      <div className="mb-6 shrink-0 sticky top-0 z-20 bg-white/60 backdrop-blur-xl border-b border-slate-200/50 pb-4 pt-2 -mx-4 px-4 sm:-mx-0 sm:px-0">
-        <h2 className="text-3xl font-bold text-slate-800 tracking-tight">文件索引库</h2>
-        <p className="text-slate-500 mt-1">浏览已建立索引的所有文件记录，支持多维度检索与排序。</p>
+    <div className="max-w-6xl mx-auto animation-fade-in flex flex-col relative min-h-full">
+      {/* 背景光晕 */}
+      <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div className="mb-6 shrink-0 z-20 bg-slate-50/80 backdrop-blur-xl border-b border-slate-200/50 pb-4 pt-2 -mx-4 px-4 sm:-mx-0 sm:px-0">
+        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight pb-1">文件索引库</h2>
+        <p className="text-slate-500 mt-1 font-medium">浏览已建立索引的所有文件记录，支持多维度检索与排序。</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/60 p-5 mb-6 shadow-sm shrink-0 flex flex-wrap gap-4 items-center">
@@ -91,9 +94,9 @@ export default function FileListPage() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-2xl border border-slate-200/60 shadow-sm relative">
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 shadow-sm relative flex flex-col mb-8">
         {/* Table Header */}
-        <div className="grid grid-cols-[1fr_minmax(80px,100px)_minmax(100px,120px)_minmax(140px,160px)_100px_40px] gap-4 items-center px-6 py-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10 text-sm font-semibold text-slate-600">
+        <div className="grid grid-cols-[1fr_minmax(80px,100px)_minmax(100px,120px)_minmax(140px,160px)_100px_40px] gap-4 items-center px-6 py-4 border-b border-slate-100/80 bg-slate-50/40 sticky top-0 z-10 text-sm font-semibold text-slate-600 rounded-t-2xl">
           <div className="pl-2">文件名</div>
           <div>类型</div>
           <div className="text-right">大小</div>
@@ -103,7 +106,7 @@ export default function FileListPage() {
         </div>
 
         {/* Table Body */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="p-2">
           {isLoading ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 py-20 space-y-3">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500" />

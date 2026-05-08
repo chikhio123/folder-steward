@@ -128,7 +128,7 @@ export default function SmartOrganizePage() {
   const isRunning = task?.status === "running" || task?.status === "pending" || planMutation.isPending;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 animation-fade-in flex flex-col min-h-0">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 animation-fade-in flex flex-col relative min-h-full">
       <div className="mb-8 shrink-0">
         <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight flex items-center gap-2 pb-1">
           <BrainCircuit className="w-8 h-8 text-blue-500 shrink-0" />
@@ -247,8 +247,8 @@ export default function SmartOrganizePage() {
       )}
 
       {planData && (
-        <div className="flex-1 overflow-hidden flex flex-col bg-white rounded-2xl border border-slate-200/60 shadow-sm relative">
-          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm relative flex flex-col mb-8">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-t-2xl">
             <div>
               <h3 className="text-lg font-bold text-slate-800">{planData.title}</h3>
               <p className="text-xs text-slate-500 mt-0.5">请审查 AI 自动分组结果，确认无误后转化为执行建议。</p>
@@ -278,7 +278,7 @@ export default function SmartOrganizePage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-8">
+          <div className="p-6 space-y-8">
             {Object.entries(planData.groups || {}).map(([dir, items]: [string, any]) => (
               <div key={dir} className="border border-slate-200 rounded-2xl overflow-hidden">
                 <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center gap-3">

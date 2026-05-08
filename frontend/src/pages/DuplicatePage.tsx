@@ -32,16 +32,16 @@ export default function DuplicatePage() {
   });
 
   return (
-    <div className="max-w-4xl mx-auto animation-fade-in flex flex-col h-full relative">
+    <div className="max-w-4xl mx-auto animation-fade-in flex flex-col relative min-h-full">
       {/* 背景光晕 */}
       <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div className="mb-6 shrink-0 sticky top-0 z-20 bg-slate-50/80 backdrop-blur-xl border-b border-slate-200/50 pb-4 pt-2 -mx-4 px-4 sm:-mx-0 sm:px-0">
+      <div className="mb-6 shrink-0 z-20 pb-4 pt-2 -mx-4 px-4 sm:-mx-0 sm:px-0">
         <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-400 tracking-tight pb-1">重复文件清理</h2>
         <p className="text-slate-500 mt-1 font-medium">基于 SHA-256 哈希值精确查找出的完全相同的文件副本。点击右侧“保留此副本”即可生成其他副本的整理建议。</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-8">
+      <div className="pb-8">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center text-slate-400 py-20 space-y-3">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />

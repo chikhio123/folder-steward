@@ -104,7 +104,7 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto animation-fade-in flex flex-col h-full relative">
+    <div className="max-w-4xl mx-auto animation-fade-in flex flex-col relative min-h-full">
       {/* 背景光晕 */}
       <div className="absolute top-[10%] left-[-10%] w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -113,7 +113,7 @@ export default function SettingsPage() {
         <p className="text-slate-500 mt-1 font-medium">全局配置参数，定制您的文件扫描和整理偏好。</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-8 space-y-6 relative z-10">
+      <div className="pb-8 space-y-6 relative z-10">
         <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-8 shadow-sm hover:shadow-md transition-all duration-300">
           <h3 className="text-lg font-bold text-slate-800 mb-6">常规设置</h3>
           {isLoading ? (
