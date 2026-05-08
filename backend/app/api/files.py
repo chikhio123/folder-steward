@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from typing import Optional
 
 from ..repositories.file_repository import FileRepository
 from ..schemas.file_schema import FileRecordResponse, FileListResponse
+from ..dependencies import get_file_repository
 
 router = APIRouter(tags=["files"])
-file_repo = FileRepository()
 
 
 @router.get("/files", response_model=FileListResponse)
@@ -17,6 +17,7 @@ def list_files(
     duplicated: Optional[bool] = Query(None),
     sort_by: str = Query("modified_at"),
     sort_order: str = Query("desc"),
+    file_repo: FileRepository = Depends(get_file_repository),
 ):
     records, total = file_repo.list_paginated(
         page=page,
