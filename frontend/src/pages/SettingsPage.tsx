@@ -1,370 +1,24 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSettings, updateSettings, getAvailableModels } from "../services/api";
-import { useState, useEffect } from "react";
-import { Save, Loader2, FolderArchive, ShieldAlert, FileDigit, EyeOff, Bot, Key, Link2, RefreshCw, Plus, Trash2, X, FolderPlus, ChevronRight, ChevronDown, FolderOpen } from "lucide-react";
-import toast from "react-hot-toast";
+import { Save, Loader2, FolderArchive, ShieldAlert, FileDigit, EyeOff, Bot, Key, Link2, RefreshCw, Plus, Trash2, FolderPlus } from "lucide-react";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CustomSelect } from "../components/CustomSelect";
-
-interface ApiProfile {
-  id: string;
-  name: string;
-  provider: string;
-  api_key: string;
-  base_url: string;
-  model: string;
-}
-
-interface PathNode {
-  name: string;
-  path: string;
-  children: Record<string, PathNode>;
-  isTarget: boolean;
-}
-
-function buildPathTree(paths: string[]): PathNode[] {
-  const rootMap: Record<string, PathNode> = {};
-
-  for (const p of paths) {
-    const normalized = p.replace(/\\/g, '/');
-    const parts = normalized.split('/').filter(Boolean);
-    if (parts.length === 0) continue;
-
-    const isUnix = normalized.startsWith('/');
-    let currentMap = rootMap;
-    let currentPath = isUnix ? '' : '';
-
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      if (i === 0 && isUnix) {
-        currentPath = '/' + part;
-      } else if (i === 0) {
-        currentPath = part; // Windows drive e.g., C:
-      } else {
-        currentPath += '/' + part;
-      }
-
-      if (!currentMap[part]) {
-        currentMap[part] = {
-          name: part,
-          path: currentPath,
-          children: {},
-          isTarget: false,
-        };
-      }
-
-      if (i === parts.length - 1) {
-        currentMap[part].isTarget = true;
-      }
-
-      currentMap = currentMap[part].children;
-    }
-  }
-
-  return Object.values(rootMap).sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function PathTreeView({
-  node,
-  depth = 0,
-  onRemove
-}: {
-  node: PathNode;
-  depth?: number;
-  onRemove: (path: string) => void
-}) {
-  const [expanded, setExpanded] = useState(true);
-  const childNodes = Object.values(node.children).sort((a, b) => a.name.localeCompare(b.name));
-  const hasChildren = childNodes.length > 0;
-
-  return (
-    <div className="flex flex-col">
-      <div
-        className="flex items-center group py-1.5 px-2 hover:bg-slate-100/50 rounded-lg transition-colors"
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
-      >
-        {hasChildren ? (
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded mr-1"
-          >
-            {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          </button>
-        ) : (
-          <div className="w-5 h-5 mr-1" />
-        )}
-
-        <FolderOpen className="w-4 h-4 text-blue-400 mr-2 shrink-0" />
-
-        <span className="font-mono text-sm text-slate-700 truncate" title={node.path}>
-          {node.name}
-        </span>
-
-        {node.isTarget && (
-          <>
-            <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200/50 rounded">
-              已排除
-            </span>
-            <button
-              onClick={() => onRemove(node.path)}
-              className="ml-auto p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-rose-500 hover:bg-rose-50 rounded transition-all"
-              title="移除此排除目录"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </>
-        )}
-      </div>
-
-      {expanded && hasChildren && (
-        <div className="flex flex-col">
-          {childNodes.map(child => (
-            <PathTreeView key={child.path} node={child} depth={depth + 1} onRemove={onRemove} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const defaultSettings = {
-  archive_root: "",
-  scan_hidden_files: "false",
-  max_file_size_for_hash: "104857600",
-  skip_system_directories: "true",
-  ai_exclude_paths: "",
-  llm_provider: "mock",
-  llm_api_key: "",
-  llm_base_url: "",
-  llm_model: "gpt-4o-mini",
-};
+import { PathTreeView, buildPathTree } from '../components/PathTreeView';
+import { useSettings } from '../hooks/useSettings';
 
 export default function SettingsPage() {
-  const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
-    queryKey: ["settings"],
-    queryFn: getSettings,
-  });
-
-  
-  const [values, setValues] = useState<Record<string, string>>(defaultSettings);
-  const [profiles, setProfiles] = useState<ApiProfile[]>([]);
-  const [activeProfileId, setActiveProfileId] = useState<string>("");
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [isFetchingModels, setIsFetchingModels] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  const fetchModels = async () => {
-    if (!values.llm_base_url) {
-      toast.error("请先填写 Base URL");
-      return;
-    }
-    setIsFetchingModels(true);
-    try {
-      const res = await getAvailableModels(values.llm_base_url, values.llm_api_key || "");
-      if (res.models && res.models.length > 0) {
-        setAvailableModels(res.models);
-        toast.success(`成功获取 ${res.models.length} 个模型！`);
-      } else {
-        toast.error("未找到可用的模型列表");
-      }
-    } catch (err: any) {
-      toast.error(`获取模型失败: ${err.message}`);
-    } finally {
-      setIsFetchingModels(false);
-    }
-  };
-
-  useEffect(() => {
-    if (data) {
-      const parsedData = { ...data };
-      if (parsedData.ai_exclude_paths) {
-        try {
-          const parsed = JSON.parse(parsedData.ai_exclude_paths);
-          if (Array.isArray(parsed)) {
-            parsedData.ai_exclude_paths = parsed.join("\n");
-          }
-        } catch (e) {}
-      }
-
-      let loadedProfiles: ApiProfile[] = [];
-      let activeId = parsedData.active_llm_profile_id || "default";
-
-      if (parsedData.llm_profiles) {
-        try {
-          loadedProfiles = JSON.parse(parsedData.llm_profiles);
-        } catch (e) {}
-      }
-
-      if (loadedProfiles.length === 0) {
-        loadedProfiles = [{
-          id: "default",
-          name: "默认配置",
-          provider: parsedData.llm_provider || "mock",
-          api_key: parsedData.llm_api_key || "",
-          base_url: parsedData.llm_base_url || "",
-          model: parsedData.llm_model || "gpt-4o-mini"
-        }];
-        activeId = "default";
-      }
-
-      setProfiles(loadedProfiles);
-      setActiveProfileId(activeId);
-
-      const activeProfile = loadedProfiles.find(p => p.id === activeId) || loadedProfiles[0];
-      parsedData.llm_profile_name = activeProfile.name;
-      parsedData.llm_provider = activeProfile.provider;
-      parsedData.llm_api_key = activeProfile.api_key;
-      parsedData.llm_base_url = activeProfile.base_url;
-      parsedData.llm_model = activeProfile.model;
-
-      setValues({ ...defaultSettings, ...parsedData });
-    }
-  }, [data]);
-
-  const getCurrentProfileUpdated = () => ({
-    name: values.llm_profile_name || "",
-    provider: values.llm_provider,
-    api_key: values.llm_api_key,
-    base_url: values.llm_base_url,
-    model: values.llm_model,
-  });
-
-  const handleProfileChange = (id: string) => {
-    // Save current values to old profile
-    const updatedProfiles = profiles.map(p =>
-      p.id === activeProfileId ? { ...p, ...getCurrentProfileUpdated(), name: values.llm_profile_name || p.name } : p
-    );
-    setProfiles(updatedProfiles);
-    setActiveProfileId(id);
-
-    // Load new profile into values
-    const newProfile = updatedProfiles.find(p => p.id === id);
-    if (newProfile) {
-      setValues(v => ({
-        ...v,
-        llm_profile_name: newProfile.name,
-        llm_provider: newProfile.provider,
-        llm_api_key: newProfile.api_key,
-        llm_base_url: newProfile.base_url,
-        llm_model: newProfile.model
-      }));
-    }
-  };
-
-  const handleAddProfile = () => {
-    const newId = Date.now().toString();
-    const newProfile: ApiProfile = {
-      id: newId,
-      name: `新配置 ${profiles.length + 1}`,
-      provider: "mock",
-      api_key: "",
-      base_url: "",
-      model: "gpt-4o-mini"
-    };
-
-    // Save current to existing profile first
-    const updatedProfiles = profiles.map(p =>
-      p.id === activeProfileId ? { ...p, ...getCurrentProfileUpdated(), name: values.llm_profile_name || p.name } : p
-    );
-
-    setProfiles([...updatedProfiles, newProfile]);
-    setActiveProfileId(newId);
-    setValues(v => ({
-      ...v,
-      llm_profile_name: newProfile.name,
-      llm_provider: newProfile.provider,
-      llm_api_key: newProfile.api_key,
-      llm_base_url: newProfile.base_url,
-      llm_model: newProfile.model
-    }));
-  };
-
-  const handleDeleteProfile = () => {
-    if (profiles.length <= 1) return;
-    setShowDeleteConfirm(true);
-  };
-
-  const confirmDeleteProfile = () => {
-    const remaining = profiles.filter(p => p.id !== activeProfileId);
-    setProfiles(remaining);
-    setActiveProfileId(remaining[0].id);
-    setValues(v => ({
-      ...v,
-      llm_profile_name: remaining[0].name,
-      llm_provider: remaining[0].provider,
-      llm_api_key: remaining[0].api_key,
-      llm_base_url: remaining[0].base_url,
-      llm_model: remaining[0].model
-    }));
-    setShowDeleteConfirm(false);
-  };
-
-  const handleRemoveExcludePath = (pathToRemove: string) => {
-    const paths = (values.ai_exclude_paths || "").split("\n").filter(p => p.trim() && p !== pathToRemove);
-    setValues(v => ({ ...v, ai_exclude_paths: paths.join("\n") }));
-  };
-
-  const handleAddExcludePath = async () => {
-    // @ts-ignore
-    if (window.electronAPI?.selectDirectory) {
-      // @ts-ignore
-      const dirPath = await window.electronAPI.selectDirectory();
-      if (dirPath) {
-        const currentPaths = (values.ai_exclude_paths || "").split("\n").map(p => p.trim()).filter(p => p);
-        if (!currentPaths.includes(dirPath)) {
-          currentPaths.push(dirPath);
-          setValues(v => ({ ...v, ai_exclude_paths: currentPaths.join("\n") }));
-        }
-      }
-    } else {
-      const dirPath = window.prompt("请输入要排除的目录完整路径：");
-      if (dirPath && dirPath.trim()) {
-        const currentPaths = (values.ai_exclude_paths || "").split("\n").map(p => p.trim()).filter(p => p);
-        if (!currentPaths.includes(dirPath.trim())) {
-          currentPaths.push(dirPath.trim());
-          setValues(v => ({ ...v, ai_exclude_paths: currentPaths.join("\n") }));
-        }
-      }
-    }
-  };
-
-  const updateMutation = useMutation({
-    mutationFn: () => {
-      const finalProfiles = profiles.map(p =>
-        p.id === activeProfileId ? { ...p, ...getCurrentProfileUpdated(), name: values.llm_profile_name || p.name } : p
-      );
-
-      const payload: Record<string, string> = {
-        ...values,
-        llm_profiles: JSON.stringify(finalProfiles),
-        active_llm_profile_id: activeProfileId
-      };
-
-      let parsedAiPaths: string[] = [];
-      if (values.ai_exclude_paths) {
-        parsedAiPaths = values.ai_exclude_paths
-          .split(/[,\n]/)
-          .map((p: string) => p.trim())
-          .filter((p: string) => p);
-        payload.ai_exclude_paths = JSON.stringify(parsedAiPaths);
-      } else {
-        payload.ai_exclude_paths = "[]";
-      }
-
-      // 移除临时用于双向绑定的 name 字段，防止存入多余字段
-      delete payload.llm_profile_name;
-
-      return updateSettings(payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
-      toast.success("全局设置已成功保存！");
-    },
-    onError: (err) => {
-      toast.error(`保存设置失败: ${err.message}`);
-    }
-  });
+  const { state, actions } = useSettings();
+  const { values, profiles, activeProfileId, availableModels, isFetchingModels, showDeleteConfirm, isLoading } = state;
+  const { 
+    setValues, 
+    setShowDeleteConfirm, 
+    fetchModels, 
+    updateMutation,
+    handleRemoveExcludePath,
+    handleAddExcludePath,
+    handleProfileChange,
+    handleAddProfile,
+    handleDeleteProfile,
+    confirmDeleteProfile
+  } = actions;
 
   const generalFields = [
     { key: "archive_root", label: "默认归档目录", desc: "整理建议生成的默认目标文件夹路径", type: "text", placeholder: "例如：D:/Archive", icon: FolderArchive },
@@ -398,7 +52,7 @@ export default function SettingsPage() {
         {f.type === "select" ? (
           <CustomSelect
             value={values[f.key] ?? ""}
-            onChange={(value) => setValues((v) => ({ ...v, [f.key]: value }))}
+            onChange={(value) => setValues((v: Record<string, string>) => ({ ...v, [f.key]: value }))}
             options={(f.options || []).map((o: string) => ({
               value: o,
               label: o === "true" ? "开启 (True)" : o === "false" ? "关闭 (False)" : o
@@ -411,7 +65,7 @@ export default function SettingsPage() {
               <input
                 type={f.type}
                 value={values[f.key] ?? ""}
-                onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                onChange={(e) => setValues((v: Record<string, string>) => ({ ...v, [f.key]: e.target.value }))}
                 placeholder={f.placeholder}
                 className="flex-1 w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm"
               />
@@ -436,7 +90,7 @@ export default function SettingsPage() {
               <div className="mt-2">
                 <CustomSelect
                   value={values[f.key] ?? ""}
-                  onChange={(value) => setValues((v) => ({ ...v, [f.key]: value }))}
+                  onChange={(value) => setValues((v: Record<string, string>) => ({ ...v, [f.key]: value }))}
                   options={availableModels.map(m => ({ value: m, label: m }))}
                   placeholder="-- 请选择下拉模型 --"
                   className="w-full"

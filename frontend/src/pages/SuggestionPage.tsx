@@ -1,8 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSuggestions, generateSuggestions, updateSuggestion, executeSuggestions, bulkRejectSuggestions } from "../services/api";
+import { useMemo } from "react";
 import type { FileSuggestion } from "../types";
-import toast from "react-hot-toast";
 import {
   Wand2,
   FolderOpen,
@@ -12,8 +9,6 @@ import {
   Play,
   FileBox,
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
   Filter,
   Loader2,
   Pencil,
@@ -23,98 +18,14 @@ import {
 import { twMerge } from "tailwind-merge";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CustomSelect } from "../components/CustomSelect";
+import { Pagination } from "../components/common/Pagination";
+import { useSuggestions } from "../hooks/useSuggestions";
 
 export default function SuggestionPage() {
-  const queryClient = useQueryClient();
-  const [archiveRoot, setArchiveRoot] = useState(() => localStorage.getItem("fs_last_archive_root") || "D:/Archive");
-  const [filter, setFilter] = useState("pending");
-  const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editPath, setEditPath] = useState("");
-  const [showConfirmCancel, setShowConfirmCancel] = useState(false);
-
-  useEffect(() => {
-    if (archiveRoot.trim()) {
-      localStorage.setItem("fs_last_archive_root", archiveRoot.trim());
-    }
-  }, [archiveRoot]);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["suggestions", filter, page],
-    queryFn: () => getSuggestions({ status: filter === "all" ? undefined : filter, page, page_size: 50 }),
-  });
-
-  const generateMutation = useMutation({
-    mutationFn: () => generateSuggestions(archiveRoot),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["suggestions"] });
-      setPage(1);
-      setFilter("pending");
-      toast.success(`成功生成 ${data.created_count} 条建议`);
-    },
-    onError: (err) => toast.error(`生成失败: ${err.message}`),
-  });
-
-  const acceptMutation = useMutation({
-    mutationFn: (id: number) => updateSuggestion(id, { status: "accepted" }),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ["suggestions"] });
-      setSelected((prev) => new Set(prev).add(id));
-      toast.success("已同意并选中");
-    },
-    onError: (err) => toast.error(`操作失败: ${err.message}`),
-  });
-
-  const rejectOneMutation = useMutation({
-    mutationFn: (id: number) => updateSuggestion(id, { status: "rejected" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["suggestions"] });
-      toast.success("已拒绝该建议");
-    },
-    onError: (err) => toast.error(`拒绝失败: ${err.message}`),
-  });
-
-  const savePathMutation = useMutation({
-    mutationFn: ({ id, path }: { id: number, path: string }) => updateSuggestion(id, { target_path: path }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["suggestions"] });
-      setEditingId(null);
-      toast.success("目标路径已更新");
-    },
-    onError: (err) => {
-      toast.error(`保存失败: ${err.message}`);
-    }
-  });
-
-  const executeMutation = useMutation({
-    mutationFn: () => executeSuggestions(Array.from(selected)),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["suggestions"] });
-      setSelected(new Set());
-      if (data.failed_count > 0) {
-        toast.error(`${data.success_count} 个成功，${data.failed_count} 个失败`);
-      } else {
-        toast.success(`成功执行 ${data.success_count} 条操作`);
-      }
-    },
-    onError: (err) => toast.error(`执行出错: ${err.message}`),
-  });
-
-  const bulkRejectMutation = useMutation({
-    mutationFn: () => bulkRejectSuggestions(filter === "all" ? "pending" : filter),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["suggestions"] });
-      setSelected(new Set());
-      setPage(1);
-      setShowConfirmCancel(false);
-      toast.success(`已取消 ${data.rejected_count} 条建议`);
-    },
-    onError: (err) => {
-      setShowConfirmCancel(false);
-      toast.error(`取消失败: ${err.message}`);
-    },
-  });
+  const { state, actions, mutations } = useSuggestions();
+  const { archiveRoot, filter, page, selected, editingId, editPath, showConfirmCancel, data, isLoading } = state;
+  const { setArchiveRoot, setFilter, setPage, setSelected, setEditingId, setEditPath, setShowConfirmCancel } = actions;
+  const { generateMutation, acceptMutation, rejectOneMutation, savePathMutation, executeMutation, bulkRejectMutation } = mutations;
 
   const toggle = (id: number) => {
     setSelected((prev) => {
@@ -408,30 +319,15 @@ export default function SuggestionPage() {
           )}
         </div>
 
-        {/* Pagination Footer */}
-        {totalPages > 1 && (
-          <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-            <span className="text-sm text-slate-500">
-              第 <strong className="text-slate-700">{page}</strong> 页，共 {totalPages} 页
-            </span>
-            <div className="flex gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => { setPage((p) => p - 1); setSelected(new Set()); }}
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => { setPage((p) => p + 1); setSelected(new Set()); }}
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
+              <Pagination 
+                currentPage={page} 
+                totalPages={totalPages} 
+                totalItems={data?.total || 0} 
+                onPageChange={(p) => {
+                  setPage(p);
+                  setSelected(new Set());
+                }} 
+              />
       </div>
 
       <ConfirmModal
