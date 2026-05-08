@@ -4,12 +4,11 @@ import { getFiles } from "../services/api";
 import type { FileRecord } from "../types";
 import { formatSize, getFileIcon } from "../utils/format";
 import FileDetailPanel from "../components/FileDetailPanel";
+import { Pagination } from '../components/common/Pagination';
 import {
   Search,
   Filter,
   ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
   Database,
   Clock,
   Loader2,
@@ -193,34 +192,7 @@ export default function FileListPage() {
         </div>
 
         {/* Pagination Footer */}
-        {totalPages > 1 && (
-          <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-            <span className="text-sm text-slate-500 font-medium">
-              共 {data?.total ?? 0} 个文件
-            </span>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-slate-500">
-                <strong className="text-slate-700">{page}</strong> / {totalPages}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 shadow-sm disabled:opacity-40 disabled:hover:bg-white transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 shadow-sm disabled:opacity-40 disabled:hover:bg-white transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <Pagination currentPage={page} totalPages={totalPages} totalItems={data?.total || 0} onPageChange={setPage} />
       </div>
 
       {/* Slide-out File Detail Panel */}
