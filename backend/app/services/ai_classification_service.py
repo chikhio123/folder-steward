@@ -74,13 +74,7 @@ class AIClassificationService:
         if task:
             task.total_items = len(file_ids)
         if not file_ids:
-            print("No files to classify after applying exclude paths (defense layer)")
-            if task:
-                task.status = "failed"
-                task.error_message = "应用 AI 排除目录后，没有可处理的文件。"
-                from ..repositories.ai_task_repository import AITaskRepository
-                AITaskRepository().update(task)
-            return
+            raise ValueError("应用 AI 排除目录后，没有可处理的文件。")
         rules_context = self.context_service.build_rules_context()
         classified_fids: set[int] = set()
         processed = 0

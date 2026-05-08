@@ -1,4 +1,5 @@
 from fastapi import Depends
+from functools import lru_cache
 
 from .services.path_protection_service import PathProtectionService
 from .services.llm_provider_service import LLMProviderService
@@ -40,5 +41,6 @@ def get_ai_rule_draft_service(
         llm_service=llm_service,
     )
 
+@lru_cache()
 def get_ai_task_queue_service() -> AITaskQueueService:
     return AITaskQueueService()

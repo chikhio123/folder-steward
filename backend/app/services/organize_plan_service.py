@@ -30,7 +30,9 @@ class OrganizePlanService:
     def generate_plan(self, scope: str, min_confidence: float = 0.65, task=None) -> int:
         """Classifies files and aggregates suggestions into a structured plan."""
         from .ai_classification_service import AIClassificationService
-        class_service = self.classification_service or AIClassificationService()
+        class_service = self.classification_service or AIClassificationService(
+            path_protection=self.path_protection
+        )
 
         conn = get_connection()
         row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
