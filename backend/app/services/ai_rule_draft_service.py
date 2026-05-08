@@ -71,35 +71,53 @@ class AIRuleDraftService:
 
         conn = get_connection()
         items = []
-        
+
         if draft.rule_type == "extension":
             exts = [e.strip().lower() for e in draft.pattern.split(",") if e.strip()]
-            placeholders = ",".join("?" for _ in exts)
-            query = f"SELECT id, filename, current_path FROM file_records WHERE status='active' AND LOWER(extension) IN ({placeholders}) LIMIT 10"
-            rows = conn.execute(query, exts).fetchall()
+            if not exts:
+                rows = []
+            else:
+                placeholders = ",".join("?" for _ in exts)
+                query = f"SELECT id, filename, current_path FROM file_records WHERE status='active' AND LOWER(extension) IN ({placeholders})"
+                rows = conn.execute(query, exts).fetchall()
         elif draft.rule_type == "filename_keyword":
             keywords = [k.strip().lower() for k in draft.pattern.split(",") if k.strip()]
-            where_clauses = " OR ".join(["LOWER(filename) LIKE ?"] * len(keywords))
-            params = [f"%{k}%" for k in keywords]
-            query = f"SELECT id, filename, current_path FROM file_records WHERE status='active' AND ({where_clauses}) LIMIT 10"
             if not keywords:
                 rows = []
             else:
+                where_clauses = " OR ".join(["LOWER(filename) LIKE ?"] * len(keywords))
+                params = [f"%{k}%" for k in keywords]
+                query = f"SELECT id, filename, current_path FROM file_records WHERE status='active' AND ({where_clauses})"
                 rows = conn.execute(query, params).fetchall()
         elif draft.rule_type == "content_keyword":
             keywords = [k.strip().lower() for k in draft.pattern.split(",") if k.strip()]
-            # FTS5 match query
-            # OR logic for keywords
-            match_query = " OR ".join(f'"{k}"' for k in keywords)
-            query = "SELECT f.id, f.filename, f.current_path FROM file_content_fts fts JOIN file_records f ON fts.file_id = f.id WHERE f.status='active' AND file_content_fts MATCH ? LIMIT 10"
             if not keywords:
                 rows = []
             else:
+                # 安全地转义 FTS5 term：双引号包裹 + 内部双引号倍增
+                def escape_fts5(term):
+                    safe = term.replace('"', '""')
+                    return f'"{safe}"'
+                match_query = " OR ".join(escape_fts5(k) for k in keywords)
+                query = "SELECT f.id, f.filename, f.current_path FROM file_content_fts fts JOIN file_records f ON fts.file_id = f.id WHERE f.status='active' AND file_content_fts MATCH ?"
                 rows = conn.execute(query, (match_query,)).fetchall()
         else:
             rows = []
 
+        # 在 Python 层进行路径保护过滤
+        from .path_protection_service import PathProtectionService
+        protection = PathProtectionService()
+        exclude_paths = protection.get_exclude_paths()
+
+        valid_rows = []
         for r in rows:
+            if not r["current_path"] or not protection._is_excluded_with_list(r["current_path"], exclude_paths):
+                valid_rows.append(r)
+
+        matched_count = len(valid_rows)
+        samples = valid_rows[:10]
+
+        for r in samples:
             items.append({
                 "file_id": r["id"],
                 "filename": r["filename"],
@@ -110,7 +128,7 @@ class AIRuleDraftService:
 
         return {
             "draft_id": draft_id,
-            "matched_count": len(items), # Just an approximation for preview
+            "matched_count": matched_count,
             "items": items
         }
 
