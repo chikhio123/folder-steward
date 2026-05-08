@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getFiles, searchFiles } from '../services/api';
+import { getFiles } from '../services/api';
 import type { FileRecord } from '../types';
 
 export const useFileList = () => {
@@ -14,23 +14,14 @@ export const useFileList = () => {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['files', page, keyword, extension, sortBy, sortOrder],
-    queryFn: () => {
-      const skip = (page - 1) * pageSize;
-      if (keyword || extension) {
-        return searchFiles({
-          keyword: keyword || undefined,
-          extension: extension || undefined,
-          skip,
-          limit: pageSize
-        });
-      }
-      return getFiles({
-        page,
-        page_size: pageSize,
-        sort_by: sortBy,
-        sort_order: sortOrder
-      });
-    },
+    queryFn: () => getFiles({
+      page,
+      page_size: pageSize,
+      keyword: keyword || undefined,
+      extension: extension || undefined,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+    }),
   });
 
   return {

@@ -1,26 +1,41 @@
 import { request } from './client';
+import type { SearchResponse } from '../../types';
 
-export const getSettings = () => request<any>('/settings');
-export const updateSettings = (settings: any) =>
-  request<any>('/settings', {
+export const getSettings = () => request<Record<string, string>>('/settings');
+
+export const updateSettings = (settings: Record<string, string>) =>
+  request<Record<string, string>>('/settings', {
     method: 'PUT',
     body: JSON.stringify(settings),
   });
 
-export const searchFiles = (params: any) => {
-  const query = new URLSearchParams();
-  if (params.q) query.append('q', params.q);
-  if (params.scope) query.append('scope', params.scope);
-  if (params.page !== undefined) query.append('page', params.page.toString());
-  if (params.page_size !== undefined) query.append('page_size', params.page_size.toString());
-  
-  return request<any>(`/search?${query.toString()}`);
+export const searchFiles = (params: { q: string; scope?: string; extension?: string; page?: number; page_size?: number }) => {
+  const qs = new URLSearchParams();
+  qs.set("q", params.q);
+  if (params.scope) qs.set("scope", params.scope);
+  if (params.extension) qs.set("extension", params.extension);
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+  return request<SearchResponse>(`/search?${qs}`);
 };
 
-export const getDashboard = () => request<any>('/dashboard');
+export const getDashboard = () =>
+  request<{
+    total_files: number;
+    total_size: number;
+    duplicate_groups: number;
+    pending_suggestions: number;
+    recent_tasks: import("../../types").ScanTask[];
+    recent_operations: import("../../types").OperationLog[];
+  }>("/dashboard");
 
-export const getAvailableModels = (baseUrl: string, apiKey: string) => 
-  request<{ models: string[] }>('/settings/models', {
-    method: 'POST',
-    body: JSON.stringify({ base_url: baseUrl, api_key: apiKey })
-  });
+export const rebuildSearchIndex = () =>
+  request<{ indexed_count: number; failed_count: number }>("/search/rebuild-index", { method: "POST" });
+
+export const getAvailableModels = (baseUrl: string, apiKey: string) => {
+  const qs = new URLSearchParams();
+  qs.set("base_url", baseUrl);
+  qs.set("api_key", apiKey);
+  return request<{ models: string[] }>(`/settings/models?${qs}`);
+};
+
