@@ -60,7 +60,7 @@ class LLMProviderService:
                 payload["system"] = system_msg
                 
             try:
-                with httpx.Client(timeout=30.0) as client:
+                with httpx.Client(timeout=120.0) as client:
                     res = client.post(endpoint, headers=headers, json=payload)
                     if res.status_code == 429:
                         raise RateLimitException("Rate limited by provider")
@@ -95,7 +95,7 @@ class LLMProviderService:
                 payload["response_format"] = response_format
                 
             try:
-                with httpx.Client(timeout=30.0) as client:
+                with httpx.Client(timeout=120.0) as client:
                     res = client.post(endpoint, headers=headers, json=payload)
                     if res.status_code == 429:
                         raise RateLimitException("Rate limited by provider")
