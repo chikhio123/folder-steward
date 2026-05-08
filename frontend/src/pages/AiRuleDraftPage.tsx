@@ -250,6 +250,7 @@ export default function AiRuleDraftPage() {
             </div>
           )}
         </div>
+        </div>
       ) : (
         <div className="flex-1 overflow-y-auto pb-8 relative z-10 flex flex-col min-h-0">
           {isRulesLoading ? (
