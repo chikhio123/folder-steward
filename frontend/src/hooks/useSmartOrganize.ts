@@ -52,7 +52,10 @@ export const useSmartOrganize = () => {
   }, [planId]);
 
   const planMutation = useMutation({
-    mutationFn: () => createOrganizePlan({ scope, min_confidence: typeof minConfidence === "number" ? minConfidence : parseFloat(minConfidence as string) || 0 } as any),
+    mutationFn: () => createOrganizePlan(
+      scope, 
+      typeof minConfidence === "number" ? minConfidence : parseFloat(minConfidence as string) || 0
+    ),
     onSuccess: (data: any) => {
       setTaskId(data.task_id);
       setPlanId(null);
@@ -72,7 +75,7 @@ export const useSmartOrganize = () => {
 
   const { data: task } = useQuery({
     queryKey: ["ai-task", taskId],
-    queryFn: () => getAiTask(taskId!.toString() as any),
+    queryFn: () => getAiTask(taskId!),
     enabled: taskId !== null && planId === null,
     refetchInterval: (query: any) => {
       const s = query.state.data?.status;

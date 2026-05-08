@@ -58,9 +58,16 @@ export function PlanPreviewGroup({ dir, items }: { dir: string, items: any[] }) 
                   </span>
                 </div>
                 {item.reason && (
-                  <div className="mt-2 text-xs text-slate-500 bg-white/60 px-3 py-1.5 rounded-lg inline-block border border-slate-200/40">
-                    <span className="font-semibold text-slate-600 mr-1">AI 判断：</span>
-                    {item.reason}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className="text-xs text-slate-500 bg-white/60 px-3 py-1.5 rounded-lg inline-block border border-slate-200/40">
+                      <span className="font-semibold text-slate-600 mr-1">AI 判断：</span>
+                      {item.reason}
+                    </div>
+                    {item.directory_status === "proposed_new" && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-200">
+                        拟建新目录
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
