@@ -1,10 +1,8 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getFiles } from "../services/api";
-import type { FileRecord } from "../types";
 import { formatSize, getFileIcon } from "../utils/format";
 import FileDetailPanel from "../components/FileDetailPanel";
 import { Pagination } from '../components/common/Pagination';
+import { useFileList } from '../hooks/useFileList';
+import type { FileRecord } from "../types";
 import {
   Search,
   Filter,
@@ -18,25 +16,10 @@ import { twMerge } from "tailwind-merge";
 import { CustomSelect } from "../components/CustomSelect";
 
 export default function FileListPage() {
-  const [page, setPage] = useState(1);
-  const [keyword, setKeyword] = useState("");
-  const [extension, setExtension] = useState("");
-  const [sortBy, setSortBy] = useState("modified_at");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["files", page, keyword, extension, sortBy, sortOrder],
-    queryFn: () =>
-      getFiles({
-        page,
-        page_size: 50,
-        keyword: keyword || undefined,
-        extension: extension || undefined,
-        sort_by: sortBy,
-        sort_order: sortOrder,
-      }),
-  });
+  const { state, actions, query } = useFileList();
+  const { page, keyword, extension, sortBy, sortOrder, selectedFile } = state;
+  const { setPage, setKeyword, setExtension, setSortBy, setSortOrder, setSelectedFile } = actions;
+  const { data, isLoading } = query;
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / 50)) : 1;
 
