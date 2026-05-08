@@ -1,43 +1,19 @@
-import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createRuleDraft, previewRuleDraft, acceptRuleDraft } from "../services/api";
+import { previewRuleDraft, acceptRuleDraft } from "../services/api";
 import { Wand2, Save, FileBox, AlertCircle, CheckCircle2, ArrowRight, Loader2, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
+import { useDraftContext } from "../contexts/DraftContext";
 
 export default function AiRuleDraftPage() {
-  const [prompt, setPrompt] = useState("");
-  const [draftId, setDraftId] = useState<number | null>(null);
-
-  const draftMutation = useMutation({
-    mutationFn: (variables: { prompt: string; signal?: AbortSignal }) =>
-      createRuleDraft(variables.prompt, variables.signal),
-    onSuccess: (data) => {
-      setDraftId(data.draft_id);
-      toast.success("规则草案生成成功！");
-    },
-    onError: (err: any) => {
-      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
-          return; // Silent for user cancel
-      }
-      toast.error(`生成失败: ${err.message}`);
-    }
-  });
-
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
-
-  const handleGenerate = () => {
-      const controller = new AbortController();
-      setAbortController(controller);
-      draftMutation.mutate({ prompt, signal: controller.signal });
-  };
-
-  const handleCancel = () => {
-      if (abortController) {
-          abortController.abort();
-          setAbortController(null);
-          toast.success("生成已中止");
-      }
-  };
+  const {
+    prompt,
+    setPrompt,
+    draftId,
+    setDraftId,
+    draftMutation,
+    handleGenerate,
+    handleCancel,
+  } = useDraftContext();
 
   const acceptMutation = useMutation({
     mutationFn: () => acceptRuleDraft(draftId!),
