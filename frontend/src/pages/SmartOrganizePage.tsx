@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { createOrganizePlan, getOrganizePlanPreview, acceptOrganizePlan, rejectOrganizePlan, getAiTask } from "../services/api";
+import { createOrganizePlan, getOrganizePlanPreview, acceptOrganizePlan, rejectOrganizePlan, getAiTask, cancelAiTask } from "../services/api";
 import { BrainCircuit, Loader2, ListChecks, CheckCircle2, Play, Settings, AlertCircle, FileBox, Archive, FolderTree, XCircle, ArrowRight, ShieldAlert } from "lucide-react";
 import toast from "react-hot-toast";
 import { ExcludeDirsModal } from "../components/ExcludeDirsModal";
@@ -63,6 +63,14 @@ export default function SmartOrganizePage() {
       toast.success("AI 分类任务已提交后台处理");
     },
     onError: (err: any) => toast.error(`生成失败: ${err.message}`)
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelAiTask(taskId!),
+    onSuccess: () => {
+        toast.success("正在请求取消任务...");
+    },
+    onError: (err: any) => toast.error(`取消失败: ${err.message}`)
   });
 
   const { data: task } = useQuery({
@@ -191,10 +199,20 @@ export default function SmartOrganizePage() {
         <div className="bg-white rounded-2xl border border-slate-200/60 p-8 mb-6 shadow-sm flex flex-col items-center justify-center space-y-4 py-16">
           {task.status === "failed" || task.status === "rate_limited" ? (
              <div className="text-center">
-               <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
-               <p className="text-rose-700 font-semibold text-lg">{task.status === "rate_limited" ? "触发 API 限流，请稍后重试" : "分类任务执行失败"}</p>
-               <p className="text-sm text-slate-500 mt-2">{task.error_message}</p>
-               <button onClick={() => { setTaskId(null); localStorage.removeItem("fs_task_id"); }} className="mt-4 px-4 py-2 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">关闭</button>
+               {task.error_message === "Cancelled by user" ? (
+                 <>
+                   <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+                   <p className="text-amber-700 font-semibold text-lg">AI 任务已由用户取消</p>
+                   <p className="text-sm text-slate-500 mt-2">没有文件被移动，您可以调整参数后重新开始。</p>
+                 </>
+               ) : (
+                 <>
+                   <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
+                   <p className="text-rose-700 font-semibold text-lg">{task.status === "rate_limited" ? "触发 API 限流，请稍后重试" : "分类任务执行失败"}</p>
+                   <p className="text-sm text-slate-500 mt-2">{task.error_message}</p>
+                 </>
+               )}
+               <button onClick={() => { setTaskId(null); localStorage.removeItem("fs_task_id"); }} className="mt-4 px-4 py-2 bg-slate-100 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">关闭并重置</button>
              </div>
           ) : (
              <div className="text-center w-full max-w-md">
@@ -210,10 +228,19 @@ export default function SmartOrganizePage() {
                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
                  </div>
                </div>
-               <div className="flex justify-between text-xs font-semibold text-slate-500">
+               <div className="flex justify-between text-xs font-semibold text-slate-500 mb-8">
                  <span>{task.processed_items} 已分析</span>
                  <span>共 {task.total_items} 项</span>
                </div>
+
+               <button
+                 onClick={() => cancelMutation.mutate()}
+                 disabled={cancelMutation.isPending}
+                 className="px-4 py-2 border border-slate-200 text-slate-500 rounded-xl text-sm font-semibold hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all flex items-center gap-2 mx-auto disabled:opacity-50"
+               >
+                 {cancelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                 {cancelMutation.isPending ? "正在停止..." : "取消任务"}
+               </button>
              </div>
           )}
         </div>

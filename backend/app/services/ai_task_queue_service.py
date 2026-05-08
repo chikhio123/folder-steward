@@ -53,6 +53,18 @@ class AITaskQueueService:
         self._executor.submit(self._run_task_wrapper, task_id, handler)
         return task_id
 
+    def cancel_task(self, task_id: int) -> bool:
+        """Marks a task as cancelled in the database."""
+        task = self.task_repo.get(task_id)
+        if not task or task.status not in ("pending", "running"):
+            return False
+
+        task.status = "failed"
+        task.error_message = "Cancelled by user"
+        task.finished_at = now_iso()
+        self.task_repo.update(task)
+        return True
+
     def _run_task_wrapper(self, task_id: int, handler: Callable[[AITask], None]) -> None:
         task = self.task_repo.get(task_id)
         if not task or task.status != "pending":

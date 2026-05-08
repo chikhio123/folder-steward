@@ -9,15 +9,35 @@ export default function AiRuleDraftPage() {
   const [draftId, setDraftId] = useState<number | null>(null);
 
   const draftMutation = useMutation({
-    mutationFn: () => createRuleDraft(prompt),
+    mutationFn: (variables: { prompt: string; signal?: AbortSignal }) =>
+      createRuleDraft(variables.prompt, variables.signal),
     onSuccess: (data) => {
       setDraftId(data.draft_id);
       toast.success("规则草案生成成功！");
     },
     onError: (err: any) => {
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+          return; // Silent for user cancel
+      }
       toast.error(`生成失败: ${err.message}`);
     }
   });
+
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+
+  const handleGenerate = () => {
+      const controller = new AbortController();
+      setAbortController(controller);
+      draftMutation.mutate({ prompt, signal: controller.signal });
+  };
+
+  const handleCancel = () => {
+      if (abortController) {
+          abortController.abort();
+          setAbortController(null);
+          toast.success("生成已中止");
+      }
+  };
 
   const acceptMutation = useMutation({
     mutationFn: () => acceptRuleDraft(draftId!),
@@ -62,9 +82,17 @@ export default function AiRuleDraftPage() {
             className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 min-h-[100px] resize-y shadow-inner"
             disabled={draftMutation.isPending}
           />
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-3">
+            {draftMutation.isPending && (
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+              >
+                停止生成
+              </button>
+            )}
             <button
-              onClick={() => draftMutation.mutate()}
+              onClick={handleGenerate}
               disabled={!prompt.trim() || draftMutation.isPending}
               className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-blue-600/20 hover:bg-blue-700 hover:shadow-md active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2"
             >

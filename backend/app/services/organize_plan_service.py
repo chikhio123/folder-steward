@@ -84,6 +84,13 @@ class OrganizePlanService:
         # Classify all target files in batches
         class_service.process_classification_batch(file_ids, archive_root, batch_size=30, task=task)
 
+        # Check if task was cancelled
+        if task:
+            from ..repositories.ai_task_repository import AITaskRepository
+            current_task = AITaskRepository().get(task.id)
+            if current_task and current_task.status == "failed" and "Cancelled" in (current_task.error_message or ""):
+                raise ValueError("Plan generation cancelled by user.")
+
         # Fetch pending AI suggestions that meet confidence, limited to current file_ids
         placeholders = ",".join("?" for _ in file_ids)
         rows = conn.execute(

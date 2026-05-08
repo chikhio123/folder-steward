@@ -49,7 +49,7 @@ export const generateSuggestions = (archiveRoot: string) =>
 
 export const getSuggestions = (params: { status?: string; page?: number; page_size?: number }) => {
   const qs = new URLSearchParams();
-  if (params.status) qs.set("status", params.status);
+  if (params.status && params.status !== "all") qs.set("status", params.status);
   if (params.page) qs.set("page", String(params.page));
   if (params.page_size) qs.set("page_size", String(params.page_size));
   return request<import("../types").PaginatedResponse<import("../types").FileSuggestion>>(`/suggestions?${qs}`);

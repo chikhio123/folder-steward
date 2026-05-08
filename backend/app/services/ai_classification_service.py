@@ -86,6 +86,14 @@ class AIClassificationService:
         batches = self._merge_groups_to_batches(groups, batch_size)
 
         for batch in batches:
+            # Check for cancellation before each batch
+            if task:
+                from ..repositories.ai_task_repository import AITaskRepository
+                current_task = AITaskRepository().get(task.id)
+                if current_task and current_task.status == "failed" and "Cancelled" in (current_task.error_message or ""):
+                    print(f"Task {task.id} cancelled, stopping batch processing.")
+                    return
+
             # Build contexts for this batch
             contexts = []
             context_fids = set()

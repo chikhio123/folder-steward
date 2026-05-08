@@ -1,10 +1,11 @@
 import { request } from './client';
 
 // AI Rule Drafts
-export const createRuleDraft = (prompt: string) =>
+export const createRuleDraft = (prompt: string, signal?: AbortSignal) =>
   request<import("../../types").RuleDraftResponse>("/ai/rule-drafts", {
     method: "POST",
     body: JSON.stringify({ prompt }),
+    signal
   });
 
 export const previewRuleDraft = (draftId: number) =>
@@ -24,6 +25,11 @@ export const createClassificationTasks = (fileIds: number[]) =>
 
 export const getAiTask = (taskId: number) =>
   request<any>(`/ai/tasks/${taskId}`);
+
+export const cancelAiTask = (taskId: number) =>
+  request<{ task_id: number; status: string }>(`/ai/tasks/${taskId}/cancel`, {
+    method: "POST"
+  });
 
 export const createOrganizePlan = (scope: string, minConfidence: number = 0.65) =>
   request<{ task_id: number; status: string }>("/ai/organize-plans", {

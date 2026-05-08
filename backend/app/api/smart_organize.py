@@ -79,6 +79,16 @@ def get_ai_task(
         raise HTTPException(404, "Task not found")
     return task
 
+@router.post("/ai/tasks/{task_id}/cancel")
+def cancel_ai_task(
+    task_id: int,
+    queue_service: AITaskQueueService = Depends(get_ai_task_queue_service)
+):
+    ok = queue_service.cancel_task(task_id)
+    if not ok:
+        raise HTTPException(400, "Task cannot be cancelled (not running or not found)")
+    return {"task_id": task_id, "status": "cancelled"}
+
 @router.post("/ai/organize-plans", response_model=OrganizePlanResponse)
 def create_organize_plan(
     body: OrganizePlanRequest,
