@@ -19,12 +19,19 @@ class OrganizePlanService:
         suggestion_repo=None,
         path_protection=None,
         classification_service=None,
+        settings_repo=None,
+        file_repo=None,
     ):
         self.plan_repo = plan_repo or OrganizePlanRepository()
         self.ai_sug_repo = class_repo or AIClassificationRepository()
         self.sug_repo = suggestion_repo or SuggestionRepository()
         self.path_protection = path_protection or PathProtectionService()
         self.classification_service = classification_service or None
+
+        from ..repositories.settings_repository import SettingsRepository
+        from ..repositories.file_repository import FileRepository
+        self.settings_repo = settings_repo or SettingsRepository()
+        self.file_repo = file_repo or FileRepository()
 
 
     def generate_plan(self, scope: str, min_confidence: float = 0.65, task=None) -> int:
@@ -34,9 +41,7 @@ class OrganizePlanService:
             path_protection=self.path_protection
         )
 
-        conn = get_connection()
-        row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
-        archive_root = row["value"] if row else ""
+        archive_root = self.settings_repo.get("archive_root") or ""
 
         if not archive_root:
             raise ValueError("archive_root is not configured")
@@ -46,16 +51,13 @@ class OrganizePlanService:
             # Files not matched by any rules yet (this is simplified)
             # We exclude files already inside the archive_root
             if archive_root:
+                from pathlib import Path
                 archive_prefix = str(Path(archive_root).resolve())
-                # SQLite doesn't have a great path prefix check, so we do it in Python
-                all_rows = conn.execute("SELECT id, current_path FROM file_records WHERE status = 'active'").fetchall()
-                file_ids = [r["id"] for r in all_rows if not str(Path(r["current_path"]).resolve()).startswith(archive_prefix)]
+                file_ids = self.file_repo.get_active_excluding_prefix(archive_prefix)
             else:
-                file_rows = conn.execute("SELECT id FROM file_records WHERE status = 'active'").fetchall()
-                file_ids = [r["id"] for r in file_rows]
+                file_ids = self.file_repo.get_all_active_ids()
         else:
-            file_rows = conn.execute("SELECT id FROM file_records WHERE status = 'active'").fetchall()
-            file_ids = [r["id"] for r in file_rows]
+            file_ids = self.file_repo.get_all_active_ids()
 
         # 过滤排除目录（防线2：generate_plan 入口）
         path_protection = self.path_protection
@@ -74,12 +76,7 @@ class OrganizePlanService:
 
         # Clear existing pending suggestions for these files so we start fresh
         if file_ids:
-            chunk_size = 500
-            for i in range(0, len(file_ids), chunk_size):
-                chunk = file_ids[i:i+chunk_size]
-                placeholders = ",".join("?" for _ in chunk)
-                conn.execute(f"DELETE FROM ai_classification_suggestions WHERE status = 'pending' AND file_id IN ({placeholders})", chunk)
-            conn.commit()
+            self.ai_sug_repo.delete_pending_by_files(file_ids)
 
         # Classify all target files in batches
         class_service.process_classification_batch(file_ids, archive_root, batch_size=30, task=task)
@@ -92,15 +89,7 @@ class OrganizePlanService:
                 raise ValueError("Plan generation cancelled by user.")
 
         # Fetch pending AI suggestions that meet confidence, limited to current file_ids
-        placeholders = ",".join("?" for _ in file_ids)
-        rows = conn.execute(
-            f"""SELECT a.id as suggestion_id, a.*, f.current_path
-               FROM ai_classification_suggestions a
-               JOIN file_records f ON a.file_id = f.id
-               WHERE a.status = 'pending' AND a.confidence >= ?
-                 AND a.file_id IN ({placeholders})
-            """, (min_confidence, *file_ids)
-        ).fetchall()
+        rows = self.ai_sug_repo.get_pending_with_paths(file_ids, min_confidence)
 
         if not rows:
             raise ValueError("No pending AI classification suggestions found with sufficient confidence.")
@@ -138,12 +127,13 @@ class OrganizePlanService:
             )
             self.plan_repo.create_item(item)
 
-            # Mark AI suggestion as in_plan so it doesn't get picked up again
-            conn.execute("UPDATE ai_classification_suggestions SET status='in_plan' WHERE id=?", (r["suggestion_id"],))
+        # Mark AI suggestion as in_plan so it doesn't get picked up again
+        suggestion_ids_to_update = [r["suggestion_id"] for r in rows]
+        if suggestion_ids_to_update:
+            self.ai_sug_repo.update_status_batch(suggestion_ids_to_update, "in_plan")
 
         plan.summary_json = json.dumps(summary_counts, ensure_ascii=False)
         self.plan_repo.update_plan(plan)
-        conn.commit()
 
         return plan_id
 
@@ -187,9 +177,7 @@ class OrganizePlanService:
         if not accepted_items:
             raise ValueError("No pending items to accept.")
 
-        conn = get_connection()
-        row = conn.execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
-        archive_root = row["value"] if row else ""
+        archive_root = self.settings_repo.get("archive_root") or ""
 
         for item in accepted_items:
             # Create real suggestion
@@ -208,6 +196,7 @@ class OrganizePlanService:
             self.sug_repo.create(sug)
 
             # Mark item converted
+            conn = get_connection()
             conn.execute("UPDATE organize_plan_items SET status='converted' WHERE id=?", (item.id,))
             # Mark original suggestion as converted, using ai_suggestion_id to avoid cross-plan contamination
             if item.ai_suggestion_id:

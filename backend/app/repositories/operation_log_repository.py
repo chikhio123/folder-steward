@@ -51,3 +51,33 @@ class OperationLogRepository:
             "SELECT * FROM operation_logs ORDER BY executed_at DESC LIMIT ?", (limit,)
         ).fetchall()
         return [OperationLog(**dict(r)) for r in rows]
+
+    def commit_successful_move(self, op_id: int, file_id: int, target_path: str, suggestion_id: int) -> None:
+        from ..models.scan_task import now_iso
+        conn = get_connection()
+        conn.execute("BEGIN")
+        try:
+            conn.execute(
+                "UPDATE file_records SET current_path = ? WHERE id = ?",
+                (target_path, file_id),
+            )
+            conn.execute(
+                "UPDATE operation_logs SET status=?, rollback_available=? WHERE id=?",
+                ("success", 1, op_id)
+            )
+            conn.execute(
+                "UPDATE file_suggestions SET status=?, updated_at=? WHERE id=?",
+                ("executed", now_iso(), suggestion_id),
+            )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise
+
+    def mark_operation_failed(self, op_id: int, error_message: str) -> None:
+        conn = get_connection()
+        conn.execute(
+            "UPDATE operation_logs SET status=?, error_message=? WHERE id=?",
+            ("failed", str(error_message), op_id)
+        )
+        conn.commit()

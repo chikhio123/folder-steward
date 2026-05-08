@@ -201,3 +201,28 @@ class FileRepository:
             results.append((file_rec, content))
 
         return results
+
+    def get_active_excluding_prefix(self, prefix: str) -> list[int]:
+        conn = get_connection()
+        from pathlib import Path
+        
+        def is_inside(path_str: str, root_str: str) -> bool:
+            try:
+                p = Path(path_str).resolve()
+                r = Path(root_str).resolve()
+                p.relative_to(r)
+                return True
+            except ValueError:
+                return False
+
+        all_rows = conn.execute("SELECT id, current_path FROM file_records WHERE status = 'active'").fetchall()
+        return [
+            r["id"]
+            for r in all_rows
+            if r["current_path"] and not is_inside(r["current_path"], prefix)
+        ]
+
+    def get_all_active_ids(self) -> list[int]:
+        conn = get_connection()
+        rows = conn.execute("SELECT id FROM file_records WHERE status = 'active'").fetchall()
+        return [r["id"] for r in rows]

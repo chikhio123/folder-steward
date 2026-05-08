@@ -17,14 +17,12 @@ class OperationService:
         self.sug_repo = SuggestionRepository()
         self.op_repo = OperationLogRepository()
         self.safety_service = PathSafetyService()
+        from ..repositories.settings_repository import SettingsRepository
+        self.settings_repo = SettingsRepository()
 
-    @staticmethod
-    def _validate_target_within_archive(target_path: str, archive_root_str: str | None = None) -> None:
+    def _validate_target_within_archive(self, target_path: str, archive_root_str: str | None = None) -> None:
         if archive_root_str is None:
-            row = get_connection().execute(
-                "SELECT value FROM app_settings WHERE key = 'archive_root'"
-            ).fetchone()
-            archive_root_str = row["value"] if row else None
+            archive_root_str = self.settings_repo.get("archive_root")
         if not archive_root_str:
             return  # no archive_root configured, skip check
         archive_root = Path(archive_root_str).resolve()
@@ -77,56 +75,31 @@ class OperationService:
                 self.safety_service.validate_move(source, target)
 
                 # === Phase 4: Execute ===
-                # 1. Create a pending operation log first
-                conn = get_connection()
-                cur = conn.execute(
-                    """INSERT INTO operation_logs
-                       (operation_type, file_id, source_path, target_path, status,
-                        rollback_available, executed_at, error_message)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    ("move", sug.file_id, sug.source_path, str(target), "pending",
-                     0, now_iso(), None)
+                # 1. Create a pending operation log using self.op_repo.create
+                op_log = OperationLog(
+                    operation_type="move",
+                    file_id=sug.file_id,
+                    source_path=sug.source_path,
+                    target_path=str(target),
+                    status="pending",
+                    rollback_available=0,
+                    executed_at=now_iso(),
                 )
-                op_id = cur.lastrowid
-                conn.commit()
+                op_id = self.op_repo.create(op_log)
 
                 try:
                     shutil.move(str(source), str(target))
                     moved = True
                 except Exception as e:
-                    # Move failed, mark operation log as failed
-                    conn.execute(
-                        "UPDATE operation_logs SET status=?, error_message=? WHERE id=?",
-                        ("failed", str(e), op_id)
-                    )
-                    conn.commit()
+                    self.op_repo.mark_operation_failed(op_id, str(e))
                     raise
 
-                # DB writes in a single transaction for atomicity
-                conn.execute("BEGIN")
                 try:
-                    conn.execute(
-                        "UPDATE file_records SET current_path = ? WHERE id = ?",
-                        (str(target), sug.file_id),
-                    )
-                    conn.execute(
-                        "UPDATE operation_logs SET status=?, rollback_available=? WHERE id=?",
-                        ("success", 1, op_id)
-                    )
-                    conn.execute(
-                        "UPDATE file_suggestions SET status=?, updated_at=? WHERE id=?",
-                        ("executed", now_iso(), sug.id),
-                    )
-                    conn.commit()
+                    self.op_repo.commit_successful_move(op_id, sug.file_id, str(target), sug.id)
                 except Exception as e:
-                    conn.rollback()
                     if moved and target.exists() and not source.exists():
                         shutil.move(str(target), str(source))
-                    conn.execute(
-                        "UPDATE operation_logs SET status=?, error_message=? WHERE id=?",
-                        ("failed", f"Database update failed: {e}", op_id)
-                    )
-                    conn.commit()
+                    self.op_repo.mark_operation_failed(op_id, f"Database update failed: {e}")
                     raise OperationError(f"Database update failed after move: {e}") from e
 
                 success_count += 1
