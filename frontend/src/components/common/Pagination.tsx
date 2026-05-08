@@ -14,34 +14,38 @@ export const Pagination: React.FC<PaginationProps> = ({
   totalItems,
   onPageChange,
 }) => {
+  if (totalPages <= 1) {
+    return null;
+  }
+
   return (
-    <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200 sm:px-6 mt-4 rounded-lg shadow-sm">
-      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+    <div className="flex items-center justify-between bg-slate-50 px-4 py-3 border-t border-slate-100 sm:px-6">
+      <div className="flex flex-1 items-center justify-between">
         <div>
-          <p className="text-sm text-gray-700">
-            Total <span className="font-medium">{totalItems}</span> results
+          <p className="text-sm text-slate-500 font-medium">
+            共找到 <span className="font-semibold text-slate-700">{totalItems}</span> 个结果
           </p>
         </div>
-        <div>
-          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-slate-500">
+            <strong className="text-slate-700">{currentPage}</strong> / {totalPages}
+          </span>
+          <nav className="relative z-0 inline-flex shadow-sm gap-2" aria-label="Pagination">
             <button
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+              className="relative inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white transition-colors"
             >
               <span className="sr-only">Previous</span>
-              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </button>
-            <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-              Page {currentPage} of {Math.max(1, totalPages)}
-            </span>
             <button
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage >= totalPages || totalPages === 0}
-              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+              className="relative inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white transition-colors"
             >
               <span className="sr-only">Next</span>
-              <ChevronRight className="h-5 w-5" aria-hidden="true" />
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
           </nav>
         </div>
