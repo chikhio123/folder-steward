@@ -66,7 +66,7 @@ export const useSettings = () => {
           provider: parsedData.llm_provider || "mock",
           api_key: parsedData.llm_api_key || "",
           base_url: parsedData.llm_base_url || "",
-          model: parsedData.llm_model || ""
+          model: parsedData.llm_model || "gpt-4o-mini"
         }];
         activeId = "default";
       }
@@ -81,7 +81,7 @@ export const useSettings = () => {
         llm_provider: activeProfile.provider || "mock",
         llm_api_key: activeProfile.api_key || "",
         llm_base_url: activeProfile.base_url || "",
-        llm_model: activeProfile.model || ""
+        llm_model: activeProfile.model || "gpt-4o-mini"
       });
     }
   }, [data]);
