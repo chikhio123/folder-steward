@@ -121,6 +121,8 @@ class LLMProviderService:
             File Content Preview: {(file_context.get('content_preview') or '')[:1000]}
             Archive Root: {archive_root}
 
+            Ensure that your suggested directory name adheres to any global conventions inferred from the prompt or standard practice. If the user expects Chinese names, use Chinese directory names.
+
             Return ONLY raw JSON with exactly these keys, no markdown blocks, no other text:
             {{
                 "suggested_target_dir": "Documents/Work",
@@ -216,6 +218,8 @@ Files to classify:
 ---
 {files_block}
 ---
+
+Ensure that your suggested directory names adhere to any global conventions inferred or requested by the user. If the user expects Chinese names, use Chinese directory names.
 
 Return ONLY raw JSON in this exact format, no markdown blocks, no other text:
 {{
@@ -336,6 +340,7 @@ IMPORTANT:
 
             {context_block}
             Important: Prefer reusing existing Known Common Directories as target_dir if they conceptually match the user's request. Avoid creating slightly different synonyms (e.g. if 'Finance/Receipts' exists, don't invent 'Financial/Invoices' unless necessary).
+            If the user asks to use a specific naming convention (e.g. "use Chinese directory names" or "name everything in Chinese"), ensure the `target_dir` you generate strictly adheres to that instruction.
 
             Return ONLY raw JSON with exactly these keys, no markdown blocks, no other text:
             {{
