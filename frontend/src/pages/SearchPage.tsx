@@ -110,7 +110,7 @@ export default function SearchPage() {
             </div>
           ) : data?.items?.length ? (
             <div className="divide-y divide-slate-100/60 p-2">
-              {data.items.map((item) => (
+              {data.items.map((item: import("../types").SearchResultItem) => (
                 <div key={item.file_id} className="p-4 hover:bg-slate-50/80 transition-colors rounded-xl group relative">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 min-w-0 flex-1">

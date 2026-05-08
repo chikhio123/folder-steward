@@ -335,18 +335,18 @@ export default function SettingsPage() {
         p.id === activeProfileId ? { ...p, ...getCurrentProfileUpdated(), name: values.llm_profile_name || p.name } : p
       );
 
-      const payload = {
+      const payload: Record<string, string> = {
         ...values,
         llm_profiles: JSON.stringify(finalProfiles),
         active_llm_profile_id: activeProfileId
       };
 
       let parsedAiPaths: string[] = [];
-      if (payload.ai_exclude_paths) {
-        parsedAiPaths = payload.ai_exclude_paths
+      if (values.ai_exclude_paths) {
+        parsedAiPaths = values.ai_exclude_paths
           .split(/[,\n]/)
-          .map(p => p.trim())
-          .filter(p => p);
+          .map((p: string) => p.trim())
+          .filter((p: string) => p);
         payload.ai_exclude_paths = JSON.stringify(parsedAiPaths);
       } else {
         payload.ai_exclude_paths = "[]";
