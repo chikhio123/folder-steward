@@ -100,6 +100,11 @@ class AITaskQueueService:
                 self.task_repo.update(task)
                 return
 
+            # Double check database for concurrent cancellations (e.g. from another thread/process)
+            latest_task = self.task_repo.get(task_id)
+            if latest_task and latest_task.status == 'failed' and latest_task.error_message == 'Cancelled by user':
+                return # Already cancelled in DB, don't overwrite with completed
+
             # Handler is expected to update result_ref_id, total_items, etc.
             task.status = "completed"
             task.finished_at = now_iso()
