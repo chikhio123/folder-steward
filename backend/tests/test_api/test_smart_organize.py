@@ -4,8 +4,9 @@ from app.core.database import get_connection, init_db
 from app.models.organize_plan import OrganizePlan
 from app.models.organize_plan_item import OrganizePlanItem
 from app.repositories.organize_plan_repository import OrganizePlanRepository
+from app.dependencies import get_ai_task_queue_service, get_organize_plan_service
 import pytest
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
 client = TestClient(app)
 
@@ -17,21 +18,31 @@ def setup_db():
     conn.execute("DELETE FROM organize_plan_items")
     conn.execute("DELETE FROM ai_tasks")
     conn.commit()
+    # Clean up overrides after each test
+    yield
+    app.dependency_overrides.clear()
 
-@patch("app.api.smart_organize.queue_service")
-def test_create_classification_tasks(mock_queue):
+def test_create_classification_tasks():
+    mock_queue = MagicMock()
     mock_queue.enqueue_task.return_value = 1
+    app.dependency_overrides[get_ai_task_queue_service] = lambda: mock_queue
 
-    res = client.post("/api/ai/classify", json={"file_ids": [10, 20], "archive_root": "D:/Archive"})
+    # We need to set archive_root in the db so it doesn't fail the 400 check
+    conn = get_connection()
+    conn.execute("INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES ('archive_root', 'D:/Archive', '2026-05-08T00:00:00')")
+    conn.commit()
+
+    res = client.post("/api/ai/classify", json={"file_ids": [10, 20]})
     assert res.status_code == 200
     assert res.json()["task_id"] == 1
     assert res.json()["queued_count"] == 2
 
-@patch("app.api.smart_organize.queue_service")
-def test_create_organize_plan(mock_queue):
+def test_create_organize_plan():
+    mock_queue = MagicMock()
     mock_queue.enqueue_task.return_value = 2
+    app.dependency_overrides[get_ai_task_queue_service] = lambda: mock_queue
 
-    res = client.post("/api/ai/organize-plans", json={"scope": "others", "archive_root": "D:/Archive", "min_confidence": 0.8})
+    res = client.post("/api/ai/organize-plans", json={"scope": "others", "min_confidence": 0.8})
     assert res.status_code == 200
     assert res.json()["task_id"] == 2
 
@@ -57,14 +68,18 @@ def test_get_plan_preview():
     assert "Docs" in data["groups"]
     assert len(data["groups"]["Docs"]) == 1
 
-@patch("app.api.smart_organize.plan_service")
-def test_accept_organize_plan(mock_plan_service):
+def test_accept_organize_plan():
+    mock_plan_service = MagicMock()
+    app.dependency_overrides[get_organize_plan_service] = lambda: mock_plan_service
+
     res = client.post("/api/ai/organize-plans/1/accept")
     assert res.status_code == 200
     mock_plan_service.accept_plan.assert_called_once_with(1)
 
-@patch("app.api.smart_organize.plan_service")
-def test_reject_organize_plan(mock_plan_service):
+def test_reject_organize_plan():
+    mock_plan_service = MagicMock()
+    app.dependency_overrides[get_organize_plan_service] = lambda: mock_plan_service
+
     res = client.post("/api/ai/organize-plans/1/reject")
     assert res.status_code == 200
     mock_plan_service.reject_plan.assert_called_once_with(1)
