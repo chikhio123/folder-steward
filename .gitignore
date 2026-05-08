@@ -43,3 +43,4 @@ Thumbs.db
 *.env.local
 .worktrees
 docs/
+check_rules.py
