@@ -13,6 +13,7 @@ import {
   Loader2
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import { CustomSelect } from "../components/CustomSelect";
 
 export default function SearchPage() {
   const [queryInput, setQueryInput] = useState("");
@@ -72,17 +73,18 @@ export default function SearchPage() {
           />
         </div>
 
-        <div className="relative flex items-center">
-          <Filter className="absolute left-3 w-4 h-4 text-slate-400" />
-          <select
+        <div className="relative flex items-center w-48">
+          <CustomSelect
             value={scope}
-            onChange={(e) => setScope(e.target.value)}
-            className="pl-9 pr-8 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer"
-          >
-            <option value="all">全文 + 文件名</option>
-            <option value="filename">仅搜索文件名</option>
-            <option value="content">仅搜索正文</option>
-          </select>
+            onChange={(value) => setScope(value)}
+            options={[
+              { value: "all", label: "全文 + 文件名" },
+              { value: "filename", label: "仅搜索文件名" },
+              { value: "content", label: "仅搜索正文" }
+            ]}
+            icon={<Filter className="w-4 h-4" />}
+            className="w-full"
+          />
         </div>
       </div>
 

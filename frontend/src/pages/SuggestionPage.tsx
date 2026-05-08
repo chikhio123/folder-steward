@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { CustomSelect } from "../components/CustomSelect";
 
 export default function SuggestionPage() {
   const queryClient = useQueryClient();
@@ -205,18 +206,19 @@ export default function SuggestionPage() {
 
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
-          <div className="relative flex items-center">
-            <Filter className="absolute left-3 w-4 h-4 text-slate-400" />
-            <select
+          <div className="relative flex items-center w-40">
+            <CustomSelect
               value={filter}
-              onChange={(e) => { setFilter(e.target.value); setPage(1); setSelected(new Set()); }}
-              className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer"
-            >
-              <option value="pending">待处理</option>
-              <option value="accepted">已同意</option>
-              <option value="rejected">已拒绝</option>
-              <option value="all">全 部</option>
-            </select>
+              onChange={(value) => { setFilter(value); setPage(1); setSelected(new Set()); }}
+              options={[
+                { value: "pending", label: "待处理" },
+                { value: "accepted", label: "已同意" },
+                { value: "rejected", label: "已拒绝" },
+                { value: "all", label: "全 部" }
+              ]}
+              icon={<Filter className="w-4 h-4" />}
+              className="w-full"
+            />
           </div>
 
           <button

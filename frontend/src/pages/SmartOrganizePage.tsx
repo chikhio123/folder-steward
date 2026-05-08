@@ -4,6 +4,7 @@ import { createOrganizePlan, getOrganizePlanPreview, acceptOrganizePlan, rejectO
 import { BrainCircuit, Loader2, ListChecks, CheckCircle2, Play, Settings, AlertCircle, FileBox, Archive, FolderTree, XCircle, ArrowRight, ShieldAlert } from "lucide-react";
 import toast from "react-hot-toast";
 import { ExcludeDirsModal } from "../components/ExcludeDirsModal";
+import { CustomSelect } from "../components/CustomSelect";
 
 export default function SmartOrganizePage() {
   const queryClient = useQueryClient();
@@ -149,15 +150,16 @@ export default function SmartOrganizePage() {
             <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
               <ListChecks className="w-4 h-4 text-blue-500" /> 处理范围
             </label>
-            <select
+            <CustomSelect
               value={scope}
-              onChange={(e) => setScope(e.target.value)}
+              onChange={(val) => setScope(val)}
               disabled={isRunning}
-              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            >
-              <option value="others">仅未识别分类的文件 (Others)</option>
-              <option value="all">库中所有未操作的文件</option>
-            </select>
+              options={[
+                { value: "others", label: "仅未识别分类的文件 (Others)" },
+                { value: "all", label: "库中所有未操作的文件" }
+              ]}
+              className="w-full"
+            />
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1.5">

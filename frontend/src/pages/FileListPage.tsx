@@ -16,6 +16,7 @@ import {
   FolderOpen
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import { CustomSelect } from "../components/CustomSelect";
 
 export default function FileListPage() {
   const [page, setPage] = useState(1);
@@ -86,17 +87,18 @@ export default function FileListPage() {
 
         <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
-        <div className="relative flex items-center">
-          <ArrowUpDown className="absolute left-3 w-4 h-4 text-slate-400" />
-          <select
+        <div className="relative flex items-center w-40">
+          <CustomSelect
             value={sortBy}
-            onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
-            className="pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer"
-          >
-            <option value="modified_at">修改时间</option>
-            <option value="size_bytes">文件大小</option>
-            <option value="filename">文件名称</option>
-          </select>
+            onChange={(value) => { setSortBy(value); setPage(1); }}
+            options={[
+              { value: "modified_at", label: "修改时间" },
+              { value: "size_bytes", label: "文件大小" },
+              { value: "filename", label: "文件名称" }
+            ]}
+            icon={<ArrowUpDown className="w-4 h-4" />}
+            className="w-full"
+          />
         </div>
 
         <button

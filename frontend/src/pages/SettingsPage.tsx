@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSettings, updateSettings, getAvailableModels } from "../services/api";
 import { useState, useEffect } from "react";
-import { Save, Loader2, FolderArchive, ShieldAlert, FileDigit, EyeOff, Bot, Key, Link2, RefreshCw, Plus, Trash2 } from "lucide-react";
+import { Save, Loader2, FolderArchive, ShieldAlert, FileDigit, EyeOff, Bot, Key, Link2, RefreshCw, Plus, Trash2, X, FolderPlus, ChevronRight, ChevronDown, FolderOpen } from "lucide-react";
 import toast from "react-hot-toast";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { CustomSelect } from "../components/CustomSelect";
 
 interface ApiProfile {
   id: string;
@@ -11,6 +13,118 @@ interface ApiProfile {
   api_key: string;
   base_url: string;
   model: string;
+}
+
+interface PathNode {
+  name: string;
+  path: string;
+  children: Record<string, PathNode>;
+  isTarget: boolean;
+}
+
+function buildPathTree(paths: string[]): PathNode[] {
+  const rootMap: Record<string, PathNode> = {};
+
+  for (const p of paths) {
+    const normalized = p.replace(/\\/g, '/');
+    const parts = normalized.split('/').filter(Boolean);
+    if (parts.length === 0) continue;
+
+    const isUnix = normalized.startsWith('/');
+    let currentMap = rootMap;
+    let currentPath = isUnix ? '' : '';
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      if (i === 0 && isUnix) {
+        currentPath = '/' + part;
+      } else if (i === 0) {
+        currentPath = part; // Windows drive e.g., C:
+      } else {
+        currentPath += '/' + part;
+      }
+
+      if (!currentMap[part]) {
+        currentMap[part] = {
+          name: part,
+          path: currentPath,
+          children: {},
+          isTarget: false,
+        };
+      }
+
+      if (i === parts.length - 1) {
+        currentMap[part].isTarget = true;
+      }
+
+      currentMap = currentMap[part].children;
+    }
+  }
+
+  return Object.values(rootMap).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function PathTreeView({
+  node,
+  depth = 0,
+  onRemove
+}: {
+  node: PathNode;
+  depth?: number;
+  onRemove: (path: string) => void
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const childNodes = Object.values(node.children).sort((a, b) => a.name.localeCompare(b.name));
+  const hasChildren = childNodes.length > 0;
+
+  return (
+    <div className="flex flex-col">
+      <div
+        className="flex items-center group py-1.5 px-2 hover:bg-slate-100/50 rounded-lg transition-colors"
+        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+      >
+        {hasChildren ? (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded mr-1"
+          >
+            {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          </button>
+        ) : (
+          <div className="w-5 h-5 mr-1" />
+        )}
+
+        <FolderOpen className="w-4 h-4 text-blue-400 mr-2 shrink-0" />
+
+        <span className="font-mono text-sm text-slate-700 truncate" title={node.path}>
+          {node.name}
+        </span>
+
+        {node.isTarget && (
+          <>
+            <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200/50 rounded">
+              已排除
+            </span>
+            <button
+              onClick={() => onRemove(node.path)}
+              className="ml-auto p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-rose-500 hover:bg-rose-50 rounded transition-all"
+              title="移除此排除目录"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {expanded && hasChildren && (
+        <div className="flex flex-col">
+          {childNodes.map(child => (
+            <PathTreeView key={child.path} node={child} depth={depth + 1} onRemove={onRemove} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const defaultSettings = {
@@ -38,6 +152,7 @@ export default function SettingsPage() {
   const [activeProfileId, setActiveProfileId] = useState<string>("");
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const fetchModels = async () => {
     if (!values.llm_base_url) {
@@ -167,18 +282,50 @@ export default function SettingsPage() {
 
   const handleDeleteProfile = () => {
     if (profiles.length <= 1) return;
-    if (window.confirm("确定要删除当前配置吗？")) {
-      const remaining = profiles.filter(p => p.id !== activeProfileId);
-      setProfiles(remaining);
-      setActiveProfileId(remaining[0].id);
-      setValues(v => ({
-        ...v,
-        llm_profile_name: remaining[0].name,
-        llm_provider: remaining[0].provider,
-        llm_api_key: remaining[0].api_key,
-        llm_base_url: remaining[0].base_url,
-        llm_model: remaining[0].model
-      }));
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteProfile = () => {
+    const remaining = profiles.filter(p => p.id !== activeProfileId);
+    setProfiles(remaining);
+    setActiveProfileId(remaining[0].id);
+    setValues(v => ({
+      ...v,
+      llm_profile_name: remaining[0].name,
+      llm_provider: remaining[0].provider,
+      llm_api_key: remaining[0].api_key,
+      llm_base_url: remaining[0].base_url,
+      llm_model: remaining[0].model
+    }));
+    setShowDeleteConfirm(false);
+  };
+
+  const handleRemoveExcludePath = (pathToRemove: string) => {
+    const paths = (values.ai_exclude_paths || "").split("\n").filter(p => p.trim() && p !== pathToRemove);
+    setValues(v => ({ ...v, ai_exclude_paths: paths.join("\n") }));
+  };
+
+  const handleAddExcludePath = async () => {
+    // @ts-ignore
+    if (window.electronAPI?.selectDirectory) {
+      // @ts-ignore
+      const dirPath = await window.electronAPI.selectDirectory();
+      if (dirPath) {
+        const currentPaths = (values.ai_exclude_paths || "").split("\n").map(p => p.trim()).filter(p => p);
+        if (!currentPaths.includes(dirPath)) {
+          currentPaths.push(dirPath);
+          setValues(v => ({ ...v, ai_exclude_paths: currentPaths.join("\n") }));
+        }
+      }
+    } else {
+      const dirPath = window.prompt("请输入要排除的目录完整路径：");
+      if (dirPath && dirPath.trim()) {
+        const currentPaths = (values.ai_exclude_paths || "").split("\n").map(p => p.trim()).filter(p => p);
+        if (!currentPaths.includes(dirPath.trim())) {
+          currentPaths.push(dirPath.trim());
+          setValues(v => ({ ...v, ai_exclude_paths: currentPaths.join("\n") }));
+        }
+      }
     }
   };
 
@@ -249,22 +396,15 @@ export default function SettingsPage() {
       </div>
       <div className="flex-1 max-w-md mt-1 sm:mt-0">
         {f.type === "select" ? (
-          <div className="relative">
-            <select
-              value={values[f.key] ?? ""}
-              onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 appearance-none cursor-pointer transition-all shadow-sm"
-            >
-              {f.options?.map((o: string) => (
-                <option key={o} value={o}>
-                  {o === "true" ? "开启 (True)" : o === "false" ? "关闭 (False)" : o}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-            </div>
-          </div>
+          <CustomSelect
+            value={values[f.key] ?? ""}
+            onChange={(value) => setValues((v) => ({ ...v, [f.key]: value }))}
+            options={(f.options || []).map((o: string) => ({
+              value: o,
+              label: o === "true" ? "开启 (True)" : o === "false" ? "关闭 (False)" : o
+            }))}
+            className="w-full"
+          />
         ) : (
           <>
             <div className={f.key === "llm_model" ? "flex items-center gap-2" : ""}>
@@ -293,20 +433,14 @@ export default function SettingsPage() {
               </div>
             )}
             {f.key === "llm_model" && availableModels.length > 0 && (
-              <div className="relative mt-2">
-                <select
+              <div className="mt-2">
+                <CustomSelect
                   value={values[f.key] ?? ""}
-                  onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                  className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 appearance-none cursor-pointer transition-all shadow-sm"
-                >
-                  <option value="">-- 请选择下拉模型 --</option>
-                  {availableModels.map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                </div>
+                  onChange={(value) => setValues((v) => ({ ...v, [f.key]: value }))}
+                  options={availableModels.map(m => ({ value: m, label: m }))}
+                  placeholder="-- 请选择下拉模型 --"
+                  className="w-full"
+                />
               </div>
             )}
           </>
@@ -352,26 +486,38 @@ export default function SettingsPage() {
                   AI 排除目录
                 </label>
                 <p className="text-xs text-slate-500 leading-relaxed pr-4">
-                  配置 AI 不会处理的目录列表，每行一个或逗号分隔
+                  配置的目录及其子目录将被 AI 完全忽略，保证隐私安全。
                 </p>
               </div>
               <div className="flex-1 max-w-md mt-1 sm:mt-0">
-                <textarea
-                  value={values.ai_exclude_paths || ""}
-                  onChange={(e) => setValues((v) => ({ ...v, ai_exclude_paths: e.target.value }))}
-                  placeholder={"例如：D:/Temp, D:/Downloads/Unsorted"}
-                  rows={3}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm resize-y"
-                />
-                <p className="mt-1.5 text-xs text-slate-500">
-                  {values.ai_exclude_paths ? (
-                    <span className="text-emerald-600 font-medium">
-                      已配置 {values.ai_exclude_paths.split(/[,\n]/).filter(p => p.trim()).length} 个排除目录
-                    </span>
-                  ) : (
-                    <span>未配置排除目录，AI 将处理所有文件</span>
-                  )}
-                </p>
+                <div className="bg-white/60 backdrop-blur-md border border-slate-200/60 rounded-xl p-4 shadow-sm hover:bg-white/80 hover:border-slate-300/80 transition-all">
+                  <div className="flex flex-col gap-1 mb-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                    {(() => {
+                      const paths = (values.ai_exclude_paths || "").split("\n").map(p => p.trim()).filter(p => p);
+                      if (paths.length === 0) {
+                        return (
+                          <div className="w-full text-center py-6 text-slate-400 text-sm border-2 border-dashed border-slate-200/60 rounded-lg">
+                            未配置排除目录
+                          </div>
+                        );
+                      }
+
+                      const tree = buildPathTree(paths);
+                      return tree.map(node => (
+                        <PathTreeView key={node.path} node={node} onRemove={handleRemoveExcludePath} />
+                      ));
+                    })()}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddExcludePath}
+                    className="w-full py-2.5 flex items-center justify-center gap-2 text-sm font-semibold text-blue-600 bg-blue-50/50 hover:bg-blue-100/50 border border-blue-200/50 rounded-lg transition-colors border-dashed"
+                  >
+                    <FolderPlus className="w-4 h-4" />
+                    添加排除目录
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -382,17 +528,15 @@ export default function SettingsPage() {
             <h3 className="text-lg font-bold text-slate-800">AI 引擎配置</h3>
             {!isLoading && (
               <div className="flex items-center gap-2">
-                <select
+                <CustomSelect
                   value={activeProfileId}
-                  onChange={(e) => handleProfileChange(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none cursor-pointer"
-                >
-                  {profiles.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name || "未命名配置"}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => handleProfileChange(value)}
+                  options={profiles.map(p => ({
+                    value: p.id,
+                    label: p.name || "未命名配置"
+                  }))}
+                  className="w-48"
+                />
                 <button
                   onClick={handleAddProfile}
                   className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -437,6 +581,16 @@ export default function SettingsPage() {
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="删除配置"
+        message="确定要删除当前 AI 引擎配置吗？"
+        confirmText="删除"
+        confirmVariant="danger"
+        onConfirm={confirmDeleteProfile}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }
