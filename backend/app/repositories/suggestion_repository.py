@@ -104,15 +104,19 @@ class SuggestionRepository:
         return row["cnt"]
 
     def mark_superseded_for_file(self, file_id: int, include_accepted: bool = False) -> None:
-        conn = get_connection()
+        statuses = ["pending", "failed"]
         if include_accepted:
-            status_list = "('pending', 'accepted', 'failed')"
-        else:
-            status_list = "('pending', 'failed')"
+            statuses.append("accepted")
 
+        placeholders = ",".join("?" for _ in statuses)
+        conn = get_connection()
         conn.execute(
-            f"UPDATE file_suggestions SET status='superseded', updated_at=? WHERE file_id=? AND status IN {status_list}",
-            (now_iso(), file_id),
+            f"""
+            UPDATE file_suggestions
+            SET status='superseded', updated_at=?
+            WHERE file_id=? AND status IN ({placeholders})
+            """,
+            (now_iso(), file_id, *statuses),
         )
         conn.commit()
 
