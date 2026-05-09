@@ -81,10 +81,9 @@ class FileRepository:
             conditions.append("extension = ?")
             params.append(extension)
         if keyword:
-            conditions.append("id IN (SELECT file_id FROM file_content_fts WHERE file_content_fts MATCH ?)")
-            # quote the keyword to avoid FTS syntax errors for special chars
-            safe_keyword = keyword.replace('"', '""')
-            params.append(f'"{safe_keyword}"')
+            escaped_kw = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            conditions.append("filename LIKE ? ESCAPE '\\'")
+            params.append(f"%{escaped_kw}%")
         if duplicated is True:
             conditions.append("sha256 IN (SELECT sha256 FROM file_records WHERE status='active' GROUP BY sha256 HAVING COUNT(*) > 1)")
         elif duplicated is False:
