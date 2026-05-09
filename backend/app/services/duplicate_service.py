@@ -17,11 +17,21 @@ class DuplicateService:
         row = get_connection().execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
         return row["value"] if row else ""
 
+    def is_path_claimed_in_db(self, path: str) -> bool:
+        conn = get_connection()
+        row = conn.execute("SELECT 1 FROM file_suggestions WHERE target_path = ? AND status IN ('pending', 'accepted')", (path,)).fetchone()
+        if row: return True
+        row = conn.execute("SELECT 1 FROM organize_plan_items opi JOIN organize_plans op ON opi.plan_id = op.id WHERE opi.target_path = ? AND op.status = 'draft' AND opi.status = 'pending'", (path,)).fetchone()
+        return bool(row)
+
     def get_unique_target_path(self, target: Path, used_paths: set[str] = None) -> Path:
         if used_paths is None:
             used_paths = set()
 
-        if not target.exists() and str(target) not in used_paths:
+        def is_available(p: Path) -> bool:
+            return not p.exists() and str(p) not in used_paths and not self.is_path_claimed_in_db(str(p))
+
+        if is_available(target):
             used_paths.add(str(target))
             return target
 
@@ -32,7 +42,7 @@ class DuplicateService:
 
         while True:
             new_target = parent / f"{base}_{counter}{ext}"
-            if not new_target.exists() and str(new_target) not in used_paths:
+            if is_available(new_target):
                 used_paths.add(str(new_target))
                 return new_target
             counter += 1

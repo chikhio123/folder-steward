@@ -102,7 +102,7 @@ class SuggestionRepository:
     def mark_superseded_for_file(self, file_id: int) -> None:
         conn = get_connection()
         conn.execute(
-            "UPDATE file_suggestions SET status='superseded', updated_at=? WHERE file_id=? AND status IN ('pending', 'accepted')",
+            "UPDATE file_suggestions SET status='superseded', updated_at=? WHERE file_id=? AND status IN ('pending', 'accepted', 'failed')",
             (now_iso(), file_id),
         )
         conn.commit()
