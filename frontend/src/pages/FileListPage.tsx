@@ -99,9 +99,9 @@ export default function FileListPage() {
         <div className="grid grid-cols-[1fr_minmax(80px,100px)_minmax(100px,120px)_minmax(140px,160px)_100px_40px] gap-4 items-center px-6 py-4 border-b border-slate-100/80 bg-slate-50/40 sticky top-0 z-10 text-sm font-semibold text-slate-600 rounded-t-2xl">
           <div className="pl-2">文件名</div>
           <div>类型</div>
-          <div className="text-right">大小</div>
+          <div className="text-center">大小</div>
           <div>最后修改</div>
-          <div className="text-right">状态</div>
+          <div className="text-center">状态</div>
           <div></div>
         </div>
 
@@ -134,14 +134,14 @@ export default function FileListPage() {
                   <div className="text-sm text-slate-500 truncate">
                     {f.extension ? f.extension.toLowerCase() : "未知"}
                   </div>
-                  <div className="text-sm text-slate-600 text-right tabular-nums font-medium">
+                  <div className="text-sm text-slate-600 text-center tabular-nums font-medium">
                     {formatSize(f.size_bytes)}
                   </div>
                   <div className="text-xs text-slate-500 flex items-center gap-1.5 tabular-nums">
                     <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     {f.modified_at ? f.modified_at.slice(0, 16).replace("T", " ") : "-"}
                   </div>
-                  <div className="text-right pr-1">
+                  <div className="text-center pr-1">
                     <span className={twMerge(
                       "px-2.5 py-1 rounded-lg text-[11px] font-semibold border tracking-wide uppercase",
                       f.status === "active"
