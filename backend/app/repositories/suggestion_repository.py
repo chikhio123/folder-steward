@@ -1,12 +1,13 @@
 from typing import Optional
 
-from ..core.database import get_connection
+from ..core.database import get_connection, require_transaction
 from ..models.file_suggestion import FileSuggestion
 from ..models.scan_task import now_iso
 
 
 class SuggestionRepository:
     def create(self, suggestion: FileSuggestion) -> int:
+        require_transaction()
         conn = get_connection()
         return self.create_with_conn(conn, suggestion)
 
@@ -32,6 +33,7 @@ class SuggestionRepository:
         return FileSuggestion(**dict(row))
 
     def update(self, suggestion: FileSuggestion) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute(
             """UPDATE file_suggestions SET status=?, target_path=?, conflict_status=?, archive_root=?,
@@ -39,25 +41,24 @@ class SuggestionRepository:
             (suggestion.status, suggestion.target_path, suggestion.conflict_status,
              suggestion.archive_root, now_iso(), suggestion.id),
         )
-        conn.commit()
 
     def update_status(self, suggestion_id: int, status: str) -> None:
+        require_transaction()
         from ..models.scan_task import now_iso
         conn = get_connection()
         conn.execute(
             "UPDATE file_suggestions SET status=?, updated_at=? WHERE id=?",
             (status, now_iso(), suggestion_id),
         )
-        conn.commit()
 
     def bulk_update_status(self, current_status: str, new_status: str) -> int:
+        require_transaction()
         from ..models.scan_task import now_iso
         conn = get_connection()
         cur = conn.execute(
             "UPDATE file_suggestions SET status=?, updated_at=? WHERE status=?",
             (new_status, now_iso(), current_status)
         )
-        conn.commit()
         return cur.rowcount
 
     def list_paginated(
@@ -102,15 +103,15 @@ class SuggestionRepository:
         return row["cnt"]
 
     def mark_superseded_for_file(self, file_id: int) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute(
             "UPDATE file_suggestions SET status='superseded', updated_at=? WHERE file_id=? AND status IN ('pending', 'accepted', 'failed')",
             (now_iso(), file_id),
         )
-        conn.commit()
 
     def delete_by_file_id(self, file_id: int) -> None:
+        require_transaction()
         get_connection().execute(
             "DELETE FROM file_suggestions WHERE file_id = ?", (file_id,)
         )
-        get_connection().commit()
