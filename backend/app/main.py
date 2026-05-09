@@ -1,9 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 # Initialize DB first, before importing routers that instantiate services
-from .core.database import init_db
+from .core.database import init_db, close_connection
 init_db()
 
 from .services.extract_service import ExtractService
@@ -15,6 +15,14 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Folder Steward", version="0.1.0", lifespan=lifespan)
+
+@app.middleware("http")
+async def db_session_middleware(request: Request, call_next):
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        close_connection()
 
 app.add_middleware(
     CORSMiddleware,
