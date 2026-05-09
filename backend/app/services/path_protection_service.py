@@ -1,6 +1,5 @@
 import os
 from typing import List, Tuple
-from ..core.database import get_connection
 
 
 class PathProtectionService:
@@ -8,15 +7,18 @@ class PathProtectionService:
 
     SETTING_KEY = "ai_exclude_paths"
 
+    def __init__(self, settings_repo=None, file_repo=None):
+        from ..repositories.settings_repository import SettingsRepository
+        from ..repositories.file_repository import FileRepository
+        self.settings_repo = settings_repo or SettingsRepository()
+        self.file_repo = file_repo or FileRepository()
+
     def get_exclude_paths(self) -> List[str]:
         """从 app_settings 读取排除路径列表，支持 JSON 数组或逗号/换行分隔字符串。"""
-        conn = get_connection()
-        row = conn.execute(
-            "SELECT value FROM app_settings WHERE key = ?", (self.SETTING_KEY,)
-        ).fetchone()
-        if not row or not row["value"]:
+        val = self.settings_repo.get(self.SETTING_KEY)
+        if not val:
             return []
-        raw_str = row["value"].strip()
+        raw_str = val.strip()
         if not raw_str:
             return []
 
@@ -68,17 +70,13 @@ class PathProtectionService:
         if not exclude_paths:
             return file_ids, 0
 
-        conn = get_connection()
         valid = []
         skipped = 0
 
         chunk_size = 900
         for i in range(0, len(file_ids), chunk_size):
             chunk = file_ids[i:i+chunk_size]
-            placeholders = ",".join("?" for _ in chunk)
-            rows = conn.execute(
-                f"SELECT id, current_path FROM file_records WHERE id IN ({placeholders})", chunk
-            ).fetchall()
+            rows = self.file_repo.get_paths_by_ids(chunk)
 
             for row in rows:
                 if not row["current_path"]:

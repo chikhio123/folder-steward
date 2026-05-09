@@ -17,14 +17,13 @@ class RateLimitException(Exception):
 class LLMProviderService:
     """Wrapper for LLM calls."""
 
-    def __init__(self, provider_type: str = "mock"):
+    def __init__(self, provider_type: str = "mock", settings_repo=None):
         self.provider_type = provider_type
-        # Lazy load settings to get latest
+        from ..repositories.settings_repository import SettingsRepository
+        self.settings_repo = settings_repo or SettingsRepository()
     
     def _get_settings(self):
-        conn = get_connection()
-        rows = conn.execute("SELECT key, value FROM app_settings").fetchall()
-        s = {row["key"]: row["value"] for row in rows}
+        s = self.settings_repo.get_all()
         return {
             "provider": s.get("llm_provider", "mock"),
             "api_key": s.get("llm_api_key", ""),
