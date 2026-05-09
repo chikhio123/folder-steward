@@ -54,3 +54,17 @@ class OrganizePlanRepository:
             "SELECT * FROM organize_plan_items WHERE plan_id = ?", (plan_id,)
         ).fetchall()
         return [OrganizePlanItem(**dict(r)) for r in rows]
+
+    def mark_items_converted(self, item_ids: list[int]) -> None:
+        if not item_ids: return
+        conn = get_connection()
+        placeholders = ",".join("?" for _ in item_ids)
+        conn.execute(f"UPDATE organize_plan_items SET status='converted' WHERE id IN ({placeholders})", item_ids)
+        conn.commit()
+
+    def mark_items_rejected(self, item_ids: list[int]) -> None:
+        if not item_ids: return
+        conn = get_connection()
+        placeholders = ",".join("?" for _ in item_ids)
+        conn.execute(f"UPDATE organize_plan_items SET status='rejected' WHERE id IN ({placeholders})", item_ids)
+        conn.commit()

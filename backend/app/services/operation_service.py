@@ -198,24 +198,9 @@ class OperationService:
             self.op_repo.update(rollback_log)
             raise RollbackError(f"Rollback failed: {e}")
 
-        conn = get_connection()
-        conn.execute("BEGIN")
         try:
-            if op_log.file_id:
-                conn.execute("UPDATE file_records SET current_path = ? WHERE id = ?", (str(target), op_log.file_id))
-
-            conn.execute(
-                "UPDATE operation_logs SET status=?, rollback_available=?, rollback_at=? WHERE id=?",
-                ("rolled_back", 0, now_iso(), operation_id)
-            )
-
-            conn.execute(
-                "UPDATE operation_logs SET status=? WHERE id=?",
-                ("success", rollback_log_id)
-            )
-            conn.commit()
+            self.op_repo.commit_successful_rollback(operation_id, rollback_log_id, op_log.file_id, str(target))
         except Exception as e:
-            conn.rollback()
             if moved and target.exists() and not source.exists():
                 shutil.move(str(target), str(source))
 

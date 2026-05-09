@@ -179,6 +179,8 @@ class OrganizePlanService:
 
         archive_root = self.settings_repo.get("archive_root") or ""
 
+        item_ids = []
+        sug_ids = []
         for item in accepted_items:
             # Create real suggestion
             sug = FileSuggestion(
@@ -194,19 +196,18 @@ class OrganizePlanService:
                 created_at=now_iso()
             )
             self.sug_repo.create(sug)
-
-            # Mark item converted
-            conn = get_connection()
-            conn.execute("UPDATE organize_plan_items SET status='converted' WHERE id=?", (item.id,))
-            # Mark original suggestion as converted, using ai_suggestion_id to avoid cross-plan contamination
+            item_ids.append(item.id)
             if item.ai_suggestion_id:
-                conn.execute("UPDATE ai_classification_suggestions SET status='converted' WHERE id=?", (item.ai_suggestion_id,))
+                sug_ids.append(item.ai_suggestion_id)
+
+        self.plan_repo.mark_items_converted(item_ids)
+        if sug_ids:
+            self.ai_sug_repo.update_status_batch(sug_ids, "converted")
 
         # Mark plan converted
         plan.status = "converted"
         plan.updated_at = now_iso()
         self.plan_repo.update_plan(plan)
-        conn.commit()
 
     def reject_plan(self, plan_id: int) -> None:
         """Rejects a plan and restores its items' original classification suggestions to pending."""
@@ -214,16 +215,15 @@ class OrganizePlanService:
         if not plan or plan.status != "draft":
             raise ValueError("Plan not found or not in draft status.")
 
-        conn = get_connection()
         items = self.plan_repo.get_items_by_plan(plan_id)
 
-        for item in items:
-            conn.execute("UPDATE organize_plan_items SET status='rejected' WHERE id=?", (item.id,))
-            # Restore suggestion using ai_suggestion_id to avoid cross-plan contamination
-            if item.ai_suggestion_id:
-                conn.execute("UPDATE ai_classification_suggestions SET status='pending' WHERE id=?", (item.ai_suggestion_id,))
+        item_ids = [item.id for item in items]
+        self.plan_repo.mark_items_rejected(item_ids)
+        
+        sug_ids = [item.ai_suggestion_id for item in items if item.ai_suggestion_id]
+        if sug_ids:
+            self.ai_sug_repo.update_status_batch(sug_ids, "pending")
 
         plan.status = "rejected"
         plan.updated_at = now_iso()
         self.plan_repo.update_plan(plan)
-        conn.commit()
