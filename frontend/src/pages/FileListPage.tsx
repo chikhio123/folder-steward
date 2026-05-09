@@ -186,7 +186,7 @@ export default function FileListPage() {
                     <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     {f.modified_at ? f.modified_at.slice(0, 16).replace("T", " ") : "-"}
                   </div>
-                  <div className="text-center pr-1">
+                  <div className="flex justify-center">
                     <span className={twMerge(
                       "px-2.5 py-1 rounded-lg text-[11px] font-semibold border tracking-wide uppercase",
                       f.status === "active"
