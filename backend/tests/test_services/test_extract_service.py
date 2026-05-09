@@ -209,21 +209,23 @@ def test_extract_bad_extractor_exception_sets_failed(mock_get_extractor, mock_pa
     assert updated_task.status == "failed"
     assert "corrupt file" in updated_task.error_message
 
+def clear_file_related_tables(conn):
+    """Helper to cleanly wipe all file-dependent tables before testing."""
+    tables = [
+        "file_suggestions", "file_contents", "extract_tasks",
+        "operation_logs", "semantic_group_items", "file_tags",
+        "ai_classification_suggestions", "organize_plan_items",
+        "file_summaries", "file_records"
+    ]
+    for table in tables:
+        conn.execute(f"DELETE FROM {table}")
+    conn.commit()
+
 def test_extract_integration_real_oversize_file():
     # Integration-ish test with a real temp file
     init_db()
     conn = get_connection()
-    conn.execute("DELETE FROM file_suggestions")
-    conn.execute("DELETE FROM file_contents")
-    conn.execute("DELETE FROM extract_tasks")
-    conn.execute("DELETE FROM operation_logs")
-    conn.execute("DELETE FROM semantic_group_items")
-    conn.execute("DELETE FROM file_tags")
-    conn.execute("DELETE FROM ai_classification_suggestions")
-    conn.execute("DELETE FROM organize_plan_items")
-    conn.execute("DELETE FROM file_summaries")
-    conn.execute("DELETE FROM file_records")
-    conn.commit()
+    clear_file_related_tables(conn)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # Keep the test fast by lowering the size limit to 1MB.
