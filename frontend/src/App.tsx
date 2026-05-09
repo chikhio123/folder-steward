@@ -7,7 +7,6 @@ import DashboardPage from "./pages/DashboardPage";
 import ScanPage from "./pages/ScanPage";
 import SearchPage from "./pages/SearchPage";
 import FileListPage from "./pages/FileListPage";
-import DuplicatePage from "./pages/DuplicatePage";
 import SuggestionPage from "./pages/SuggestionPage";
 import AiRuleDraftPage from "./pages/AiRuleDraftPage";
 import SmartOrganizePage from "./pages/SmartOrganizePage";
@@ -61,7 +60,6 @@ export default function App() {
               <Route path="scan" element={<ScanPage />} />
               <Route path="search" element={<SearchPage />} />
               <Route path="files" element={<FileListPage />} />
-              <Route path="duplicates" element={<DuplicatePage />} />
               <Route path="smart-organize" element={<SmartOrganizePage />} />
               <Route path="suggestions" element={<SuggestionPage />} />
               <Route path="ai-rules" element={<AiRuleDraftPage />} />

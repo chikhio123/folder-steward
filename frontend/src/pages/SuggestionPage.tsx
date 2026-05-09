@@ -19,6 +19,7 @@ import { twMerge } from "tailwind-merge";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CustomSelect } from "../components/CustomSelect";
 import { Pagination } from "../components/common/Pagination";
+import { DuplicateIsolationPanel } from "../components/DuplicateIsolationPanel";
 import { useSuggestions } from "../hooks/useSuggestions";
 
 export default function SuggestionPage() {
@@ -89,6 +90,10 @@ export default function SuggestionPage() {
       <div className="mb-8 shrink-0 relative z-10">
         <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight pb-1">整理建议</h2>
         <p className="text-slate-500 mt-1 font-medium">AI 引擎根据文件类型、命名规则自动为您生成的移动分类建议。</p>
+      </div>
+
+      <div className="relative z-10">
+        <DuplicateIsolationPanel />
       </div>
 
       <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-5 mb-6 shadow-sm hover:shadow-md transition-all duration-300 shrink-0 flex flex-col sm:flex-row gap-4 items-center justify-between relative z-10">

@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Search,
   Files,
-  Copy,
   Wand2,
   History,
   Settings,
@@ -35,7 +34,6 @@ const navGroups = [
     title: "文件",
     items: [
       { to: "/files", label: "文件库", icon: Files },
-      { to: "/duplicates", label: "重复文件", icon: Copy },
       { to: "/operations", label: "操作历史", icon: History },
     ]
   },
