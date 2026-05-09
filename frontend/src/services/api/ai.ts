@@ -24,7 +24,7 @@ export const createClassificationTasks = (fileIds: number[]) =>
   });
 
 export const getAiTask = (taskId: number) =>
-  request<any>(`/ai/tasks/${taskId}`);
+  request<import("../../types").AITask>(`/ai/tasks/${taskId}`);
 
 export const cancelAiTask = (taskId: number) =>
   request<{ task_id: number; status: string }>(`/ai/tasks/${taskId}/cancel`, {
@@ -38,7 +38,7 @@ export const createOrganizePlan = (scope: string, minConfidence: number = 0.65) 
   });
 
 export const getOrganizePlanPreview = (planId: number) =>
-  request<any>(`/ai/organize-plans/${planId}`);
+  request<import("../../types").OrganizePlanPreview>(`/ai/organize-plans/${planId}`);
 
 export const acceptOrganizePlan = (planId: number) =>
   request<{ status: string }>(`/ai/organize-plans/${planId}/accept`, {

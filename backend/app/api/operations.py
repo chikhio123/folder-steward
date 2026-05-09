@@ -39,11 +39,13 @@ def list_operations(
             OperationLogResponse(
                 id=o.id,
                 operation_type=o.operation_type,
+                file_id=o.file_id,
                 source_path=o.source_path,
                 target_path=o.target_path,
                 status=o.status,
                 rollback_available=bool(o.rollback_available),
                 executed_at=o.executed_at,
+                rollback_at=o.rollback_at,
                 error_message=o.error_message,
             )
             for o in items

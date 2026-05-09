@@ -25,10 +25,12 @@ export interface FileRecord {
   sha256: string | null;
   modified_at: string | null;
   status: string;
+  last_error: string | null;
 }
 
 export interface DuplicateGroup {
   sha256: string;
+  filename: string;
   size_bytes: number;
   count: number;
   files: { id: number; filename: string; current_path: string; modified_at: string | null }[];
@@ -43,18 +45,72 @@ export interface FileSuggestion {
   reason: string | null;
   confidence: number;
   conflict_status: "none" | "target_exists" | "source_missing" | "invalid_target";
-  status: "pending" | "accepted" | "rejected" | "executed" | "failed";
+  status: "pending" | "accepted" | "rejected" | "executed" | "failed" | "superseded" | "stale" | "in_plan";
+  archive_root: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface OperationResult {
+  suggestion_id: number;
+  status: "success" | "failed" | "skipped";
+  operation_id?: number;
+  error_message?: string;
+}
+
+export interface OperationSkipped {
+  file_id: number;
+  reason: string;
 }
 
 export interface OperationLog {
   id: number;
   operation_type: "move" | "rename" | "rollback";
+  file_id: number | null;
   source_path: string;
   target_path: string | null;
-  status: "success" | "failed" | "rolled_back";
+  status: "success" | "failed" | "rolled_back" | "pending";
   rollback_available: boolean;
   executed_at: string;
+  rollback_at: string | null;
   error_message: string | null;
+}
+
+export interface AITask {
+  id: number;
+  task_type: string;
+  status: "pending" | "running" | "completed" | "failed" | "cancelled" | "rate_limited";
+  input_json: string | null;
+  result_ref_type: string | null;
+  result_ref_id: number | null;
+  total_items: number;
+  processed_items: number;
+  error_message: string | null;
+  retry_count: number;
+  estimated_tokens: number;
+  actual_tokens: number;
+  estimated_cost: number;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface PlanItemPreview {
+  item_id: number;
+  file_id: number;
+  source_path: string;
+  target_path: string;
+  directory_status: string;
+  confidence: number;
+  reason: string | null;
+}
+
+export interface OrganizePlanPreview {
+  plan_id: number;
+  title: string;
+  status: string;
+  groups: Record<string, PlanItemPreview[]>;
 }
 
 export interface PaginatedResponse<T> {

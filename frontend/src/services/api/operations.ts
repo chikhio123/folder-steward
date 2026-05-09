@@ -1,7 +1,7 @@
 import { request } from './client';
 
 export const executeSuggestions = (suggestionIds: number[]) =>
-  request<{ success_count: number; failed_count: number; results: unknown[] }>(
+  request<{ success_count: number; failed_count: number; results: import("../../types").OperationResult[] }>(
     "/operations/execute-suggestions",
     { method: "POST", body: JSON.stringify({ suggestion_ids: suggestionIds }) },
   );

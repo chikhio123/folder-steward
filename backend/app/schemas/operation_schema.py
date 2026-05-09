@@ -22,11 +22,13 @@ class ExecuteSuggestionsResponse(BaseModel):
 class OperationLogResponse(BaseModel):
     id: int
     operation_type: str
+    file_id: Optional[int] = None
     source_path: str
     target_path: Optional[str] = None
     status: str
     rollback_available: bool
     executed_at: str
+    rollback_at: Optional[str] = None
     error_message: Optional[str] = None
 
 
