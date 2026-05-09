@@ -1,33 +1,23 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
+from fastapi import APIRouter, HTTPException, Query, Depends
+from typing import Optional, Dict
 import httpx
 
 from ..core.config import settings
-from ..core.database import get_connection
+from ..dependencies import get_settings_repository
+from ..repositories.settings_repository import SettingsRepository
 
 router = APIRouter(tags=["settings"])
 
 
-@router.get("/settings")
-def get_settings():
-    conn = get_connection()
-    rows = conn.execute("SELECT key, value FROM app_settings").fetchall()
-    return {row["key"]: row["value"] for row in rows}
+@router.get("/settings", response_model=Dict[str, str])
+def get_settings(settings_repo: SettingsRepository = Depends(get_settings_repository)):
+    return settings_repo.get_all()
 
 
-@router.put("/settings")
-def update_settings(body: dict[str, str]):
-    conn = get_connection()
-    from ..models.scan_task import now_iso
-    now = now_iso()
-    for key, value in body.items():
-        conn.execute(
-            "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)",
-            (key, value, now),
-        )
-    conn.commit()
-    rows = conn.execute("SELECT key, value FROM app_settings").fetchall()
-    return {row["key"]: row["value"] for row in rows}
+@router.put("/settings", response_model=Dict[str, str])
+def update_settings(body: dict[str, str], settings_repo: SettingsRepository = Depends(get_settings_repository)):
+    settings_repo.update_all(body)
+    return settings_repo.get_all()
 
 
 @router.get("/settings/models")

@@ -5,7 +5,7 @@ SuggestionStatus = Literal["pending", "accepted", "rejected", "executed", "faile
 
 
 class GenerateSuggestionsRequest(BaseModel):
-    archive_root: str = "D:/Archive"
+    archive_root: Optional[str] = None
 
 
 class GenerateSuggestionsResponse(BaseModel):

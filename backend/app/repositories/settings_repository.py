@@ -14,3 +14,22 @@ class SettingsRepository:
             (key, value, now_iso())
         )
         conn.commit()
+
+    def get_all(self) -> dict[str, str]:
+        conn = get_connection()
+        rows = conn.execute("SELECT key, value FROM app_settings").fetchall()
+        return {row["key"]: row["value"] for row in rows}
+
+    def update_all(self, settings: dict[str, str]) -> None:
+        conn = get_connection()
+        conn.execute("BEGIN")
+        try:
+            for k, v in settings.items():
+                conn.execute(
+                    "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)",
+                    (k, v, now_iso()),
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise

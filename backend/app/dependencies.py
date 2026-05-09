@@ -9,6 +9,7 @@ from .services.ai_rule_draft_service import AIRuleDraftService
 from .services.ai_task_queue_service import AITaskQueueService
 from .repositories.settings_repository import SettingsRepository
 from .repositories.file_repository import FileRepository
+from .repositories.suggestion_repository import SuggestionRepository
 
 def get_path_protection_service() -> PathProtectionService:
     return PathProtectionService()
@@ -52,3 +53,6 @@ def get_settings_repository() -> SettingsRepository:
 
 def get_file_repository() -> FileRepository:
     return FileRepository()
+
+def get_suggestion_repository() -> SuggestionRepository:
+    return SuggestionRepository()
