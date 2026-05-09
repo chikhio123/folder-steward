@@ -68,7 +68,11 @@ export default function SmartOrganizePage() {
         </div>
         <div className="mt-6 flex justify-end">
           <button
-            onClick={() => planMutation.mutate()}
+            onClick={() => planMutation.mutate({
+              scope,
+              minConfidence: typeof minConfidence === "number" ? minConfidence : parseFloat(minConfidence as string) || 0,
+              archiveRoot
+            })}
             disabled={isRunning || !!planId}
             className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2"
           >
