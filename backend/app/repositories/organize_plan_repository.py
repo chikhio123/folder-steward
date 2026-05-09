@@ -55,16 +55,39 @@ class OrganizePlanRepository:
         ).fetchall()
         return [OrganizePlanItem(**dict(r)) for r in rows]
 
-    def mark_items_converted(self, item_ids: list[int]) -> None:
-        if not item_ids: return
+    def commit_accept_plan(self, plan: OrganizePlan, accepted_items: list[OrganizePlanItem], sug_repo_create_callback) -> None:
         conn = get_connection()
-        placeholders = ",".join("?" for _ in item_ids)
-        conn.execute(f"UPDATE organize_plan_items SET status='converted' WHERE id IN ({placeholders})", item_ids)
-        conn.commit()
+        conn.execute("BEGIN")
+        try:
+            for item in accepted_items:
+                sug_repo_create_callback(item)
+                conn.execute("UPDATE organize_plan_items SET status='converted' WHERE id=?", (item.id,))
+                if item.ai_suggestion_id:
+                    conn.execute("UPDATE ai_classification_suggestions SET status='converted' WHERE id=?", (item.ai_suggestion_id,))
+            
+            conn.execute(
+                "UPDATE organize_plans SET title=?, scope=?, status=?, summary_json=?, updated_at=? WHERE id=?",
+                (plan.title, plan.scope, "converted", plan.summary_json, plan.updated_at, plan.id)
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
-    def mark_items_rejected(self, item_ids: list[int]) -> None:
-        if not item_ids: return
+    def commit_reject_plan(self, plan: OrganizePlan, items: list[OrganizePlanItem]) -> None:
         conn = get_connection()
-        placeholders = ",".join("?" for _ in item_ids)
-        conn.execute(f"UPDATE organize_plan_items SET status='rejected' WHERE id IN ({placeholders})", item_ids)
-        conn.commit()
+        conn.execute("BEGIN")
+        try:
+            for item in items:
+                conn.execute("UPDATE organize_plan_items SET status='rejected' WHERE id=?", (item.id,))
+                if item.ai_suggestion_id:
+                    conn.execute("UPDATE ai_classification_suggestions SET status='pending' WHERE id=?", (item.ai_suggestion_id,))
+            
+            conn.execute(
+                "UPDATE organize_plans SET title=?, scope=?, status=?, summary_json=?, updated_at=? WHERE id=?",
+                (plan.title, plan.scope, "rejected", plan.summary_json, plan.updated_at, plan.id)
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise

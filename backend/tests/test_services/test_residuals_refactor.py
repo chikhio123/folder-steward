@@ -30,11 +30,7 @@ def test_accept_plan_uses_repo():
     
     svc.accept_plan(1)
     
-    # Assertions for the state chain
-    mock_sug_repo.create.assert_called_once()
-    mock_plan_repo.mark_items_converted.assert_called_once_with([None]) # item ID is None because we didn't mock it, but testing the call
-    mock_ai_sug_repo.update_status_batch.assert_called_once_with([100], "converted")
-    mock_plan_repo.update_plan.assert_called_once()
+    mock_plan_repo.commit_accept_plan.assert_called_once()
 
 def test_reject_plan_uses_repo():
     mock_plan_repo = MagicMock()
@@ -57,6 +53,4 @@ def test_reject_plan_uses_repo():
     
     svc.reject_plan(1)
     
-    mock_plan_repo.mark_items_rejected.assert_called_once_with([55])
-    mock_ai_sug_repo.update_status_batch.assert_called_once_with([100], "pending")
-    mock_plan_repo.update_plan.assert_called_once()
+    mock_plan_repo.commit_reject_plan.assert_called_once()

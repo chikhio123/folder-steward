@@ -179,10 +179,7 @@ class OrganizePlanService:
 
         archive_root = self.settings_repo.get("archive_root") or ""
 
-        item_ids = []
-        sug_ids = []
-        for item in accepted_items:
-            # Create real suggestion
+        def create_sug_callback(item):
             sug = FileSuggestion(
                 file_id=item.file_id,
                 suggestion_type="move",
@@ -190,24 +187,14 @@ class OrganizePlanService:
                 target_path=item.target_path,
                 reason=item.reason,
                 confidence=item.confidence,
-                conflict_status="none", # simplified, real system would check target_exists
+                conflict_status="none",
                 status="pending",
                 archive_root=archive_root,
                 created_at=now_iso()
             )
             self.sug_repo.create(sug)
-            item_ids.append(item.id)
-            if item.ai_suggestion_id:
-                sug_ids.append(item.ai_suggestion_id)
 
-        self.plan_repo.mark_items_converted(item_ids)
-        if sug_ids:
-            self.ai_sug_repo.update_status_batch(sug_ids, "converted")
-
-        # Mark plan converted
-        plan.status = "converted"
-        plan.updated_at = now_iso()
-        self.plan_repo.update_plan(plan)
+        self.plan_repo.commit_accept_plan(plan, accepted_items, create_sug_callback)
 
     def reject_plan(self, plan_id: int) -> None:
         """Rejects a plan and restores its items' original classification suggestions to pending."""
@@ -216,14 +203,4 @@ class OrganizePlanService:
             raise ValueError("Plan not found or not in draft status.")
 
         items = self.plan_repo.get_items_by_plan(plan_id)
-
-        item_ids = [item.id for item in items]
-        self.plan_repo.mark_items_rejected(item_ids)
-        
-        sug_ids = [item.ai_suggestion_id for item in items if item.ai_suggestion_id]
-        if sug_ids:
-            self.ai_sug_repo.update_status_batch(sug_ids, "pending")
-
-        plan.status = "rejected"
-        plan.updated_at = now_iso()
-        self.plan_repo.update_plan(plan)
+        self.plan_repo.commit_reject_plan(plan, items)
