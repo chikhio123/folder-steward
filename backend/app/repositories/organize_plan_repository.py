@@ -60,7 +60,7 @@ class OrganizePlanRepository:
         from ..models.scan_task import now_iso
         with UnitOfWork() as uow:
             for item in accepted_items:
-                sug_repo_create_callback(uow.conn, item)
+                sug_repo_create_callback(item)
                 uow.conn.execute("UPDATE organize_plan_items SET status='converted' WHERE id=?", (item.id,))
                 if item.ai_suggestion_id:
                     uow.conn.execute("UPDATE ai_classification_suggestions SET status='converted' WHERE id=?", (item.ai_suggestion_id,))
