@@ -105,7 +105,7 @@ class DuplicateService:
                     skipped.append({"file_id": f["id"], "reason": "File is referenced by active organize plan"})
                     continue
 
-                self.sug_repo.mark_superseded_for_file(f["id"])
+                self.sug_repo.mark_superseded_for_file(f["id"], include_accepted=True)
 
                 file_rec = self.file_repo.get(f["id"])
                 if not file_rec:
