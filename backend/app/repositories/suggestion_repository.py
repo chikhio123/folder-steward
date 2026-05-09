@@ -40,12 +40,23 @@ class SuggestionRepository:
         conn.commit()
 
     def update_status(self, suggestion_id: int, status: str) -> None:
+        from ..models.scan_task import now_iso
         conn = get_connection()
         conn.execute(
             "UPDATE file_suggestions SET status=?, updated_at=? WHERE id=?",
             (status, now_iso(), suggestion_id),
         )
         conn.commit()
+
+    def bulk_update_status(self, current_status: str, new_status: str) -> int:
+        from ..models.scan_task import now_iso
+        conn = get_connection()
+        cur = conn.execute(
+            "UPDATE file_suggestions SET status=?, updated_at=? WHERE status=?",
+            (new_status, now_iso(), current_status)
+        )
+        conn.commit()
+        return cur.rowcount
 
     def list_paginated(
         self,

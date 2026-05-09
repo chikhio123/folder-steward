@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pathlib import Path
 from typing import Optional
+from pydantic import BaseModel
 
 from ..core.database import get_connection
 from ..models.scan_task import now_iso
@@ -12,16 +13,20 @@ from ..schemas.suggestion_schema import (
     UpdateSuggestionRequest,
 )
 from ..repositories.suggestion_repository import SuggestionRepository
+from ..repositories.settings_repository import SettingsRepository
+from ..dependencies import get_settings_repository, get_suggestion_repository
 
 router = APIRouter(tags=["suggestions"])
-suggestion_repo = SuggestionRepository()
-
 
 @router.post("/suggestions/generate", response_model=GenerateSuggestionsResponse)
-def generate_suggestions(body: GenerateSuggestionsRequest):
+def generate_suggestions(
+    body: GenerateSuggestionsRequest,
+    settings_repo: SettingsRepository = Depends(get_settings_repository)
+):
     from ..services.suggestion_service import SuggestionService
     svc = SuggestionService()
-    created, skipped = svc.generate_suggestions(body.archive_root)
+    archive_root = _get_archive_root(settings_repo, body.archive_root)
+    created, skipped = svc.generate_suggestions(archive_root)
     return GenerateSuggestionsResponse(created_count=created, skipped_count=skipped)
 
 
@@ -30,6 +35,7 @@ def list_suggestions(
     status: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    suggestion_repo: SuggestionRepository = Depends(get_suggestion_repository)
 ):
     items, total = suggestion_repo.list_paginated(status=status, page=page, page_size=page_size)
     return SuggestionListResponse(
@@ -51,39 +57,43 @@ def list_suggestions(
     )
 
 
-def _get_archive_root(suggestion_archive_root: Optional[str] = None) -> str:
+def _get_archive_root(settings_repo: SettingsRepository, suggestion_archive_root: Optional[str] = None) -> str:
     if suggestion_archive_root:
         return suggestion_archive_root
-    row = get_connection().execute(
-        "SELECT value FROM app_settings WHERE key = 'archive_root'"
-    ).fetchone()
-    return row["value"] if row else ""
+    return settings_repo.get("archive_root") or ""
 
+
+class BulkRejectRequest(BaseModel):
+    status: str = "pending"
 
 @router.post("/suggestions/bulk-reject")
-def bulk_reject_suggestions(body: dict):
+def bulk_reject_suggestions(
+    body: BulkRejectRequest,
+    suggestion_repo: SuggestionRepository = Depends(get_suggestion_repository)
+):
     """Reject all suggestions matching the optional status filter."""
-    status_filter = body.get("status", "pending")
-    conn = get_connection()
-    cursor = conn.execute(
-        "UPDATE file_suggestions SET status='rejected', updated_at=? WHERE status=?",
-        (now_iso(), status_filter),
-    )
-    conn.commit()
-    return {"status": "success", "rejected_count": cursor.rowcount}
+    rejected_count = suggestion_repo.bulk_update_status(body.status, "rejected")
+    return {"status": "success", "rejected_count": rejected_count}
 
 
 @router.patch("/suggestions/{suggestion_id}", response_model=FileSuggestionResponse)
-def update_suggestion(suggestion_id: int, body: UpdateSuggestionRequest):
+def update_suggestion(
+    suggestion_id: int, 
+    body: UpdateSuggestionRequest,
+    suggestion_repo: SuggestionRepository = Depends(get_suggestion_repository),
+    settings_repo: SettingsRepository = Depends(get_settings_repository)
+):
     suggestion = suggestion_repo.get(suggestion_id)
     if not suggestion:
         raise HTTPException(status_code=404, detail="Suggestion not found")
     if body.target_path is not None:
-        archive_root = _get_archive_root(suggestion.archive_root)
+        archive_root = _get_archive_root(settings_repo, suggestion.archive_root)
         if archive_root:
             target = Path(body.target_path).resolve()
             root = Path(archive_root).resolve()
-            if not target.is_relative_to(root):
+            try:
+                target.relative_to(root)
+            except ValueError:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Target path must be within archive root: {archive_root}",
