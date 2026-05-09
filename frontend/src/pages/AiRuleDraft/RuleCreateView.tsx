@@ -10,7 +10,10 @@ export default function RuleCreateView() {
   const [draftId, setDraftId] = useState<number | null>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
-  const draftMutation = useRuleDraftMutation((id) => setDraftId(id));
+  const draftMutation = useRuleDraftMutation({
+    onSuccess: (id) => setDraftId(id),
+    onSettled: () => setAbortController(null)
+  });
 
   const handleGenerate = () => {
     const controller = new AbortController();
