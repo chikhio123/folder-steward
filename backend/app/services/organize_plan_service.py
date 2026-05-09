@@ -68,6 +68,7 @@ class OrganizePlanService:
             raise ValueError("应用 AI 排除目录后，没有可处理的文件。")
 
         # Reject any existing draft plans to avoid orphaned plans locking files
+        from ..core.database import get_connection
         conn = get_connection()
         draft_plans = conn.execute("SELECT id FROM organize_plans WHERE status = 'draft'").fetchall()
         for dp in draft_plans:
