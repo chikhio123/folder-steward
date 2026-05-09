@@ -10,7 +10,9 @@
     "dev": "concurrently -k \"npm run dev:vite\" \"npm run dev:electron\"",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build && electron-builder",
+    "typecheck": "tsc -b",
+    "lint": "eslint \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.0.0",
@@ -25,17 +27,23 @@
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.2",
+    "@typescript-eslint/parser": "^8.59.2",
     "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.0",
     "concurrently": "^9.1.2",
     "electron": "^41.5.0",
     "electron-builder": "^25.1.8",
     "electron-is-dev": "^3.0.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.6.0",
+    "typescript-eslint": "^8.59.2",
     "vite": "^6.0.0",
-    "wait-on": "^8.0.2"
+    "wait-on": "^8.0.5"
   },
   "build": {
     "appId": "com.foldersteward.app",

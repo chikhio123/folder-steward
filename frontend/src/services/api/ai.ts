@@ -1,4 +1,5 @@
 import { request } from './client';
+import type { AiTask, OrganizePlanPreview, FileSummary, Rule } from '../../types';
 
 // AI Rule Drafts
 export const createRuleDraft = (prompt: string, signal?: AbortSignal) =>
@@ -24,7 +25,7 @@ export const createClassificationTasks = (fileIds: number[]) =>
   });
 
 export const getAiTask = (taskId: number) =>
-  request<import("../../types").AITask>(`/ai/tasks/${taskId}`);
+  request<AiTask>(`/ai/tasks/${taskId}`);
 
 export const cancelAiTask = (taskId: number) =>
   request<{ task_id: number; status: string }>(`/ai/tasks/${taskId}/cancel`, {
@@ -38,7 +39,7 @@ export const createOrganizePlan = (scope: string, minConfidence: number = 0.65) 
   });
 
 export const getOrganizePlanPreview = (planId: number) =>
-  request<import("../../types").OrganizePlanPreview>(`/ai/organize-plans/${planId}`);
+  request<OrganizePlanPreview>(`/ai/organize-plans/${planId}`);
 
 export const acceptOrganizePlan = (planId: number) =>
   request<{ status: string }>(`/ai/organize-plans/${planId}/accept`, {
@@ -67,14 +68,14 @@ export const createSummaryTask = (fileId: number) =>
   });
 
 export const getFileSummary = (fileId: number) =>
-  request<any>(`/files/${fileId}/summary`);
+  request<FileSummary>(`/files/${fileId}/summary`);
 
 // Rules
 export const listRules = (onlyEnabled: boolean = false) =>
-  request<any[]>(`/rules${onlyEnabled ? "?only_enabled=true" : ""}`);
+  request<Rule[]>(`/rules${onlyEnabled ? "?only_enabled=true" : ""}`);
 
-export const updateRule = (ruleId: number, data: any) =>
-  request<any>(`/rules/${ruleId}`, {
+export const updateRule = (ruleId: number, data: Partial<Rule>) =>
+  request<Rule>(`/rules/${ruleId}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });

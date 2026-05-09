@@ -161,6 +161,68 @@ export interface PreviewResponse {
   items: PreviewItem[];
 }
 
+export interface AiTask {
+  id: number;
+  task_type: "rule_draft" | "classification" | "organize_plan" | "summary" | "feedback_rule";
+  status: "pending" | "running" | "completed" | "failed" | "cancelled" | "rate_limited";
+  input_json: string | null;
+  result_ref_type: string | null;
+  result_ref_id: number | null;
+  total_items: number;
+  processed_items: number;
+  error_message: string | null;
+  estimated_tokens: number;
+  actual_tokens: number;
+  estimated_cost: number;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface Rule {
+  id: number;
+  name: string;
+  rule_type: string;
+  pattern: string;
+  target_dir: string;
+  action: string;
+  priority: number;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface OrganizePlanPreview {
+  id: number;
+  title: string;
+  scope: string;
+  status: "draft" | "reviewing" | "accepted" | "rejected" | "converted" | "failed";
+  summary_json: string | null;
+  created_at: string;
+  updated_at: string | null;
+  groups?: Record<string, PlanGroupItem[]>;
+  uncertain_file_ids?: number[];
+}
+
+export interface PlanGroupItem {
+  file_ids: number[];
+  reason: string | null;
+}
+
+export interface FileSummary {
+  id: number;
+  file_id: number;
+  summary: string;
+  llm_provider: string | null;
+  model_name: string | null;
+  source_content_hash: string | null;
+  status: "pending" | "running" | "completed" | "stale" | "failed";
+  error_message: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
 declare global {
   interface Window {
     electronAPI?: {

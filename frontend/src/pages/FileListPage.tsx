@@ -38,7 +38,6 @@ export default function FileListPage() {
   const handleOpenFolder = (path: string) => {
     // @ts-ignore
     if (window.electronAPI?.openInFolder) {
-      // @ts-ignore
       window.electronAPI.openInFolder(path);
     } else {
       console.warn("Not running in Electron, cannot open folder.");

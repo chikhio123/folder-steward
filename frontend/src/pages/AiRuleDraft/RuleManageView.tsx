@@ -13,7 +13,7 @@ export default function RuleManageView() {
   });
 
   const toggleRuleMutation = useMutation({
-    mutationFn: ({ id, enabled }: { id: number, enabled: boolean }) => updateRule(id, { enabled: enabled ? 1 : 0 }),
+    mutationFn: ({ id, enabled }: { id: number, enabled: boolean }) => updateRule(id, { enabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rules", "all"] });
       toast.success("规则状态已更新");
