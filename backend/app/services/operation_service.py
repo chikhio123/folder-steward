@@ -85,13 +85,16 @@ class OperationService:
                     rollback_available=0,
                     executed_at=now_iso(),
                 )
-                op_id = self.op_repo.create(op_log)
+                from ..core.uow import UnitOfWork
+                with UnitOfWork():
+                    op_id = self.op_repo.create(op_log)
 
                 try:
                     shutil.move(str(source), str(target))
                     moved = True
                 except Exception as e:
-                    self.op_repo.mark_operation_failed(op_id, str(e))
+                    with UnitOfWork():
+                        self.op_repo.mark_operation_failed(op_id, str(e))
                     raise
 
                 try:
@@ -100,12 +103,15 @@ class OperationService:
                     if moved and target.exists() and not source.exists():
                         try:
                             shutil.move(str(target), str(source))
-                            self.op_repo.mark_operation_failed(op_id, f"Database update failed (file reverted): {e}")
+                            with UnitOfWork():
+                                self.op_repo.mark_operation_failed(op_id, f"Database update failed (file reverted): {e}")
                         except Exception as rollback_err:
-                            self.op_repo.mark_operation_failed(op_id, f"CRITICAL DESYNC! DB update failed ({e}) AND file revert failed ({rollback_err}). File is physically at {target} but DB thinks it is at {source}!")
+                            with UnitOfWork():
+                                self.op_repo.mark_operation_failed(op_id, f"CRITICAL DESYNC! DB update failed ({e}) AND file revert failed ({rollback_err}). File is physically at {target} but DB thinks it is at {source}!")
                             raise OperationError(f"CRITICAL DESYNC: {rollback_err}") from e
                     else:
-                        self.op_repo.mark_operation_failed(op_id, f"Database update failed: {e}")
+                        with UnitOfWork():
+                            self.op_repo.mark_operation_failed(op_id, f"Database update failed: {e}")
                     raise OperationError(f"Database update failed after move: {e}") from e
 
                 success_count += 1
@@ -117,7 +123,9 @@ class OperationService:
 
             except (OperationError, PathSafetyError, OSError, shutil.Error) as e:
                 failed_count += 1
-                self.sug_repo.update_status(sug.id, "failed")
+                from ..core.uow import UnitOfWork
+                with UnitOfWork():
+                    self.sug_repo.update_status(sug.id, "failed")
 
                 if op_id is None:
                     op_log = OperationLog(
@@ -131,7 +139,8 @@ class OperationService:
                         error_message=str(e),
                     )
                     try:
-                        self.op_repo.create(op_log)
+                        with UnitOfWork():
+                            self.op_repo.create(op_log)
                     except Exception:
                         pass
 
@@ -185,7 +194,9 @@ class OperationService:
             rollback_available=0,
             executed_at=now_iso(),
         )
-        rollback_log_id = self.op_repo.create(rollback_log)
+        from ..core.uow import UnitOfWork
+        with UnitOfWork():
+            rollback_log_id = self.op_repo.create(rollback_log)
 
         moved = False
         try:
@@ -195,7 +206,8 @@ class OperationService:
             rollback_log.id = rollback_log_id
             rollback_log.status = "failed"
             rollback_log.error_message = str(e)
-            self.op_repo.update(rollback_log)
+            with UnitOfWork():
+                self.op_repo.update(rollback_log)
             raise RollbackError(f"Rollback failed: {e}")
 
         try:
@@ -207,7 +219,8 @@ class OperationService:
             rollback_log.id = rollback_log_id
             rollback_log.status = "failed"
             rollback_log.error_message = f"Database update failed: {e}"
-            self.op_repo.update(rollback_log)
+            with UnitOfWork():
+                self.op_repo.update(rollback_log)
             raise RollbackError(f"Database update failed after rollback: {e}") from e
 
         return {"operation_id": operation_id, "status": "rolled_back"}
