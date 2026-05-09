@@ -39,13 +39,7 @@ class DuplicateService:
             JOIN organize_plans op ON opi.plan_id = op.id
             WHERE opi.file_id = ? AND op.status = 'draft' AND opi.status = 'pending'
         """, (file_id,)).fetchone()
-        if row: return True
-
-        row2 = conn.execute("""
-            SELECT 1 FROM file_suggestions
-            WHERE file_id = ? AND status IN ('pending', 'accepted')
-        """, (file_id,)).fetchone()
-        return bool(row2)
+        return bool(row)
 
     def isolate_duplicates(self, groups: list[dict], auto_mode: bool = False) -> dict:
         """
@@ -92,8 +86,10 @@ class DuplicateService:
                     continue
 
                 if self.is_file_in_active_plan(f["id"]):
-                    skipped.append({"file_id": f["id"], "reason": "File is referenced by active organize plan or suggestion"})
+                    skipped.append({"file_id": f["id"], "reason": "File is referenced by active organize plan"})
                     continue
+
+                self.sug_repo.mark_superseded_for_file(f["id"])
 
                 file_rec = self.file_repo.get(f["id"])
                 if not file_rec:
