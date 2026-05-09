@@ -1,4 +1,3 @@
-import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 from pathlib import Path

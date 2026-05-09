@@ -1,5 +1,8 @@
 import pytest
+import tempfile
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+from app.core.database import init_db, get_connection
 from app.services.extract_service import ExtractService
 from app.models.file_record import FileRecord
 from app.models.extract_task import ExtractTask
@@ -168,6 +171,9 @@ def test_extract_truncates_large_text(mock_get_extractor, mock_path_cls, mock_co
     assert len(content.text_content) == MAX_TEXT_CHARS
     assert "truncated" in content.error_message
 
+    updated_task = mock_task_repo_inst.update.call_args_list[-1][0][0]
+    assert updated_task.status == "completed"
+
 @patch("app.services.extract_service.ExtractTaskRepository")
 @patch("app.services.extract_service.FileRepository")
 @patch("app.services.extract_service.FileContentRepository")
@@ -202,3 +208,46 @@ def test_extract_bad_extractor_exception_sets_failed(mock_get_extractor, mock_pa
     updated_task = mock_task_repo_inst.update.call_args[0][0]
     assert updated_task.status == "failed"
     assert "corrupt file" in updated_task.error_message
+
+def test_extract_integration_real_oversize_file():
+    # Integration-ish test with a real temp file
+    init_db()
+    conn = get_connection()
+    conn.execute("DELETE FROM file_suggestions")
+    conn.execute("DELETE FROM file_contents")
+    conn.execute("DELETE FROM extract_tasks")
+    conn.execute("DELETE FROM operation_logs")
+    conn.execute("DELETE FROM semantic_group_items")
+    conn.execute("DELETE FROM file_tags")
+    conn.execute("DELETE FROM ai_classification_suggestions")
+    conn.execute("DELETE FROM organize_plan_items")
+    conn.execute("DELETE FROM file_summaries")
+    conn.execute("DELETE FROM file_records")
+    conn.commit()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Keep the test fast by lowering the size limit to 1MB.
+        large_file = Path(tmpdir) / "large.txt"
+        with open(large_file, "wb") as f:
+            f.write(b"0" * (1 * 1024 * 1024 + 10)) # 1MB + 10 bytes
+
+        svc = ExtractService()
+
+        # Insert a record
+        rec = FileRecord(original_path=str(large_file), current_path=str(large_file), filename="large.txt", extension=".txt", status="active", size_bytes=large_file.stat().st_size)
+        file_id = svc.file_repo.create(rec)
+
+        task = ExtractTask(file_id=file_id, status="pending", created_at=now_iso())
+        task_id = svc.task_repo.create(task)
+
+        with patch("app.services.extract_limits.MAX_EXTRACT_FILE_MB", 1):
+            svc.run_extract_task(task_id)
+
+        updated_task = svc.task_repo.get(task_id)
+        assert updated_task.status == "failed"
+        assert "exceeds limit" in updated_task.error_message
+
+        content = svc.content_repo.get_by_file_id(file_id)
+        assert content is not None
+        assert content.extract_status == "failed"
+        assert "exceeds limit" in content.error_message
