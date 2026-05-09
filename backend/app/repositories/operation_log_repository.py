@@ -55,38 +55,40 @@ class OperationLogRepository:
         return [OperationLog(**dict(r)) for r in rows]
 
     def commit_successful_move(self, op_id: int, file_id: int, target_path: str, suggestion_id: int) -> None:
-        from ..core.uow import UnitOfWork
+        from ..core.database import require_transaction, get_connection
         from ..models.scan_task import now_iso
-        with UnitOfWork() as uow:
-            uow.conn.execute(
-                "UPDATE file_records SET current_path = ? WHERE id = ?",
-                (target_path, file_id),
-            )
-            uow.conn.execute(
-                "UPDATE operation_logs SET status=?, rollback_available=? WHERE id=?",
-                ("success", 1, op_id)
-            )
-            uow.conn.execute(
-                "UPDATE file_suggestions SET status=?, updated_at=? WHERE id=?",
-                ("executed", now_iso(), suggestion_id),
-            )
+        require_transaction()
+        conn = get_connection()
+        conn.execute(
+            "UPDATE file_records SET current_path = ? WHERE id = ?",
+            (target_path, file_id),
+        )
+        conn.execute(
+            "UPDATE operation_logs SET status=?, rollback_available=? WHERE id=?",
+            ("success", 1, op_id)
+        )
+        conn.execute(
+            "UPDATE file_suggestions SET status=?, updated_at=? WHERE id=?",
+            ("executed", now_iso(), suggestion_id),
+        )
 
     def commit_successful_rollback(self, op_id: int, rollback_log_id: int, file_id: int, target_path: str) -> None:
-        from ..core.uow import UnitOfWork
+        from ..core.database import require_transaction, get_connection
         from ..models.scan_task import now_iso
-        with UnitOfWork() as uow:
-            if file_id:
-                uow.conn.execute("UPDATE file_records SET current_path = ? WHERE id = ?", (target_path, file_id))
+        require_transaction()
+        conn = get_connection()
+        if file_id:
+            conn.execute("UPDATE file_records SET current_path = ? WHERE id = ?", (target_path, file_id))
 
-            uow.conn.execute(
-                "UPDATE operation_logs SET status=?, rollback_available=?, rollback_at=? WHERE id=?",
-                ("rolled_back", 0, now_iso(), op_id)
-            )
+        conn.execute(
+            "UPDATE operation_logs SET status=?, rollback_available=?, rollback_at=? WHERE id=?",
+            ("rolled_back", 0, now_iso(), op_id)
+        )
 
-            uow.conn.execute(
-                "UPDATE operation_logs SET status=? WHERE id=?",
-                ("success", rollback_log_id)
-            )
+        conn.execute(
+            "UPDATE operation_logs SET status=? WHERE id=?",
+            ("success", rollback_log_id)
+        )
 
     def mark_operation_failed(self, op_id: int, error_message: str) -> None:
         from ..core.database import require_transaction

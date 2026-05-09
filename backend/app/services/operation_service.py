@@ -100,7 +100,8 @@ class OperationService:
                     raise
 
                 try:
-                    self.op_repo.commit_successful_move(op_id, sug.file_id, str(target), sug.id)
+                    with UnitOfWork():
+                        self.op_repo.commit_successful_move(op_id, sug.file_id, str(target), sug.id)
                 except Exception as e:
                     if moved and target.exists() and not source.exists():
                         try:
@@ -213,7 +214,8 @@ class OperationService:
             raise RollbackError(f"Rollback failed: {e}")
 
         try:
-            self.op_repo.commit_successful_rollback(operation_id, rollback_log_id, op_log.file_id, str(target))
+            with UnitOfWork():
+                self.op_repo.commit_successful_rollback(operation_id, rollback_log_id, op_log.file_id, str(target))
         except Exception as e:
             if moved and target.exists() and not source.exists():
                 shutil.move(str(target), str(source))
