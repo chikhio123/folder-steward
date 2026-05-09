@@ -5,6 +5,8 @@ from app.core.database import get_connection, init_db
 def setup_db():
     init_db()
     conn = get_connection()
+    conn.execute("DELETE FROM file_suggestions")
+    conn.execute("DELETE FROM ai_classification_suggestions")
     conn.execute("DELETE FROM file_records")
     conn.commit()
 

@@ -9,6 +9,7 @@ from ..repositories.file_repository import FileRepository
 from ..repositories.suggestion_repository import SuggestionRepository
 from ..repositories.file_content_repository import FileContentRepository
 from .rule_engine_service import RuleEngineService
+from ..core.uow import UnitOfWork
 
 class SuggestionService:
     def __init__(self) -> None:
@@ -31,36 +32,37 @@ class SuggestionService:
         created = 0
         skipped = 0
 
-        for file_rec, content in files_with_content:
-            match = self.rule_engine.match(file_rec, content)
+        with UnitOfWork():
+            for file_rec, content in files_with_content:
+                match = self.rule_engine.match(file_rec, content)
 
-            target = self.rule_engine.build_target_path(file_rec, match, archive)
-            if target is None:
-                skipped += 1
-                continue
+                target = self.rule_engine.build_target_path(file_rec, match, archive)
+                if target is None:
+                    skipped += 1
+                    continue
 
-            target_str = str(target)
-            conflict = self._check_conflict(target_str)
+                target_str = str(target)
+                conflict = self._check_conflict(target_str)
 
-            self.sug_repo.mark_superseded_for_file(file_rec.id)
+                self.sug_repo.mark_superseded_for_file(file_rec.id)
 
-            reason = match.reason if match else f"未匹配自定义规则，使用默认分类 → Others/{file_rec.extension.lstrip('.') if file_rec.extension else 'NoExtension'}"
-            confidence = match.confidence if match else 0.5
+                reason = match.reason if match else f"未匹配自定义规则，使用默认分类 → Others/{file_rec.extension.lstrip('.') if file_rec.extension else 'NoExtension'}"
+                confidence = match.confidence if match else 0.5
 
-            suggestion = FileSuggestion(
-                file_id=file_rec.id,
-                suggestion_type="move",
-                source_path=file_rec.current_path,
-                target_path=target_str,
-                reason=reason,
-                confidence=confidence,
-                conflict_status=conflict,
-                status="pending",
-                archive_root=str(archive),
-                created_at=now_iso(),
-            )
-            self.sug_repo.create(suggestion)
-            created += 1
+                suggestion = FileSuggestion(
+                    file_id=file_rec.id,
+                    suggestion_type="move",
+                    source_path=file_rec.current_path,
+                    target_path=target_str,
+                    reason=reason,
+                    confidence=confidence,
+                    conflict_status=conflict,
+                    status="pending",
+                    archive_root=str(archive),
+                    created_at=now_iso(),
+                )
+                self.sug_repo.create(suggestion)
+                created += 1
 
         return created, skipped
 

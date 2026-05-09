@@ -13,6 +13,8 @@ def setup_fts_data():
     # Clean up
     conn.execute("DELETE FROM file_contents")
     conn.execute("DELETE FROM extract_tasks")
+    conn.execute("DELETE FROM file_suggestions")
+    conn.execute("DELETE FROM ai_classification_suggestions")
     conn.execute("DELETE FROM file_records")
     conn.execute("DELETE FROM file_content_fts")
     conn.commit()
