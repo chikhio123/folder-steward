@@ -1,5 +1,6 @@
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -43,9 +44,9 @@ export function ConfirmModal({
     ? "bg-rose-600 text-white hover:bg-rose-700 shadow-sm shadow-rose-600/20"
     : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-600/20";
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animation-fade-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animation-fade-in"
       onClick={onCancel}
     >
       <div
@@ -80,6 +81,7 @@ export function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
