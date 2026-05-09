@@ -11,12 +11,14 @@ def setup_fts_data():
     init_db()
     conn = get_connection()
     # Clean up
-    conn.execute("DELETE FROM file_contents")
-    conn.execute("DELETE FROM extract_tasks")
-    conn.execute("DELETE FROM file_suggestions")
-    conn.execute("DELETE FROM ai_classification_suggestions")
-    conn.execute("DELETE FROM file_records")
-    conn.execute("DELETE FROM file_content_fts")
+    tables = [
+        "file_suggestions", "file_contents", "extract_tasks",
+        "operation_logs", "semantic_group_items", "file_tags",
+        "ai_classification_suggestions", "organize_plan_items",
+        "file_summaries", "file_records", "file_content_fts"
+    ]
+    for t in tables:
+        conn.execute(f"DELETE FROM {t}")
     conn.commit()
 
     repo = FileRepository()

@@ -5,9 +5,21 @@ from app.core.database import get_connection, init_db
 def setup_db():
     init_db()
     conn = get_connection()
-    conn.execute("DELETE FROM file_suggestions")
-    conn.execute("DELETE FROM ai_classification_suggestions")
-    conn.execute("DELETE FROM file_records")
+    tables = [
+
+        "file_suggestions", "file_contents", "extract_tasks",
+
+        "operation_logs", "semantic_group_items", "file_tags",
+
+        "ai_classification_suggestions", "organize_plan_items",
+
+        "file_summaries", "file_records", "organize_plans", "app_settings"
+
+    ]
+
+    for t in tables:
+
+        conn.execute(f"DELETE FROM {t}")
     conn.commit()
 
 def test_repo_active_excluding_prefix(setup_db):
