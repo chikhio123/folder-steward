@@ -97,10 +97,46 @@ export default function FileListPage() {
       <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 shadow-sm relative flex flex-col mb-8">
         {/* Table Header */}
         <div className="grid grid-cols-[1fr_minmax(80px,100px)_minmax(100px,120px)_minmax(140px,160px)_100px_40px] gap-4 items-center px-6 py-4 border-b border-slate-100/80 bg-slate-50/40 sticky top-0 z-10 text-sm font-semibold text-slate-600 rounded-t-2xl">
-          <div className="pl-2">文件名</div>
+          <div className="pl-2">
+            <button
+              onClick={() => {
+                if (sortBy === "filename") setSortOrder(o => o === "asc" ? "desc" : "asc");
+                else { setSortBy("filename"); setSortOrder("asc"); }
+                setPage(1);
+              }}
+              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+            >
+              文件名
+              {sortBy === "filename" && (sortOrder === "asc" ? "↑" : "↓")}
+            </button>
+          </div>
           <div>类型</div>
-          <div className="text-center">大小</div>
-          <div>最后修改</div>
+          <div className="flex justify-center">
+            <button
+              onClick={() => {
+                if (sortBy === "size_bytes") setSortOrder(o => o === "asc" ? "desc" : "asc");
+                else { setSortBy("size_bytes"); setSortOrder("desc"); }
+                setPage(1);
+              }}
+              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+            >
+              大小
+              {sortBy === "size_bytes" && (sortOrder === "asc" ? "↑" : "↓")}
+            </button>
+          </div>
+          <div>
+            <button
+              onClick={() => {
+                if (sortBy === "modified_at") setSortOrder(o => o === "asc" ? "desc" : "asc");
+                else { setSortBy("modified_at"); setSortOrder("desc"); }
+                setPage(1);
+              }}
+              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+            >
+              最后修改
+              {sortBy === "modified_at" && (sortOrder === "asc" ? "↑" : "↓")}
+            </button>
+          </div>
           <div className="text-center">状态</div>
           <div></div>
         </div>
