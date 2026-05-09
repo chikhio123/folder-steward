@@ -1,7 +1,7 @@
 import json
 from typing import List, Dict, Any
 from pathlib import Path
-from ..core.database import get_connection
+
 from ..models.scan_task import now_iso
 from ..models.organize_plan import OrganizePlan
 from ..models.organize_plan_item import OrganizePlanItem
