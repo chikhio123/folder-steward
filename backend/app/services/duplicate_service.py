@@ -105,27 +105,29 @@ class DuplicateService:
                     skipped.append({"file_id": f["id"], "reason": "File is referenced by active organize plan"})
                     continue
 
-                self.sug_repo.mark_superseded_for_file(f["id"], include_accepted=True)
+                from ..core.uow import UnitOfWork
+                with UnitOfWork():
+                    self.sug_repo.mark_superseded_for_file(f["id"], include_accepted=True)
 
-                file_rec = self.file_repo.get(f["id"])
-                if not file_rec:
-                    continue
+                    file_rec = self.file_repo.get(f["id"])
+                    if not file_rec:
+                        continue
 
-                target = self.get_unique_target_path(trash_dir / file_rec.filename, used_paths)
+                    target = self.get_unique_target_path(trash_dir / file_rec.filename, used_paths)
 
-                suggestion = FileSuggestion(
-                    file_id=file_rec.id,
-                    suggestion_type="move_duplicate",
-                    source_path=file_rec.current_path,
-                    target_path=str(target),
-                    reason="Duplicate file isolated",
-                    confidence=1.0,
-                    conflict_status="none",
-                    status="accepted", # automatically accept
-                    archive_root=archive_root_str,
-                    created_at=now_iso(),
-                )
-                sug_id = self.sug_repo.create(suggestion)
+                    suggestion = FileSuggestion(
+                        file_id=file_rec.id,
+                        suggestion_type="move_duplicate",
+                        source_path=file_rec.current_path,
+                        target_path=str(target),
+                        reason="Duplicate file isolated",
+                        confidence=1.0,
+                        conflict_status="none",
+                        status="accepted", # automatically accept
+                        archive_root=archive_root_str,
+                        created_at=now_iso(),
+                    )
+                    sug_id = self.sug_repo.create(suggestion)
                 suggestion_ids_to_execute.append(sug_id)
 
         if not suggestion_ids_to_execute:
