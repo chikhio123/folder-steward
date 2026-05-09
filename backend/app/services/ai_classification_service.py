@@ -8,6 +8,7 @@ from .prompt_context_service import PromptContextService
 from .llm_provider_service import LLMProviderService, RateLimitException
 from .directory_policy_service import DirectoryPolicyService
 from .path_protection_service import PathProtectionService
+from .ai_task_queue_service import raise_if_cancelled
 
 class AIClassificationService:
     def __init__(

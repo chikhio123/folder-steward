@@ -102,7 +102,7 @@ class AITaskQueueService:
             task.finished_at = now_iso()
             self.task_repo.update(task)
         except Exception as e:
-            if cancel_event.is_set() or "TaskCancelledException" in str(e):
+            if cancel_event.is_set() or isinstance(e, TaskCancelledException):
                 task.status = "failed"
                 task.error_message = "Cancelled by user"
                 task.finished_at = now_iso()
@@ -119,6 +119,10 @@ class AITaskQueueService:
                 "readerror" in str(e).lower()
             )
             if is_retryable_error:
+                latest_task = self.task_repo.get(task_id)
+                if latest_task and latest_task.status == 'failed' and latest_task.error_message == 'Cancelled by user':
+                    return
+
                 if isinstance(e, RateLimitException) or "429" in str(e):
                     self._rate_limiter.record_429()
                 if task.retry_count < 3:
