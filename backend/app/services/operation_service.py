@@ -60,7 +60,9 @@ class OperationService:
 
                 if target.exists():
                     sug.conflict_status = "target_exists"
-                    self.sug_repo.update(sug)
+                    from ..core.uow import UnitOfWork
+                    with UnitOfWork():
+                        self.sug_repo.update(sug)
                     raise OperationError(f"Target already exists: {target}")
 
                 if self.safety_service.is_system_sensitive_path(target):
