@@ -201,6 +201,23 @@ class FileRepository:
 
         return results
 
+    def get_paths_by_ids(self, file_ids: list[int]) -> list[dict]:
+        if not file_ids:
+            return []
+        conn = get_connection()
+        rows = []
+        chunk_size = 900
+        for i in range(0, len(file_ids), chunk_size):
+            chunk = file_ids[i:i + chunk_size]
+            placeholders = ",".join("?" for _ in chunk)
+            rows.extend(
+                conn.execute(
+                    f"SELECT id, current_path FROM file_records WHERE id IN ({placeholders})",
+                    chunk,
+                ).fetchall()
+            )
+        return [dict(r) for r in rows]
+
     def get_active_excluding_prefix(self, prefix: str) -> list[int]:
         conn = get_connection()
         from pathlib import Path
