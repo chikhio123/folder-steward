@@ -98,8 +98,14 @@ class OperationService:
                     self.op_repo.commit_successful_move(op_id, sug.file_id, str(target), sug.id)
                 except Exception as e:
                     if moved and target.exists() and not source.exists():
-                        shutil.move(str(target), str(source))
-                    self.op_repo.mark_operation_failed(op_id, f"Database update failed: {e}")
+                        try:
+                            shutil.move(str(target), str(source))
+                            self.op_repo.mark_operation_failed(op_id, f"Database update failed (file reverted): {e}")
+                        except Exception as rollback_err:
+                            self.op_repo.mark_operation_failed(op_id, f"CRITICAL DESYNC! DB update failed ({e}) AND file revert failed ({rollback_err}). File is physically at {target} but DB thinks it is at {source}!")
+                            raise OperationError(f"CRITICAL DESYNC: {rollback_err}") from e
+                    else:
+                        self.op_repo.mark_operation_failed(op_id, f"Database update failed: {e}")
                     raise OperationError(f"Database update failed after move: {e}") from e
 
                 success_count += 1

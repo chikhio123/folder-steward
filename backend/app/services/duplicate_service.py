@@ -17,8 +17,12 @@ class DuplicateService:
         row = get_connection().execute("SELECT value FROM app_settings WHERE key = 'archive_root'").fetchone()
         return row["value"] if row else ""
 
-    def get_unique_target_path(self, target: Path) -> Path:
-        if not target.exists():
+    def get_unique_target_path(self, target: Path, used_paths: set[str] = None) -> Path:
+        if used_paths is None:
+            used_paths = set()
+
+        if not target.exists() and str(target) not in used_paths:
+            used_paths.add(str(target))
             return target
 
         base = target.stem
@@ -28,7 +32,8 @@ class DuplicateService:
 
         while True:
             new_target = parent / f"{base}_{counter}{ext}"
-            if not new_target.exists():
+            if not new_target.exists() and str(new_target) not in used_paths:
+                used_paths.add(str(new_target))
                 return new_target
             counter += 1
 
@@ -56,6 +61,7 @@ class DuplicateService:
 
         suggestion_ids_to_execute = []
         skipped = []
+        used_paths = set()
 
         all_db_groups = self.file_repo.find_duplicate_groups()
 
@@ -95,7 +101,7 @@ class DuplicateService:
                 if not file_rec:
                     continue
 
-                target = self.get_unique_target_path(trash_dir / file_rec.filename)
+                target = self.get_unique_target_path(trash_dir / file_rec.filename, used_paths)
 
                 suggestion = FileSuggestion(
                     file_id=file_rec.id,
