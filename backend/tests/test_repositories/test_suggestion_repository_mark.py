@@ -1,9 +1,18 @@
 import pytest
-from backend.app.models.file_record import FileRecord
-from backend.app.models.file_suggestion import FileSuggestion
-from backend.app.models.scan_task import now_iso
-from backend.app.repositories.file_repository import FileRepository
-from backend.app.repositories.suggestion_repository import SuggestionRepository
+from app.models.file_record import FileRecord
+from app.models.file_suggestion import FileSuggestion
+from app.models.scan_task import now_iso
+from app.repositories.file_repository import FileRepository
+from app.repositories.suggestion_repository import SuggestionRepository
+from app.core.database import init_db, get_connection
+
+@pytest.fixture(autouse=True)
+def setup_db():
+    init_db()
+    conn = get_connection()
+    conn.execute("DELETE FROM file_suggestions")
+    conn.execute("DELETE FROM file_records")
+    conn.commit()
 
 @pytest.fixture
 def repo():
