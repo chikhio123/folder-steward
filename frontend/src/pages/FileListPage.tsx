@@ -10,10 +10,22 @@ import {
   Database,
   Clock,
   Loader2,
-  FolderOpen
+  FolderOpen,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { CustomSelect } from "../components/CustomSelect";
+
+const SortIcon = ({ active, order }: { active: boolean, order: "asc" | "desc" }) => (
+  <div className={twMerge(
+    "flex flex-col -space-y-1 transition-opacity",
+    active ? "opacity-100" : "opacity-0 group-hover:opacity-40"
+  )}>
+    <ChevronUp className={twMerge("w-3 h-3", active && order === "asc" ? "text-blue-600" : "text-slate-400")} strokeWidth={active && order === "asc" ? 3 : 2} />
+    <ChevronDown className={twMerge("w-3 h-3", active && order === "desc" ? "text-blue-600" : "text-slate-400")} strokeWidth={active && order === "desc" ? 3 : 2} />
+  </div>
+);
 
 export default function FileListPage() {
   const { state, actions, query } = useFileList();
@@ -104,10 +116,10 @@ export default function FileListPage() {
                 else { setSortBy("filename"); setSortOrder("asc"); }
                 setPage(1);
               }}
-              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors group"
             >
               文件名
-              {sortBy === "filename" && (sortOrder === "asc" ? "↑" : "↓")}
+              <SortIcon active={sortBy === "filename"} order={sortOrder} />
             </button>
           </div>
           <div>类型</div>
@@ -118,23 +130,23 @@ export default function FileListPage() {
                 else { setSortBy("size_bytes"); setSortOrder("desc"); }
                 setPage(1);
               }}
-              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors group"
             >
               大小
-              {sortBy === "size_bytes" && (sortOrder === "asc" ? "↑" : "↓")}
+              <SortIcon active={sortBy === "size_bytes"} order={sortOrder} />
             </button>
           </div>
-          <div>
+          <div className="flex justify-start">
             <button
               onClick={() => {
                 if (sortBy === "modified_at") setSortOrder(o => o === "asc" ? "desc" : "asc");
                 else { setSortBy("modified_at"); setSortOrder("desc"); }
                 setPage(1);
               }}
-              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors group"
             >
               最后修改
-              {sortBy === "modified_at" && (sortOrder === "asc" ? "↑" : "↓")}
+              <SortIcon active={sortBy === "modified_at"} order={sortOrder} />
             </button>
           </div>
           <div className="text-center">状态</div>
