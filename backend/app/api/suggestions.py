@@ -49,6 +49,9 @@ def list_suggestions(
                 confidence=s.confidence,
                 conflict_status=s.conflict_status,
                 status=s.status,
+                archive_root=s.archive_root,
+                created_at=s.created_at,
+                updated_at=s.updated_at,
             )
             for s in items
         ],
@@ -117,4 +120,7 @@ def update_suggestion(
         confidence=suggestion.confidence,
         conflict_status=suggestion.conflict_status,
         status=suggestion.status,
+        archive_root=suggestion.archive_root,
+        created_at=suggestion.created_at,
+        updated_at=suggestion.updated_at,
     )

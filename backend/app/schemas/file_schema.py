@@ -12,6 +12,7 @@ class FileRecordResponse(BaseModel):
     sha256: Optional[str] = None
     modified_at: Optional[str] = None
     status: str
+    last_error: Optional[str] = None
 
 
 class FileListResponse(BaseModel):

@@ -40,6 +40,7 @@ def list_files(
                 sha256=r.sha256,
                 modified_at=r.modified_at,
                 status=r.status,
+                last_error=r.last_error,
             )
             for r in records
         ],
