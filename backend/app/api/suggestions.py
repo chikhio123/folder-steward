@@ -3,14 +3,13 @@ from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel
 
-from ..core.database import get_connection
-from ..models.scan_task import now_iso
 from ..schemas.suggestion_schema import (
     GenerateSuggestionsRequest,
     GenerateSuggestionsResponse,
     FileSuggestionResponse,
     SuggestionListResponse,
     UpdateSuggestionRequest,
+    SuggestionStatus,
 )
 from ..repositories.suggestion_repository import SuggestionRepository
 from ..repositories.settings_repository import SettingsRepository
@@ -64,7 +63,7 @@ def _get_archive_root(settings_repo: SettingsRepository, suggestion_archive_root
 
 
 class BulkRejectRequest(BaseModel):
-    status: str = "pending"
+    status: SuggestionStatus = "pending"
 
 @router.post("/suggestions/bulk-reject")
 def bulk_reject_suggestions(
