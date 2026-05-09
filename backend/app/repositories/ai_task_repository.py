@@ -46,3 +46,23 @@ class AITaskRepository:
              task.updated_at, task.id),
         )
         conn.commit()
+
+    def cleanup_ghost_tasks(self) -> None:
+        from ..models.scan_task import now_iso
+        conn = get_connection()
+        conn.execute(
+            "UPDATE ai_tasks SET status = 'failed', error_message = 'Process terminated unexpectedly', finished_at = ? WHERE status = 'running'",
+            (now_iso(),)
+        )
+        conn.commit()
+
+    def resurrect_pending_tasks(self) -> None:
+        from ..models.scan_task import now_iso
+        conn = get_connection()
+        rows = conn.execute("SELECT id FROM ai_tasks WHERE status = 'pending'").fetchall()
+        for r in rows:
+            conn.execute(
+                "UPDATE ai_tasks SET status = 'failed', error_message = 'Lost handler due to process restart', finished_at = ? WHERE id = ?",
+                (now_iso(), r["id"])
+            )
+        conn.commit()
