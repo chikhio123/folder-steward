@@ -1,20 +1,36 @@
+import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Wand2, Save, FileBox, AlertCircle, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { previewRuleDraft, acceptRuleDraft } from '../../services/api';
-import { useDraftContext } from '../../contexts/DraftContext';
+import { useRuleDraftMutation } from '../../hooks/useRuleDraftMutation';
 
 export default function RuleCreateView() {
-  const {
-    prompt,
-    setPrompt,
-    draftId,
-    setDraftId,
-    draftMutation,
-    handleGenerate,
-    handleCancel,
-    handleReset,
-  } = useDraftContext();
+  const [prompt, setPrompt] = useState("");
+  const [draftId, setDraftId] = useState<number | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+
+  const draftMutation = useRuleDraftMutation((id) => setDraftId(id));
+
+  const handleGenerate = () => {
+    const controller = new AbortController();
+    setAbortController(controller);
+    draftMutation.mutate({ prompt, signal: controller.signal });
+  };
+
+  const handleCancel = () => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+      toast.success("生成已中止");
+    }
+  };
+
+  const handleReset = () => {
+    draftMutation.reset();
+    setDraftId(null);
+    handleGenerate();
+  };
 
   const acceptMutation = useMutation({
     mutationFn: () => acceptRuleDraft(draftId!),

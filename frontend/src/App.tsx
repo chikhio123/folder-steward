@@ -13,8 +13,6 @@ import SmartOrganizePage from "./pages/SmartOrganizePage";
 import OperationHistoryPage from "./pages/OperationHistoryPage";
 import SettingsPage from "./pages/SettingsPage";
 
-import { DraftProvider } from "./contexts/DraftContext";
-
 export default function App() {
   useEffect(() => {
     if (window.electronAPI?.onBackendError) {
@@ -53,21 +51,19 @@ export default function App() {
         }}
       />
       <HashRouter>
-        <DraftProvider>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route index element={<DashboardPage />} />
-              <Route path="scan" element={<ScanPage />} />
-              <Route path="search" element={<SearchPage />} />
-              <Route path="files" element={<FileListPage />} />
-              <Route path="smart-organize" element={<SmartOrganizePage />} />
-              <Route path="suggestions" element={<SuggestionPage />} />
-              <Route path="ai-rules" element={<AiRuleDraftPage />} />
-              <Route path="operations" element={<OperationHistoryPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-          </Routes>
-        </DraftProvider>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="scan" element={<ScanPage />} />
+            <Route path="search" element={<SearchPage />} />
+            <Route path="files" element={<FileListPage />} />
+            <Route path="smart-organize" element={<SmartOrganizePage />} />
+            <Route path="suggestions" element={<SuggestionPage />} />
+            <Route path="ai-rules" element={<AiRuleDraftPage />} />
+            <Route path="operations" element={<OperationHistoryPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+        </Routes>
       </HashRouter>
     </>
   );
