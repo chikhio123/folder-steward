@@ -4,11 +4,7 @@ import os
 import asyncio
 from typing import Dict, Any
 from ..core.database import get_connection
-from .ai_task_queue_service import cancel_event_var
-
-class TaskCancelledException(Exception):
-    """Raised when an AI task is cancelled by the user mid-flight."""
-    pass
+from .ai_task_queue_service import cancel_event_var, TaskCancelledException, raise_if_cancelled
 
 class RateLimitException(Exception):
     """Raised when the LLM provider returns a 429 Too Many Requests."""
@@ -325,6 +321,7 @@ IMPORTANT:
         rules_context: list | None = None,
         directories_context: list | None = None
     ) -> Dict[str, Any]:
+        raise_if_cancelled()
         s = self._get_settings()
         if s["provider"] != "mock":
             context_block = ""
@@ -396,6 +393,7 @@ IMPORTANT:
 
     def generate_summary(self, file_context: dict) -> str:
         """Mock generating a summary for a file."""
+        raise_if_cancelled()
         filename = file_context.get("filename", "Unknown")
         content = file_context.get("content_preview") or ""
 

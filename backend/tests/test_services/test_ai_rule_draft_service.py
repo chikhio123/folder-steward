@@ -22,7 +22,7 @@ def test_generate_draft():
     assert draft_id > 0
 
     draft = svc.draft_repo.get(draft_id)
-    assert draft.status == "validated"
+    assert draft.status == "validated", f"Failed: {draft.validation_error}"
     assert draft.target_dir == "University/Thesis"
     assert draft.name == "AI生成的规则草案"
 

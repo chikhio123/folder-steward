@@ -56,7 +56,7 @@ def test_task_rate_limit_retry():
     updated_task = svc.task_repo.get(task_id)
     # It should have caught the exception and reset the task to pending
     assert updated_task.status == "pending"
-    assert "Rate limited" in updated_task.error_message
+    assert "Connection/Rate limit issue" in updated_task.error_message
 
     # Assert record_429 was called and it was re-submitted
     mock_rate_limiter.record_429.assert_called_once()

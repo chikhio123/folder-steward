@@ -11,6 +11,15 @@ from .ai_rate_limit_service import AIRateLimitService
 
 cancel_event_var = contextvars.ContextVar('cancel_event', default=None)
 
+class TaskCancelledException(Exception):
+    pass
+
+def raise_if_cancelled():
+    """Raises TaskCancelledException if the current task has been cancelled."""
+    event = cancel_event_var.get()
+    if event and event.is_set():
+        raise TaskCancelledException("Task was cancelled by user")
+
 class AITaskQueueService:
     _executor = ThreadPoolExecutor(max_workers=2)  # Limited concurrency for LLMs
     _rate_limiter = AIRateLimitService()

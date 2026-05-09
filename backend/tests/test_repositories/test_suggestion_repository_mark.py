@@ -5,6 +5,7 @@ from app.models.scan_task import now_iso
 from app.repositories.file_repository import FileRepository
 from app.repositories.suggestion_repository import SuggestionRepository
 from app.core.database import init_db, get_connection
+from app.core.uow import UnitOfWork
 
 @pytest.fixture(autouse=True)
 def setup_db():
@@ -40,12 +41,14 @@ def test_mark_superseded_routine(repo, file_id):
     s2 = FileSuggestion(file_id=file_id, status="accepted", target_path="/t2", created_at=now_iso())
     s3 = FileSuggestion(file_id=file_id, status="failed", target_path="/t3", created_at=now_iso())
 
-    id1 = repo.create(s1)
-    id2 = repo.create(s2)
-    id3 = repo.create(s3)
+    with UnitOfWork():
+        id1 = repo.create(s1)
+        id2 = repo.create(s2)
+        id3 = repo.create(s3)
 
     # 2. Call without include_accepted
-    repo.mark_superseded_for_file(file_id)
+    with UnitOfWork():
+        repo.mark_superseded_for_file(file_id)
 
     # 3. Assert pending and failed are superseded, accepted is unchanged
     assert repo.get(id1).status == "superseded"
@@ -59,12 +62,14 @@ def test_mark_superseded_duplicate_isolation(repo, file_id):
     s2 = FileSuggestion(file_id=file_id, status="accepted", target_path="/t2", created_at=now_iso())
     s3 = FileSuggestion(file_id=file_id, status="failed", target_path="/t3", created_at=now_iso())
 
-    id1 = repo.create(s1)
-    id2 = repo.create(s2)
-    id3 = repo.create(s3)
+    with UnitOfWork():
+        id1 = repo.create(s1)
+        id2 = repo.create(s2)
+        id3 = repo.create(s3)
 
     # 2. Call with include_accepted=True
-    repo.mark_superseded_for_file(file_id, include_accepted=True)
+    with UnitOfWork():
+        repo.mark_superseded_for_file(file_id, include_accepted=True)
 
     # 3. Assert all are superseded
     assert repo.get(id1).status == "superseded"
