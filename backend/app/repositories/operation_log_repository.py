@@ -38,15 +38,6 @@ class OperationLogRepository:
              log.error_message, log.id),
         )
 
-    def mark_operation_failed(self, op_id: int, error_message: str) -> None:
-        from ..core.database import require_transaction
-        require_transaction()
-        conn = get_connection()
-        conn.execute(
-            "UPDATE operation_logs SET status=?, error_message=? WHERE id=?",
-            ("failed", str(error_message), op_id)
-        )
-
     def list_paginated(self, page: int = 1, page_size: int = 50) -> tuple[list[OperationLog], int]:
         conn = get_connection()
         row = conn.execute("SELECT COUNT(*) as cnt FROM operation_logs").fetchone()
