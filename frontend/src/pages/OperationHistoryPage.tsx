@@ -54,8 +54,8 @@ export default function OperationHistoryPage() {
           <div className="pl-2">操作类型</div>
           <div>源路径</div>
           <div>目标路径</div>
-          <div>状态</div>
-          <div>执行时间</div>
+          <div className="text-center">状态</div>
+          <div className="text-center">执行时间</div>
           <div className="text-right pr-2">操作</div>
         </div>
 
@@ -93,14 +93,14 @@ export default function OperationHistoryPage() {
                     </span>
                   </div>
 
-                  <div>
+                  <div className="flex justify-center">
                     <span className={twMerge("px-2.5 py-1 rounded-lg text-xs font-semibold border flex w-fit items-center gap-1.5", statusBadge(o.status))}>
                       {statusIcon(o.status)}
                       {statusText(o.status)}
                     </span>
                   </div>
 
-                  <div className="text-xs text-slate-500 flex items-center gap-1.5 font-medium tabular-nums">
+                  <div className="text-xs text-slate-500 flex items-center justify-center gap-1.5 font-medium tabular-nums">
                     <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     {o.executed_at ? o.executed_at.slice(5, 16).replace("T", " ") : "-"}
                   </div>
