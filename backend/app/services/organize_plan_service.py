@@ -187,7 +187,7 @@ class OrganizePlanService:
 
         archive_root = self.settings_repo.get("archive_root") or ""
 
-        def create_sug_callback(conn, item):
+        def create_sug_callback(item):
             sug = FileSuggestion(
                 file_id=item.file_id,
                 suggestion_type="move",
@@ -200,7 +200,7 @@ class OrganizePlanService:
                 archive_root=archive_root,
                 created_at=now_iso()
             )
-            self.sug_repo.create_with_conn(conn, sug)
+            self.sug_repo.create(sug)
 
         self.plan_repo.commit_accept_plan(plan, accepted_items, create_sug_callback)
 
