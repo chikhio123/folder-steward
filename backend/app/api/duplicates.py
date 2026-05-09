@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
 
 from ..repositories.file_repository import FileRepository
 from ..services.duplicate_service import DuplicateService
@@ -14,13 +15,28 @@ def list_duplicates():
     return {"groups": groups}
 
 
-class GenerateDuplicateSuggestionsRequest(BaseModel):
+class DuplicateGroupItem(BaseModel):
     sha256: str
-    filename: str
-    keep_file_id: int
+    keep_file_id: Optional[int] = None
 
-@router.post("/duplicates/suggestions")
-def create_duplicate_suggestions(body: GenerateDuplicateSuggestionsRequest):
+class IsolateDuplicatesRequest(BaseModel):
+    mode: str  # "auto" or "manual"
+    groups: Optional[List[DuplicateGroupItem]] = None
+
+@router.post("/duplicates/isolation-plan")
+def isolate_duplicates(body: IsolateDuplicatesRequest):
     svc = DuplicateService()
-    created = svc.create_duplicate_suggestions(body.sha256, body.filename, body.keep_file_id)
-    return {"created_count": created}
+    groups_to_process = []
+
+    if body.mode == "auto":
+        # Process all duplicate groups
+        db_groups = svc.find_groups()
+        for g in db_groups:
+            groups_to_process.append({"sha256": g["sha256"]})
+    else:
+        if not body.groups:
+            return {"success_count": 0, "failed_count": 0, "results": [], "skipped": []}
+        groups_to_process = [g.dict() for g in body.groups]
+
+    result = svc.isolate_duplicates(groups_to_process, auto_mode=(body.mode == "auto"))
+    return result

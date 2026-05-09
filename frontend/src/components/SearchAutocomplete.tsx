@@ -104,7 +104,8 @@ export function SearchAutocomplete({ value, onChange, onSubmit }: SearchAutocomp
 
   const highlightMatch = (text: string, query: string) => {
     if (!query) return text;
-    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'));
     return (
       <>
         {parts.map((part, i) =>

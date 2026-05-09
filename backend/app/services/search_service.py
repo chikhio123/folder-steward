@@ -118,16 +118,18 @@ class SearchService:
         if len(query) < 2:
             return []
 
+        # Escape LIKE wildcards to prevent broad sweeps
+        escaped_query = query.replace("/", "//").replace("%", "/%").replace("_", "/_")
         conn = get_connection()
 
         # 优先前缀匹配
         prefix_sql = """
             SELECT id, filename, current_path
             FROM file_records
-            WHERE status = 'active' AND filename LIKE ?
+            WHERE status = 'active' AND filename LIKE ? ESCAPE '/'
             LIMIT ?
         """
-        prefix_rows = conn.execute(prefix_sql, (f"{query}%", limit)).fetchall()
+        prefix_rows = conn.execute(prefix_sql, (f"{escaped_query}%", limit)).fetchall()
 
         results = []
         seen_files = set()
@@ -147,10 +149,10 @@ class SearchService:
             contains_sql = """
                 SELECT id, filename, current_path
                 FROM file_records
-                WHERE status = 'active' AND filename LIKE ?
+                WHERE status = 'active' AND filename LIKE ? ESCAPE '/'
                 LIMIT ?
             """
-            contains_rows = conn.execute(contains_sql, (f"%{query}%", remaining + len(results))).fetchall()
+            contains_rows = conn.execute(contains_sql, (f"%{escaped_query}%", remaining + len(results))).fetchall()
 
             for r in contains_rows:
                 if r["id"] not in seen_files:

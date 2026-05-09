@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { getDuplicates, createDuplicateSuggestions } from "../services/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getDuplicates, isolateDuplicates } from "../services/api";
 import { CopyX, FileBox, Database, Loader2, Fingerprint, CheckCircle2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import toast from "react-hot-toast";
 import { formatSize } from "../utils/format";
 
 export default function DuplicatePage() {
+  const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["duplicates"],
     queryFn: getDuplicates,
@@ -14,17 +15,18 @@ export default function DuplicatePage() {
 
   const [processingKey, setProcessingKey] = useState<string | null>(null);
 
-  const suggestMutation = useMutation({
-    mutationFn: ({ sha256, filename, keepFileId }: { sha256: string; filename: string; keepFileId: number }) =>
-      createDuplicateSuggestions(sha256, filename, keepFileId),
+  const isolateMutation = useMutation({
+    mutationFn: ({ sha256, keepFileId }: { sha256: string; keepFileId: number }) =>
+      isolateDuplicates("manual", [{ sha256, keep_file_id: keepFileId }]),
     onMutate: (variables) => {
-      setProcessingKey(variables.sha256 + variables.filename);
+      setProcessingKey(variables.sha256);
     },
     onSuccess: (data) => {
-      toast.success(`成功生成 ${data.created_count} 条建议！`);
+      queryClient.invalidateQueries({ queryKey: ["duplicates"] });
+      toast.success(`成功隔离 ${data.success_count} 个重复副本！`);
     },
     onError: (err) => {
-      toast.error(`生成建议失败: ${err.message}`);
+      toast.error(`隔离失败: ${err.message}`);
     },
     onSettled: () => {
       setProcessingKey(null);
@@ -84,21 +86,21 @@ export default function DuplicatePage() {
                       </div>
 
                       <button
-                        onClick={() => suggestMutation.mutate({ sha256: group.sha256, filename: group.files[0].filename, keepFileId: f.id })}
-                        disabled={suggestMutation.isPending && processingKey === (group.sha256 + group.files[0].filename)}
+                        onClick={() => isolateMutation.mutate({ sha256: group.sha256, keepFileId: f.id })}
+                        disabled={isolateMutation.isPending && processingKey === group.sha256}
                         className={twMerge(
                           "shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5",
-                          suggestMutation.isPending && processingKey === (group.sha256 + group.files[0].filename)
+                          isolateMutation.isPending && processingKey === group.sha256
                             ? "bg-slate-100 text-slate-400 border border-slate-200"
-                            : "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 border border-blue-200 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5"
+                            : "bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-600 border border-emerald-200 hover:from-emerald-100 hover:to-teal-100 hover:border-emerald-300 hover:shadow-md hover:-translate-y-0.5"
                         )}
                       >
-                        {suggestMutation.isPending && processingKey === (group.sha256 + group.files[0].filename) ? (
+                        {isolateMutation.isPending && processingKey === group.sha256 ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         )}
-                        保留此副本
+                        保留此副本 (隔离其余)
                       </button>
                     </div>
                   ))}

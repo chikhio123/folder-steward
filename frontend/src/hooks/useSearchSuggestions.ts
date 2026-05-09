@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSearchSuggestions } from '../services/api';
 
 const HISTORY_KEY = 'fs_search_history';
@@ -14,6 +14,7 @@ export function useSearchSuggestions() {
   const [history, setHistory] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const lastRequestSeq = useRef(0);
 
   useEffect(() => {
     try {
@@ -43,14 +44,17 @@ export function useSearchSuggestions() {
   const fetchSuggestions = useCallback(async (query: string) => {
     const q = query.trim();
     if (q.length < 2) {
+      lastRequestSeq.current++; // 废弃之前的进行中请求
       setSuggestions([]);
       setIsLoading(false);
       return;
     }
 
+    const seq = ++lastRequestSeq.current;
     setIsLoading(true);
     try {
       const data = await getSearchSuggestions(q);
+      if (seq !== lastRequestSeq.current) return;
       setSuggestions(data.items.map(item => ({ ...item, type: item.type as 'history' | 'filename' })));
     } catch (e) {
       console.error('Failed to fetch suggestions:', e);

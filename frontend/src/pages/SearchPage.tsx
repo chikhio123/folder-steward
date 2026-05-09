@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { searchFiles } from "../services/api";
 import { getFileIcon } from "../utils/format";
@@ -21,15 +21,6 @@ export default function SearchPage() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [scope, setScope] = useState("all");
   const [page, setPage] = useState(1);
-
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(queryInput);
-      setPage(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [queryInput]);
 
   const handleSearchSubmit = (val: string) => {
     setQueryInput(val);
