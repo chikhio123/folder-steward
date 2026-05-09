@@ -58,22 +58,22 @@ export function DuplicateIsolationPanel() {
       {/* Banner */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full bg-gradient-to-r from-amber-50 to-orange-50/50 border border-amber-200/60 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all duration-300 group"
+        className="w-full bg-gradient-to-r from-blue-50/50 to-indigo-50/30 border border-blue-200/50 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all duration-300 group"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-amber-100/80 rounded-xl text-amber-600">
+          <div className="p-2 bg-blue-100/80 rounded-xl text-blue-600">
             <CopyX className="w-5 h-5" />
           </div>
           <div className="text-left">
-            <h3 className="text-sm font-bold text-amber-800">
+            <h3 className="text-sm font-bold text-blue-800">
               检测到 {groupCount} 组完全重复文件
             </h3>
-            <p className="text-xs text-amber-600/80 mt-0.5 font-medium">
+            <p className="text-xs text-blue-600/80 mt-0.5 font-medium">
               建议在处理 AI 分类前先行隔离，可大幅减少大模型分析负担与 Token 消耗。
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-amber-600 font-semibold text-sm">
+        <div className="flex items-center gap-2 text-blue-600 font-semibold text-sm">
           {isExpanded ? "收起面板" : "展开处理"}
           {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </div>
@@ -94,7 +94,7 @@ export function DuplicateIsolationPanel() {
                 }
               }}
               disabled={autoIsolateMutation.isPending}
-              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-amber-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50"
             >
               {autoIsolateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
               一键智能隔离
@@ -106,7 +106,7 @@ export function DuplicateIsolationPanel() {
               <div key={i} className="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden group hover:shadow-md transition-all duration-300">
                 <div className="bg-slate-50/40 border-b border-slate-100/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/50">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/50">
                       <CopyX className="w-3.5 h-3.5" />
                       {group.count} 个副本
                     </span>
