@@ -116,13 +116,18 @@ class AIClassificationService:
                     fid = item.get("file_id")
                     if fid is None:
                         continue
+                    try:
+                        fid = int(fid)
+                    except ValueError:
+                        pass
+
                     if fid in seen_fids:
                         print(f"Duplicate classification result ignored: file_id={fid}")
                         continue
                     seen_fids.add(fid)
 
                     if fid not in context_fids:
-                        print(f"Ghost record ignored: LLM returned file_id={fid} which is not in this batch")
+                        print(f"Ghost record ignored: LLM returned file_id={fid} which is not in this batch. (context_fids: {context_fids})")
                         continue
 
                     target_dir = item.get("suggested_target_dir", "")
@@ -268,7 +273,7 @@ class AIClassificationService:
                 dir_groups[key].append(fc)
 
             # Use smaller batch size for fallback
-            small_size = max(10, len(contexts) // 2)
+            small_size = max(5, len(contexts) // 3)
             print(f"Retrying with smaller directory-aware batches, max size {small_size}...")
             results = []
             for dir_path in sorted(dir_groups.keys()):
@@ -295,6 +300,7 @@ class AIClassificationService:
             return results
 
         # Fallback 2: single file (for small batches that failed)
+        print(f"Fallback to single file classification for {len(contexts)} files...")
         return self._classify_single_files(contexts, rules_context, archive_root)
 
     def _classify_single_files(
@@ -314,6 +320,10 @@ class AIClassificationService:
             except RateLimitException:
                 raise
             except Exception as e:
+                # Only raise to the queue wrapper if it's REALLY a connection failure on a SINGLE item
+                is_retryable = any(x in str(e).lower() for x in ["disconnected", "timed out", "timeout", "readerror"])
+                if is_retryable:
+                    raise
                 print(f"Single file classification failed for file_id={fid}: {e}")
                 # Return a failed entry so the caller can still record it
                 results.append({

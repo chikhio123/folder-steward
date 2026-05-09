@@ -101,18 +101,27 @@ class AITaskQueueService:
                 return
 
             from .llm_provider_service import RateLimitException
-            if isinstance(e, RateLimitException) or "429" in str(e):
-                self._rate_limiter.record_429()
+            is_retryable_error = (
+                isinstance(e, RateLimitException) or
+                "429" in str(e) or
+                "disconnected" in str(e).lower() or
+                "timed out" in str(e).lower() or
+                "timeout" in str(e).lower() or
+                "readerror" in str(e).lower()
+            )
+            if is_retryable_error:
+                if isinstance(e, RateLimitException) or "429" in str(e):
+                    self._rate_limiter.record_429()
                 if task.retry_count < 3:
                     task.retry_count += 1
                     task.status = "pending"
-                    task.error_message = f"Rate limited, retrying ({task.retry_count}/3). Last error: {e}"
+                    task.error_message = f"Connection/Rate limit issue, retrying ({task.retry_count}/3). Last error: {e}"
                     task.finished_at = None
                     self.task_repo.update(task)
                     self._executor.submit(self._run_task_wrapper, task_id, handler)
                 else:
                     task.status = "failed"
-                    task.error_message = f"Max retries exceeded after 429. Last error: {e}"
+                    task.error_message = f"Max retries exceeded after connection/rate limit errors. Last error: {e}"
                     task.finished_at = now_iso()
                     self.task_repo.update(task)
             else:

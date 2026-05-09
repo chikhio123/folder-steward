@@ -122,6 +122,7 @@ class FileRepository:
             """SELECT sha256, filename, size_bytes, COUNT(*) as cnt
                FROM file_records
                WHERE status='active' AND sha256 IS NOT NULL
+                 AND current_path NOT LIKE '%Trash_Duplicates%'
                GROUP BY sha256, filename
                HAVING COUNT(*) > 1
                ORDER BY size_bytes DESC"""
@@ -129,7 +130,11 @@ class FileRepository:
         groups = []
         for r in rows:
             files = conn.execute(
-                "SELECT id, filename, current_path, modified_at FROM file_records WHERE sha256 = ? AND filename = ? AND status = 'active' ORDER BY id",
+                """SELECT id, filename, current_path, modified_at
+                   FROM file_records
+                   WHERE sha256 = ? AND filename = ? AND status = 'active'
+                     AND current_path NOT LIKE '%Trash_Duplicates%'
+                   ORDER BY id""",
                 (r["sha256"], r["filename"]),
             ).fetchall()
             groups.append({
@@ -146,6 +151,7 @@ class FileRepository:
             """SELECT COUNT(*) as cnt FROM (
                 SELECT sha256, filename FROM file_records
                 WHERE status='active' AND sha256 IS NOT NULL
+                  AND current_path NOT LIKE '%Trash_Duplicates%'
                 GROUP BY sha256, filename HAVING COUNT(*) > 1
             )"""
         ).fetchone()

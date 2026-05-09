@@ -18,7 +18,10 @@ import { twMerge } from "tailwind-merge";
 import { CustomSelect } from "../components/CustomSelect";
 
 const SortIcon = ({ active, order }: { active: boolean, order: "asc" | "desc" }) => (
-  <div className="flex flex-col -space-y-1 opacity-0 group-hover:opacity-100 group-hover:scale-125 transition-all duration-200">
+  <div className={twMerge(
+    "flex flex-col -space-y-1 transition-all duration-200 group-hover:scale-125",
+    active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+  )}>
     <ChevronUp className={twMerge("w-3 h-3", active && order === "asc" ? "text-blue-600" : "text-slate-400")} strokeWidth={active && order === "asc" ? 3 : 2} />
     <ChevronDown className={twMerge("w-3 h-3", active && order === "desc" ? "text-blue-600" : "text-slate-400")} strokeWidth={active && order === "desc" ? 3 : 2} />
   </div>

@@ -17,6 +17,7 @@ def list_duplicates():
 
 class DuplicateGroupItem(BaseModel):
     sha256: str
+    filename: Optional[str] = None
     keep_file_id: Optional[int] = None
 
 class IsolateDuplicatesRequest(BaseModel):
@@ -32,7 +33,7 @@ def isolate_duplicates(body: IsolateDuplicatesRequest):
         # Process all duplicate groups
         db_groups = svc.find_groups()
         for g in db_groups:
-            groups_to_process.append({"sha256": g["sha256"]})
+            groups_to_process.append({"sha256": g["sha256"], "filename": g["filename"]})
     else:
         if not body.groups:
             return {"success_count": 0, "failed_count": 0, "results": [], "skipped": []}

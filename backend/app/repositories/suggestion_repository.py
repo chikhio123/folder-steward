@@ -8,7 +8,9 @@ from ..models.scan_task import now_iso
 class SuggestionRepository:
     def create(self, suggestion: FileSuggestion) -> int:
         conn = get_connection()
-        return self.create_with_conn(conn, suggestion)
+        res = self.create_with_conn(conn, suggestion)
+        conn.commit()
+        return res
 
     def create_with_conn(self, conn, suggestion: FileSuggestion) -> int:
         cur = conn.execute(
@@ -101,10 +103,15 @@ class SuggestionRepository:
         ).fetchone()
         return row["cnt"]
 
-    def mark_superseded_for_file(self, file_id: int) -> None:
+    def mark_superseded_for_file(self, file_id: int, include_accepted: bool = False) -> None:
         conn = get_connection()
+        if include_accepted:
+            status_list = "('pending', 'accepted', 'failed')"
+        else:
+            status_list = "('pending', 'failed')"
+
         conn.execute(
-            "UPDATE file_suggestions SET status='superseded', updated_at=? WHERE file_id=? AND status IN ('pending', 'accepted', 'failed')",
+            f"UPDATE file_suggestions SET status='superseded', updated_at=? WHERE file_id=? AND status IN {status_list}",
             (now_iso(), file_id),
         )
         conn.commit()

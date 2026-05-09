@@ -39,10 +39,10 @@ class LLMProviderService:
         model = s["model"]
 
         async def do_request():
+            nonlocal base_url
             cancel_event = cancel_event_var.get()
 
             if provider == "anthropic-messages":
-                nonlocal base_url
                 if not base_url:
                     base_url = "https://api.anthropic.com"
                 endpoint = f"{base_url}/v1/messages"

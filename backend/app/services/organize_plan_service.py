@@ -51,7 +51,6 @@ class OrganizePlanService:
             # Files not matched by any rules yet (this is simplified)
             # We exclude files already inside the archive_root
             if archive_root:
-                from pathlib import Path
                 archive_prefix = str(Path(archive_root).resolve())
                 file_ids = self.file_repo.get_active_excluding_prefix(archive_prefix)
             else:
@@ -68,6 +67,15 @@ class OrganizePlanService:
         if not file_ids:
             raise ValueError("应用 AI 排除目录后，没有可处理的文件。")
 
+        # Reject any existing draft plans to avoid orphaned plans locking files
+        conn = get_connection()
+        draft_plans = conn.execute("SELECT id FROM organize_plans WHERE status = 'draft'").fetchall()
+        for dp in draft_plans:
+            try:
+                self.reject_plan(dp["id"])
+            except Exception as e:
+                print(f"Failed to auto-reject orphaned plan {dp['id']}: {e}")
+
         if task:
             task.total_items = len(file_ids)
             from ..repositories.ai_task_repository import AITaskRepository
@@ -79,7 +87,7 @@ class OrganizePlanService:
             self.ai_sug_repo.delete_pending_by_files(file_ids)
 
         # Classify all target files in batches
-        class_service.process_classification_batch(file_ids, archive_root, batch_size=30, task=task)
+        class_service.process_classification_batch(file_ids, archive_root, batch_size=20, task=task)
 
         # Check if task was cancelled
         if task:

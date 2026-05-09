@@ -20,15 +20,19 @@ export function DuplicateIsolationPanel() {
   const [processingKey, setProcessingKey] = useState<string | null>(null);
 
   const isolateMutation = useMutation({
-    mutationFn: ({ sha256, keepFileId }: { sha256: string; keepFileId: number }) =>
-      isolateDuplicates("manual", [{ sha256, keep_file_id: keepFileId }]),
+    mutationFn: ({ sha256, filename, keepFileId }: { sha256: string; filename: string; keepFileId: number }) =>
+      isolateDuplicates("manual", [{ sha256, filename, keep_file_id: keepFileId }]),
     onMutate: (variables) => {
       setProcessingKey(variables.sha256);
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["duplicates"] });
       queryClient.invalidateQueries({ queryKey: ["operations"] });
-      toast.success(`成功隔离 ${res.success_count} 个重复副本！`);
+      if (res.skipped && res.skipped.length > 0) {
+        toast.success(`成功隔离 ${res.success_count} 项。已跳过 ${res.skipped.length} 项（被其他 AI 计划占用）。`);
+      } else {
+        toast.success(`成功隔离 ${res.success_count} 个重复副本！`);
+      }
     },
     onError: (err: any) => {
       toast.error(`隔离失败: ${err.message}`);
@@ -135,7 +139,7 @@ export function DuplicateIsolationPanel() {
                       </div>
 
                       <button
-                        onClick={() => isolateMutation.mutate({ sha256: group.sha256, keepFileId: f.id })}
+                        onClick={() => isolateMutation.mutate({ sha256: group.sha256, filename: group.filename, keepFileId: f.id })}
                         disabled={isolateMutation.isPending && processingKey === group.sha256}
                         className={twMerge(
                           "shrink-0 px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5",

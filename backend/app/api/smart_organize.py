@@ -57,7 +57,7 @@ def create_classification_tasks(
         class_service.process_classification_batch(
             file_ids,
             inputs["archive_root"],
-            batch_size=30,
+            batch_size=20,
             task=t
         )
 

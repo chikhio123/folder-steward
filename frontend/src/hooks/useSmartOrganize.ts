@@ -117,14 +117,6 @@ export const useSmartOrganize = () => {
     onError: (err: any) => toast.error(`拒绝失败: ${err.message}`)
   });
 
-  // Cleanup on task failure
-  useEffect(() => {
-    if (task?.status === "failed" || task?.status === "rate_limited") {
-      setTaskId(null);
-      setPlanId(null);
-    }
-  }, [task?.status]);
-
   const isRunning = task?.status === "running" || task?.status === "pending" || planMutation.isPending;
 
   return {
