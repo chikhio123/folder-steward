@@ -6,6 +6,8 @@ from ..models.operation_log import OperationLog
 
 class OperationLogRepository:
     def create(self, log: OperationLog) -> int:
+        from ..core.database import require_transaction
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """INSERT INTO operation_logs
@@ -15,7 +17,6 @@ class OperationLogRepository:
             (log.operation_type, log.file_id, log.source_path, log.target_path,
              log.status, log.rollback_available, log.executed_at, log.error_message),
         )
-        conn.commit()
         return cur.lastrowid
 
     def get(self, operation_id: int) -> Optional[OperationLog]:
@@ -27,6 +28,8 @@ class OperationLogRepository:
         return OperationLog(**dict(row))
 
     def update(self, log: OperationLog) -> None:
+        from ..core.database import require_transaction
+        require_transaction()
         conn = get_connection()
         conn.execute(
             """UPDATE operation_logs SET status=?, rollback_available=?, rollback_at=?,
@@ -34,7 +37,6 @@ class OperationLogRepository:
             (log.status, log.rollback_available, log.rollback_at,
              log.error_message, log.id),
         )
-        conn.commit()
 
     def list_paginated(self, page: int = 1, page_size: int = 50) -> tuple[list[OperationLog], int]:
         conn = get_connection()
@@ -53,53 +55,45 @@ class OperationLogRepository:
         return [OperationLog(**dict(r)) for r in rows]
 
     def commit_successful_move(self, op_id: int, file_id: int, target_path: str, suggestion_id: int) -> None:
+        from ..core.uow import UnitOfWork
         from ..models.scan_task import now_iso
-        conn = get_connection()
-        conn.execute("BEGIN")
-        try:
-            conn.execute(
+        with UnitOfWork() as uow:
+            uow.conn.execute(
                 "UPDATE file_records SET current_path = ? WHERE id = ?",
                 (target_path, file_id),
             )
-            conn.execute(
+            uow.conn.execute(
                 "UPDATE operation_logs SET status=?, rollback_available=? WHERE id=?",
                 ("success", 1, op_id)
             )
-            conn.execute(
+            uow.conn.execute(
                 "UPDATE file_suggestions SET status=?, updated_at=? WHERE id=?",
                 ("executed", now_iso(), suggestion_id),
             )
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            raise
 
     def commit_successful_rollback(self, op_id: int, rollback_log_id: int, file_id: int, target_path: str) -> None:
+        from ..core.uow import UnitOfWork
         from ..models.scan_task import now_iso
-        conn = get_connection()
-        conn.execute("BEGIN")
-        try:
+        with UnitOfWork() as uow:
             if file_id:
-                conn.execute("UPDATE file_records SET current_path = ? WHERE id = ?", (target_path, file_id))
+                uow.conn.execute("UPDATE file_records SET current_path = ? WHERE id = ?", (target_path, file_id))
 
-            conn.execute(
+            uow.conn.execute(
                 "UPDATE operation_logs SET status=?, rollback_available=?, rollback_at=? WHERE id=?",
                 ("rolled_back", 0, now_iso(), op_id)
             )
 
-            conn.execute(
+            uow.conn.execute(
                 "UPDATE operation_logs SET status=? WHERE id=?",
                 ("success", rollback_log_id)
             )
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            raise
 
     def mark_operation_failed(self, op_id: int, error_message: str) -> None:
+        from ..core.database import require_transaction
+        require_transaction()
         conn = get_connection()
         conn.execute(
             "UPDATE operation_logs SET status=?, error_message=? WHERE id=?",
             ("failed", str(error_message), op_id)
         )
-        conn.commit()
+

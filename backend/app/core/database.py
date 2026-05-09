@@ -37,6 +37,19 @@ def close_connection() -> None:
         _local.connection = None
 
 
+def set_in_transaction(in_tx: bool) -> None:
+    _local.in_transaction = in_tx
+
+def is_in_transaction() -> bool:
+    return getattr(_local, "in_transaction", False)
+
+class TransactionRequiredError(RuntimeError):
+    pass
+
+def require_transaction() -> None:
+    if not is_in_transaction():
+        raise TransactionRequiredError("Write operation requires UnitOfWork")
+
 def init_db() -> None:
     """Create all tables if they don't exist."""
     conn = get_connection()

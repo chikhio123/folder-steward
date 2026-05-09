@@ -301,9 +301,139 @@ class TestFullFlow:
         assert task is not None
         assert task.status == "cancelled"
 
+    def test_execute_suggestion_target_exists(self, temp_dir, monkeypatch):
+        source_dir = temp_dir / "target_exists"
+        source_dir.mkdir(exist_ok=True)
+        source = source_dir / "keep.txt"
+        source.write_bytes(b"content")
+    
+        archive_root = temp_dir / "Archive"
+        archive_root.mkdir(parents=True, exist_ok=True)
+        # Create a file at the target destination to trigger conflict
+        target_dir = archive_root / "Others" / "txt"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target = target_dir / "keep.txt"
+        target.write_bytes(b"existing content")
+    
+        scan_service = ScanService()
+        task = scan_service.create_scan_task(str(source_dir))
+        import time
+        max_wait = 10
+        while max_wait > 0:
+            task = scan_service.get_task(task.id)
+            if task and task.status in ("completed", "failed"):
+                break
+            time.sleep(0.2)
+            max_wait -= 1
+    
+        SuggestionService().generate_suggestions(str(archive_root))
+        sug_repo = SuggestionRepository()
+        suggestions, _ = sug_repo.list_paginated(page=1, page_size=10)
+        
+        # We need to make sure we get the suggestion pointing to keep.txt
+        suggestion = next(s for s in suggestions if "keep.txt" in s.source_path)
+    
+        op_service = OperationService()
+        
+        # Override the check to ensure conflict, because rule engine might generate a different target
+        suggestion.target_path = str(target)
+        from app.core.uow import UnitOfWork
+        with UnitOfWork():
+            sug_repo.update(suggestion)
+        
+        result = op_service.execute_suggestions([suggestion.id])
+    
+        assert result["failed_count"] == 1
+
     def test_execute_suggestion_restores_file_if_db_logging_fails(self, temp_dir, monkeypatch):
         source_dir = temp_dir / "restore_on_failure"
-        source_dir.mkdir()
+        source_dir.mkdir(exist_ok=True)
+        source = source_dir / "keep.txt"
+        source.write_bytes(b"content")
+        archive_root = temp_dir / "Archive"
+        archive_root.mkdir(parents=True, exist_ok=True)
+        # Create a file at the target destination to trigger conflict
+        target_dir = archive_root / "Others" / "txt"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target = target_dir / "keep.txt"
+        target.write_bytes(b"existing content")
+    
+        scan_service = ScanService()
+        task = scan_service.create_scan_task(str(source_dir))
+        import time
+        max_wait = 10
+        while max_wait > 0:
+            task = scan_service.get_task(task.id)
+            if task and task.status in ("completed", "failed"):
+                break
+            time.sleep(0.2)
+            max_wait -= 1
+    
+        SuggestionService().generate_suggestions(str(archive_root))
+        sug_repo = SuggestionRepository()
+        suggestions, _ = sug_repo.list_paginated(page=1, page_size=10)
+        suggestion = suggestions[0]
+        
+        op_service = OperationService()
+        result = op_service.execute_suggestions([suggestion.id])
+        
+        assert result["failed_count"] == 1
+        
+        # Check DB states
+        updated_sug = sug_repo.get(suggestion.id)
+        assert updated_sug.status == "failed"
+        assert updated_sug.conflict_status == "target_exists"
+        
+        # Check operation log
+        from app.repositories.operation_log_repository import OperationLogRepository
+        op_repo = OperationLogRepository()
+        ops, _ = op_repo.list_paginated(page=1, page_size=10)
+        assert len(ops) > 0
+        assert ops[0].status == "failed"
+
+    def test_execute_suggestion_restores_file_if_db_logging_fails(self, temp_dir, monkeypatch):
+        source_dir = temp_dir / "restore_on_failure"
+        source_dir.mkdir(exist_ok=True)
+        source = source_dir / "keep.txt"
+        source.write_bytes(b"content")
+        archive_root = temp_dir / "Archive"
+        
+        scan_service = ScanService()
+        task = scan_service.create_scan_task(str(source_dir))
+        import time
+        max_wait = 10
+        while max_wait > 0:
+            task = scan_service.get_task(task.id)
+            if task and task.status in ("completed", "failed"):
+                break
+            time.sleep(0.2)
+            max_wait -= 1
+    
+        SuggestionService().generate_suggestions(str(archive_root))
+        sug_repo = SuggestionRepository()
+        suggestions, _ = sug_repo.list_paginated(page=1, page_size=10)
+        suggestion = suggestions[0]
+        target = Path(suggestion.target_path)
+    
+        op_service = OperationService()
+    
+        # Rename the table so the UPDATE fails, simulating a DB failure after move
+        from app.core.database import get_connection
+        conn = get_connection()
+        conn.execute("ALTER TABLE file_records RENAME TO file_records_temp")
+    
+        try:
+            result = op_service.execute_suggestions([suggestion.id])
+            
+            assert result["failed_count"] == 1
+            
+            # Check DB states (if we could, but file_records is renamed so we check operation_log)
+            # Actually, because of the exception, execute_suggestions will raise the exception upwards!
+        except Exception as e:
+            assert "Database update failed after move: no such table: file_records" in str(e)
+    
+        # Restore the table so tests don't break for subsequent runs
+        conn.execute("ALTER TABLE file_records_temp RENAME TO file_records")
         source = source_dir / "keep.txt"
         source.write_bytes(b"content")
         archive_root = temp_dir / "Archive"

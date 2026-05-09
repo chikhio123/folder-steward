@@ -12,6 +12,8 @@ client = TestClient(app)
 def setup_db():
     init_db()
     conn = get_connection()
+    conn.execute("DELETE FROM file_suggestions")
+    conn.execute("DELETE FROM ai_classification_suggestions")
     conn.execute("DELETE FROM file_summaries")
     conn.execute("DELETE FROM ai_tasks")
     conn.execute("DELETE FROM file_records")

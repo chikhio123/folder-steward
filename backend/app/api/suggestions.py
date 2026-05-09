@@ -65,13 +65,16 @@ def _get_archive_root(settings_repo: SettingsRepository, suggestion_archive_root
 class BulkRejectRequest(BaseModel):
     status: SuggestionStatus = "pending"
 
+from ..core.uow import UnitOfWork
+
 @router.post("/suggestions/bulk-reject")
 def bulk_reject_suggestions(
     body: BulkRejectRequest,
     suggestion_repo: SuggestionRepository = Depends(get_suggestion_repository)
 ):
     """Reject all suggestions matching the optional status filter."""
-    rejected_count = suggestion_repo.bulk_update_status(body.status, "rejected")
+    with UnitOfWork():
+        rejected_count = suggestion_repo.bulk_update_status(body.status.value, "rejected")
     return {"status": "success", "rejected_count": rejected_count}
 
 
@@ -100,7 +103,10 @@ def update_suggestion(
         suggestion.target_path = body.target_path
     if body.status is not None:
         suggestion.status = body.status
-    suggestion_repo.update(suggestion)
+        
+    with UnitOfWork():
+        suggestion_repo.update(suggestion)
+        
     return FileSuggestionResponse(
         id=suggestion.id,
         file_id=suggestion.file_id,
