@@ -133,16 +133,37 @@ class ExtractService:
             self._fail_task(task, "File not found on disk")
             return
 
+        if not path.is_file():
+            self._fail_task(task, "Path is not a regular file")
+            return
+
+        from .extract_limits import MAX_EXTRACT_FILE_MB, MAX_TEXT_CHARS
+        try:
+            size_mb = path.stat().st_size / (1024 * 1024)
+            if size_mb > MAX_EXTRACT_FILE_MB:
+                self._fail_task(task, f"File size {size_mb:.2f}MB exceeds limit of {MAX_EXTRACT_FILE_MB}MB")
+                return
+        except Exception as e:
+            self._fail_task(task, f"Failed to read file size: {e}")
+            return
+
         try:
             result = extractor.extract(path)
 
+            text = result.text
+            warnings = list(result.warnings or [])
+
+            if len(text) > MAX_TEXT_CHARS:
+                text = text[:MAX_TEXT_CHARS]
+                warnings.append(f"Text truncated to {MAX_TEXT_CHARS} characters")
+
             content = FileContent(
                 file_id=file_record.id,
-                text_content=result.text,
-                text_length=len(result.text),
+                text_content=text,
+                text_length=len(text),
                 extractor_type=extractor.__class__.__name__,
                 extract_status="completed",
-                error_message="; ".join(result.warnings) if result.warnings else None,
+                error_message="; ".join(warnings) if warnings else None,
                 extracted_at=now_iso(),
             )
             self.content_repo.upsert(content)

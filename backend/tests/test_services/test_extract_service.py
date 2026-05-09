@@ -63,3 +63,142 @@ def test_create_extract_tasks(mock_content_repo, mock_file_repo, mock_task_repo,
     assert created == 1
     assert skipped == 0
     mock_executor.submit.assert_called_once_with(svc.run_extract_task, 10)
+
+@patch("app.services.extract_service.ExtractTaskRepository")
+@patch("app.services.extract_service.FileRepository")
+@patch("app.services.extract_service.FileContentRepository")
+@patch("app.services.extract_service.Path")
+def test_extract_skips_file_over_size_limit(mock_path_cls, mock_content_repo, mock_file_repo, mock_task_repo):
+    mock_task_repo_inst = MagicMock()
+    mock_task_repo_inst.get.return_value = ExtractTask(id=1, file_id=1, status="pending")
+    mock_task_repo.return_value = mock_task_repo_inst
+
+    mock_file_repo_inst = MagicMock()
+    mock_file_repo_inst.get.return_value = FileRecord(id=1, current_path="/fake.txt", extension=".txt", status="active")
+    mock_file_repo.return_value = mock_file_repo_inst
+
+    svc = ExtractService()
+    svc.content_repo = MagicMock()
+
+    mock_path = MagicMock()
+    mock_path.exists.return_value = True
+    mock_path.is_file.return_value = True
+
+    mock_stat = MagicMock()
+    from app.services.extract_limits import MAX_EXTRACT_FILE_MB
+    mock_stat.st_size = (MAX_EXTRACT_FILE_MB + 1) * 1024 * 1024
+    mock_path.stat.return_value = mock_stat
+
+    mock_path_cls.return_value = mock_path
+
+    svc.run_extract_task(1)
+
+    updated_task = mock_task_repo_inst.update.call_args[0][0]
+    assert updated_task.status == "failed"
+    assert "exceeds limit" in updated_task.error_message
+
+@patch("app.services.extract_service.ExtractTaskRepository")
+@patch("app.services.extract_service.FileRepository")
+@patch("app.services.extract_service.FileContentRepository")
+@patch("app.services.extract_service.Path")
+def test_extract_marks_missing_file_failed(mock_path_cls, mock_content_repo, mock_file_repo, mock_task_repo):
+    mock_task_repo_inst = MagicMock()
+    mock_task_repo_inst.get.return_value = ExtractTask(id=1, file_id=1, status="pending")
+    mock_task_repo.return_value = mock_task_repo_inst
+
+    mock_file_repo_inst = MagicMock()
+    mock_file_repo_inst.get.return_value = FileRecord(id=1, current_path="/missing.txt", extension=".txt", status="active")
+    mock_file_repo.return_value = mock_file_repo_inst
+
+    svc = ExtractService()
+    svc.content_repo = MagicMock()
+
+    mock_path = MagicMock()
+    mock_path.exists.return_value = False
+    mock_path_cls.return_value = mock_path
+
+    svc.run_extract_task(1)
+
+    updated_task = mock_task_repo_inst.update.call_args[0][0]
+    assert updated_task.status == "failed"
+    assert "not found on disk" in updated_task.error_message
+
+@patch("app.services.extract_service.ExtractTaskRepository")
+@patch("app.services.extract_service.FileRepository")
+@patch("app.services.extract_service.FileContentRepository")
+@patch("app.services.extract_service.Path")
+@patch("app.services.extract_service.get_extractor")
+def test_extract_truncates_large_text(mock_get_extractor, mock_path_cls, mock_content_repo, mock_file_repo, mock_task_repo):
+    mock_task_repo_inst = MagicMock()
+    mock_task_repo_inst.get.return_value = ExtractTask(id=1, file_id=1, status="pending")
+    mock_task_repo.return_value = mock_task_repo_inst
+
+    mock_file_repo_inst = MagicMock()
+    mock_file_repo_inst.get.return_value = FileRecord(id=1, current_path="/fake.txt", extension=".txt", status="active")
+    mock_file_repo.return_value = mock_file_repo_inst
+
+    svc = ExtractService()
+    mock_content_repo_inst = MagicMock()
+    svc.content_repo = mock_content_repo_inst
+
+    mock_path = MagicMock()
+    mock_path.exists.return_value = True
+    mock_path.is_file.return_value = True
+
+    mock_stat = MagicMock()
+    mock_stat.st_size = 1024 # small enough
+    mock_path.stat.return_value = mock_stat
+
+    mock_path_cls.return_value = mock_path
+
+    mock_extractor = MagicMock()
+    mock_result = MagicMock()
+    from app.services.extract_limits import MAX_TEXT_CHARS
+    mock_result.text = "a" * (MAX_TEXT_CHARS + 100)
+    mock_result.warnings = []
+    mock_extractor.extract.return_value = mock_result
+    mock_get_extractor.return_value = mock_extractor
+
+    svc.run_extract_task(1)
+
+    upsert_call = mock_content_repo_inst.upsert.call_args_list[-1]
+    content = upsert_call[0][0]
+    assert content.extract_status == "completed"
+    assert content.text_length == MAX_TEXT_CHARS
+    assert len(content.text_content) == MAX_TEXT_CHARS
+    assert "truncated" in content.error_message
+
+@patch("app.services.extract_service.ExtractTaskRepository")
+@patch("app.services.extract_service.FileRepository")
+@patch("app.services.extract_service.FileContentRepository")
+@patch("app.services.extract_service.Path")
+@patch("app.services.extract_service.get_extractor")
+def test_extract_bad_extractor_exception_sets_failed(mock_get_extractor, mock_path_cls, mock_content_repo, mock_file_repo, mock_task_repo):
+    mock_task_repo_inst = MagicMock()
+    mock_task_repo_inst.get.return_value = ExtractTask(id=1, file_id=1, status="pending")
+    mock_task_repo.return_value = mock_task_repo_inst
+
+    mock_file_repo_inst = MagicMock()
+    mock_file_repo_inst.get.return_value = FileRecord(id=1, current_path="/fake.txt", extension=".txt", status="active")
+    mock_file_repo.return_value = mock_file_repo_inst
+
+    svc = ExtractService()
+    svc.content_repo = MagicMock()
+
+    mock_path = MagicMock()
+    mock_path.exists.return_value = True
+    mock_path.is_file.return_value = True
+    mock_stat = MagicMock()
+    mock_stat.st_size = 1024
+    mock_path.stat.return_value = mock_stat
+    mock_path_cls.return_value = mock_path
+
+    mock_extractor = MagicMock()
+    mock_extractor.extract.side_effect = Exception("corrupt file")
+    mock_get_extractor.return_value = mock_extractor
+
+    svc.run_extract_task(1)
+
+    updated_task = mock_task_repo_inst.update.call_args[0][0]
+    assert updated_task.status == "failed"
+    assert "corrupt file" in updated_task.error_message
