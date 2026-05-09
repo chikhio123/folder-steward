@@ -74,6 +74,28 @@ class OperationLogRepository:
             conn.rollback()
             raise
 
+    def commit_successful_rollback(self, op_id: int, rollback_log_id: int, file_id: int, target_path: str) -> None:
+        from ..models.scan_task import now_iso
+        conn = get_connection()
+        conn.execute("BEGIN")
+        try:
+            if file_id:
+                conn.execute("UPDATE file_records SET current_path = ? WHERE id = ?", (target_path, file_id))
+
+            conn.execute(
+                "UPDATE operation_logs SET status=?, rollback_available=?, rollback_at=? WHERE id=?",
+                ("rolled_back", 0, now_iso(), op_id)
+            )
+
+            conn.execute(
+                "UPDATE operation_logs SET status=? WHERE id=?",
+                ("success", rollback_log_id)
+            )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise
+
     def mark_operation_failed(self, op_id: int, error_message: str) -> None:
         conn = get_connection()
         conn.execute(

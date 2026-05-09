@@ -1,7 +1,7 @@
 import json
 from typing import List, Dict, Any
 from pathlib import Path
-from ..core.database import get_connection
+
 from ..models.scan_task import now_iso
 from ..models.organize_plan import OrganizePlan
 from ..models.organize_plan_item import OrganizePlanItem
@@ -179,8 +179,7 @@ class OrganizePlanService:
 
         archive_root = self.settings_repo.get("archive_root") or ""
 
-        for item in accepted_items:
-            # Create real suggestion
+        def create_sug_callback(conn, item):
             sug = FileSuggestion(
                 file_id=item.file_id,
                 suggestion_type="move",
@@ -188,25 +187,14 @@ class OrganizePlanService:
                 target_path=item.target_path,
                 reason=item.reason,
                 confidence=item.confidence,
-                conflict_status="none", # simplified, real system would check target_exists
+                conflict_status="none",
                 status="pending",
                 archive_root=archive_root,
                 created_at=now_iso()
             )
-            self.sug_repo.create(sug)
+            self.sug_repo.create_with_conn(conn, sug)
 
-            # Mark item converted
-            conn = get_connection()
-            conn.execute("UPDATE organize_plan_items SET status='converted' WHERE id=?", (item.id,))
-            # Mark original suggestion as converted, using ai_suggestion_id to avoid cross-plan contamination
-            if item.ai_suggestion_id:
-                conn.execute("UPDATE ai_classification_suggestions SET status='converted' WHERE id=?", (item.ai_suggestion_id,))
-
-        # Mark plan converted
-        plan.status = "converted"
-        plan.updated_at = now_iso()
-        self.plan_repo.update_plan(plan)
-        conn.commit()
+        self.plan_repo.commit_accept_plan(plan, accepted_items, create_sug_callback)
 
     def reject_plan(self, plan_id: int) -> None:
         """Rejects a plan and restores its items' original classification suggestions to pending."""
@@ -214,16 +202,5 @@ class OrganizePlanService:
         if not plan or plan.status != "draft":
             raise ValueError("Plan not found or not in draft status.")
 
-        conn = get_connection()
         items = self.plan_repo.get_items_by_plan(plan_id)
-
-        for item in items:
-            conn.execute("UPDATE organize_plan_items SET status='rejected' WHERE id=?", (item.id,))
-            # Restore suggestion using ai_suggestion_id to avoid cross-plan contamination
-            if item.ai_suggestion_id:
-                conn.execute("UPDATE ai_classification_suggestions SET status='pending' WHERE id=?", (item.ai_suggestion_id,))
-
-        plan.status = "rejected"
-        plan.updated_at = now_iso()
-        self.plan_repo.update_plan(plan)
-        conn.commit()
+        self.plan_repo.commit_reject_plan(plan, items)

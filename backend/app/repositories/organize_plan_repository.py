@@ -54,3 +54,44 @@ class OrganizePlanRepository:
             "SELECT * FROM organize_plan_items WHERE plan_id = ?", (plan_id,)
         ).fetchall()
         return [OrganizePlanItem(**dict(r)) for r in rows]
+
+    def commit_accept_plan(self, plan: OrganizePlan, accepted_items: list[OrganizePlanItem], sug_repo_create_callback) -> None:
+        from ..models.scan_task import now_iso
+        conn = get_connection()
+        conn.execute("BEGIN")
+        try:
+            for item in accepted_items:
+                sug_repo_create_callback(conn, item)
+                conn.execute("UPDATE organize_plan_items SET status='converted' WHERE id=?", (item.id,))
+                if item.ai_suggestion_id:
+                    conn.execute("UPDATE ai_classification_suggestions SET status='converted' WHERE id=?", (item.ai_suggestion_id,))
+            
+            plan.updated_at = now_iso()
+            conn.execute(
+                "UPDATE organize_plans SET title=?, scope=?, status=?, summary_json=?, updated_at=? WHERE id=?",
+                (plan.title, plan.scope, "converted", plan.summary_json, plan.updated_at, plan.id)
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+    def commit_reject_plan(self, plan: OrganizePlan, items: list[OrganizePlanItem]) -> None:
+        from ..models.scan_task import now_iso
+        conn = get_connection()
+        conn.execute("BEGIN")
+        try:
+            for item in items:
+                conn.execute("UPDATE organize_plan_items SET status='rejected' WHERE id=?", (item.id,))
+                if item.ai_suggestion_id:
+                    conn.execute("UPDATE ai_classification_suggestions SET status='pending' WHERE id=?", (item.ai_suggestion_id,))
+            
+            plan.updated_at = now_iso()
+            conn.execute(
+                "UPDATE organize_plans SET title=?, scope=?, status=?, summary_json=?, updated_at=? WHERE id=?",
+                (plan.title, plan.scope, "rejected", plan.summary_json, plan.updated_at, plan.id)
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise

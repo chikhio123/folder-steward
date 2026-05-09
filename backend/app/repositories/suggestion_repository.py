@@ -8,6 +8,9 @@ from ..models.scan_task import now_iso
 class SuggestionRepository:
     def create(self, suggestion: FileSuggestion) -> int:
         conn = get_connection()
+        return self.create_with_conn(conn, suggestion)
+
+    def create_with_conn(self, conn, suggestion: FileSuggestion) -> int:
         cur = conn.execute(
             """INSERT INTO file_suggestions
                (file_id, suggestion_type, source_path, target_path, reason,
@@ -18,7 +21,6 @@ class SuggestionRepository:
              suggestion.conflict_status, suggestion.status, suggestion.archive_root,
              suggestion.created_at),
         )
-        conn.commit()
         return cur.lastrowid
 
     def get(self, suggestion_id: int) -> Optional[FileSuggestion]:
