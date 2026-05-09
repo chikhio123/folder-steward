@@ -5,10 +5,12 @@ import { CopyX, FileBox, Database, Loader2, Fingerprint, CheckCircle2, ChevronDo
 import { twMerge } from "tailwind-merge";
 import toast from "react-hot-toast";
 import { formatSize } from "../utils/format";
+import { ConfirmModal } from "./ConfirmModal";
 
 export function DuplicateIsolationPanel() {
   const queryClient = useQueryClient();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showAutoConfirm, setShowAutoConfirm] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["duplicates"],
@@ -88,11 +90,7 @@ export function DuplicateIsolationPanel() {
               <p className="text-xs text-slate-500 mt-0.5">直接将多余副本移入 Trash_Duplicates，绕过 AI 建议流，支持在操作历史中回滚。</p>
             </div>
             <button
-              onClick={() => {
-                if (window.confirm("确定要让系统智能挑选并隔离所有重复文件吗？\n将优先保留最短路径和最早创建的副本。")) {
-                  autoIsolateMutation.mutate();
-                }
-              }}
+              onClick={() => setShowAutoConfirm(true)}
               disabled={autoIsolateMutation.isPending}
               className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50"
             >
@@ -161,6 +159,20 @@ export function DuplicateIsolationPanel() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showAutoConfirm}
+        title="一键智能隔离"
+        message="确定要让系统智能挑选并隔离所有重复文件吗？将优先保留处于归档目录内、路径最短和最早创建的副本。"
+        confirmText="确认隔离"
+        confirmVariant="primary"
+        isLoading={autoIsolateMutation.isPending}
+        onConfirm={() => {
+          setShowAutoConfirm(false);
+          autoIsolateMutation.mutate();
+        }}
+        onCancel={() => setShowAutoConfirm(false)}
+      />
     </div>
   );
 }
