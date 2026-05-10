@@ -55,11 +55,13 @@ def test_get_plan_preview():
     conn.commit()
 
     repo = OrganizePlanRepository()
-    plan_id = repo.create_plan(OrganizePlan(title="Test Plan", scope="all", status="draft"))
-    repo.create_item(OrganizePlanItem(
-        plan_id=plan_id, file_id=file_id, source_path="C:/a.txt", target_dir="Docs",
-        target_path="D:/Archive/Docs/a.txt", status="pending"
-    ))
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        plan_id = repo.create_plan(OrganizePlan(title="Test Plan", scope="all", status="draft"))
+        repo.create_item(OrganizePlanItem(
+            plan_id=plan_id, file_id=file_id, source_path="C:/a.txt", target_dir="Docs",
+            target_path="D:/Archive/Docs/a.txt", status="pending"
+        ))
 
     res = client.get(f"/api/ai/organize-plans/{plan_id}")
     assert res.status_code == 200

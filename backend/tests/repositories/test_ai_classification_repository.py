@@ -13,7 +13,9 @@ def test_repo_custom_methods(setup_db):
     repo = AIClassificationRepository()
     
     # We just need to verify the methods exist and execute without syntax errors
-    repo.delete_pending_by_files([1, 2, 3])
-    repo.update_status_batch([1, 2], "in_plan")
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        repo.delete_pending_by_files([1, 2, 3])
+        repo.update_status_batch([1, 2], "in_plan")
     res = repo.get_pending_with_paths([1, 2], 0.5)
     assert isinstance(res, list)

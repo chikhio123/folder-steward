@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Optional
 
 from ..core.database import get_connection
+from ..core.uow import UnitOfWork
 from ..models.ai_task import AITask
 from ..models.scan_task import now_iso
 from ..repositories.ai_task_repository import AITaskRepository
@@ -43,7 +44,8 @@ class AITaskQueueService:
         """Adds an AI task to the database and submits it to the thread pool."""
         task.status = "pending"
         task.created_at = now_iso()
-        task_id = self.task_repo.create(task)
+        with UnitOfWork():
+            task_id = self.task_repo.create(task)
 
         self._executor.submit(self._run_task_wrapper, task_id, handler)
         return task_id
@@ -60,7 +62,8 @@ class AITaskQueueService:
         task.status = "failed"
         task.error_message = "Cancelled by user"
         task.finished_at = now_iso()
-        self.task_repo.update(task)
+        with UnitOfWork():
+            self.task_repo.update(task)
         return True
 
     def _run_task_wrapper(self, task_id: int, handler: Callable[[AITask], None]) -> None:
@@ -70,7 +73,8 @@ class AITaskQueueService:
 
         task.status = "running"
         task.started_at = now_iso()
-        self.task_repo.update(task)
+        with UnitOfWork():
+            self.task_repo.update(task)
 
         cancel_event = threading.Event()
         self._cancel_events[task_id] = cancel_event
@@ -89,7 +93,8 @@ class AITaskQueueService:
                 task.status = "failed"
                 task.error_message = "Cancelled by user"
                 task.finished_at = now_iso()
-                self.task_repo.update(task)
+                with UnitOfWork():
+                    self.task_repo.update(task)
                 return
 
             # Double check database for concurrent cancellations (e.g. from another thread/process)
@@ -100,13 +105,15 @@ class AITaskQueueService:
             # Handler is expected to update result_ref_id, total_items, etc.
             task.status = "completed"
             task.finished_at = now_iso()
-            self.task_repo.update(task)
+            with UnitOfWork():
+                self.task_repo.update(task)
         except Exception as e:
             if cancel_event.is_set() or isinstance(e, TaskCancelledException) or "TaskCancelledException" in str(e):
                 task.status = "failed"
                 task.error_message = "Cancelled by user"
                 task.finished_at = now_iso()
-                self.task_repo.update(task)
+                with UnitOfWork():
+                    self.task_repo.update(task)
                 return
 
             from .llm_provider_service import RateLimitException
@@ -133,18 +140,21 @@ class AITaskQueueService:
                     task.status = "pending"
                     task.error_message = f"Connection/Rate limit issue, retrying ({task.retry_count}/3). Last error: {e}"
                     task.finished_at = None
-                    self.task_repo.update(task)
+                    with UnitOfWork():
+                        self.task_repo.update(task)
                     self._executor.submit(self._run_task_wrapper, task_id, handler)
                 else:
                     task.status = "failed"
                     task.error_message = f"Max retries exceeded after connection/rate limit errors. Last error: {e}"
                     task.finished_at = now_iso()
-                    self.task_repo.update(task)
+                    with UnitOfWork():
+                        self.task_repo.update(task)
             else:
                 task.status = "failed"
                 task.error_message = str(e)
                 task.finished_at = now_iso()
-                self.task_repo.update(task)
+                with UnitOfWork():
+                    self.task_repo.update(task)
         finally:
             self._cancel_events.pop(task_id, None)
             cancel_event_var.reset(token)

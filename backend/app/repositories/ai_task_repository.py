@@ -1,9 +1,10 @@
 from typing import Optional
-from ..core.database import get_connection
+from ..core.database import get_connection, require_transaction
 from ..models.ai_task import AITask
 
 class AITaskRepository:
     def create(self, task: AITask) -> int:
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """INSERT INTO ai_tasks
@@ -17,7 +18,6 @@ class AITaskRepository:
              task.estimated_cost, task.started_at, task.finished_at,
              task.created_at, task.updated_at),
         )
-        conn.commit()
         return cur.lastrowid
 
     def get(self, task_id: int) -> Optional[AITask]:
@@ -33,6 +33,7 @@ class AITaskRepository:
         return AITask(**row_dict)
 
     def update(self, task: AITask) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute(
             """UPDATE ai_tasks SET
@@ -45,19 +46,19 @@ class AITaskRepository:
              task.actual_tokens, task.estimated_cost, task.started_at, task.finished_at,
              task.updated_at, task.id),
         )
-        conn.commit()
 
     def cleanup_ghost_tasks(self) -> None:
         from ..models.scan_task import now_iso
+        require_transaction()
         conn = get_connection()
         conn.execute(
             "UPDATE ai_tasks SET status = 'failed', error_message = 'Process terminated unexpectedly', finished_at = ? WHERE status = 'running'",
             (now_iso(),)
         )
-        conn.commit()
 
     def resurrect_pending_tasks(self) -> None:
         from ..models.scan_task import now_iso
+        require_transaction()
         conn = get_connection()
         rows = conn.execute("SELECT id FROM ai_tasks WHERE status = 'pending'").fetchall()
         for r in rows:
@@ -65,4 +66,3 @@ class AITaskRepository:
                 "UPDATE ai_tasks SET status = 'failed', error_message = 'Lost handler due to process restart', finished_at = ? WHERE id = ?",
                 (now_iso(), r["id"])
             )
-        conn.commit()

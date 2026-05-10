@@ -1,10 +1,11 @@
 from typing import Optional
-from ..core.database import get_connection
+from ..core.database import get_connection, require_transaction
 from ..models.organize_plan import OrganizePlan
 from ..models.organize_plan_item import OrganizePlanItem
 
 class OrganizePlanRepository:
     def create_plan(self, plan: OrganizePlan) -> int:
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """INSERT INTO organize_plans
@@ -13,7 +14,6 @@ class OrganizePlanRepository:
             (plan.title, plan.scope, plan.status, plan.summary_json,
              plan.created_at, plan.updated_at),
         )
-        conn.commit()
         return cur.lastrowid
 
     def get_plan(self, plan_id: int) -> Optional[OrganizePlan]:
@@ -25,6 +25,7 @@ class OrganizePlanRepository:
         return OrganizePlan(**dict(row))
 
     def update_plan(self, plan: OrganizePlan) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute(
             """UPDATE organize_plans SET
@@ -33,9 +34,9 @@ class OrganizePlanRepository:
             (plan.title, plan.scope, plan.status, plan.summary_json,
              plan.updated_at, plan.id),
         )
-        conn.commit()
 
     def create_item(self, item: OrganizePlanItem) -> int:
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """INSERT INTO organize_plan_items
@@ -46,7 +47,6 @@ class OrganizePlanRepository:
              item.target_path, item.directory_status, item.confidence, item.reason,
              item.evidence_json, item.status, item.created_at, item.updated_at),
         )
-        conn.commit()
         return cur.lastrowid
 
     def get_items_by_plan(self, plan_id: int) -> list[OrganizePlanItem]:
@@ -56,32 +56,32 @@ class OrganizePlanRepository:
         return [OrganizePlanItem(**dict(r)) for r in rows]
 
     def commit_accept_plan(self, plan: OrganizePlan, accepted_items: list[OrganizePlanItem], sug_repo_create_callback) -> None:
-        from ..core.uow import UnitOfWork
         from ..models.scan_task import now_iso
-        with UnitOfWork() as uow:
-            for item in accepted_items:
-                sug_repo_create_callback(item)
-                uow.conn.execute("UPDATE organize_plan_items SET status='converted' WHERE id=?", (item.id,))
-                if item.ai_suggestion_id:
-                    uow.conn.execute("UPDATE ai_classification_suggestions SET status='converted' WHERE id=?", (item.ai_suggestion_id,))
-            
-            plan.updated_at = now_iso()
-            uow.conn.execute(
-                "UPDATE organize_plans SET title=?, scope=?, status=?, summary_json=?, updated_at=? WHERE id=?",
-                (plan.title, plan.scope, "converted", plan.summary_json, plan.updated_at, plan.id)
-            )
+        require_transaction()
+        conn = get_connection()
+        for item in accepted_items:
+            sug_repo_create_callback(item)
+            conn.execute("UPDATE organize_plan_items SET status='converted' WHERE id=?", (item.id,))
+            if item.ai_suggestion_id:
+                conn.execute("UPDATE ai_classification_suggestions SET status='converted' WHERE id=?", (item.ai_suggestion_id,))
+
+        plan.updated_at = now_iso()
+        conn.execute(
+            "UPDATE organize_plans SET title=?, scope=?, status=?, summary_json=?, updated_at=? WHERE id=?",
+            (plan.title, plan.scope, "converted", plan.summary_json, plan.updated_at, plan.id)
+        )
 
     def commit_reject_plan(self, plan: OrganizePlan, items: list[OrganizePlanItem]) -> None:
-        from ..core.uow import UnitOfWork
         from ..models.scan_task import now_iso
-        with UnitOfWork() as uow:
-            for item in items:
-                uow.conn.execute("UPDATE organize_plan_items SET status='rejected' WHERE id=?", (item.id,))
-                if item.ai_suggestion_id:
-                    uow.conn.execute("UPDATE ai_classification_suggestions SET status='pending' WHERE id=?", (item.ai_suggestion_id,))
-            
-            plan.updated_at = now_iso()
-            uow.conn.execute(
-                "UPDATE organize_plans SET title=?, scope=?, status=?, summary_json=?, updated_at=? WHERE id=?",
-                (plan.title, plan.scope, "rejected", plan.summary_json, plan.updated_at, plan.id)
-            )
+        require_transaction()
+        conn = get_connection()
+        for item in items:
+            conn.execute("UPDATE organize_plan_items SET status='rejected' WHERE id=?", (item.id,))
+            if item.ai_suggestion_id:
+                conn.execute("UPDATE ai_classification_suggestions SET status='pending' WHERE id=?", (item.ai_suggestion_id,))
+
+        plan.updated_at = now_iso()
+        conn.execute(
+            "UPDATE organize_plans SET title=?, scope=?, status=?, summary_json=?, updated_at=? WHERE id=?",
+            (plan.title, plan.scope, "rejected", plan.summary_json, plan.updated_at, plan.id)
+        )

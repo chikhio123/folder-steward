@@ -9,6 +9,7 @@ from .llm_provider_service import LLMProviderService, RateLimitException
 from .directory_policy_service import DirectoryPolicyService
 from .path_protection_service import PathProtectionService
 from .ai_task_queue_service import raise_if_cancelled
+from ..core.uow import UnitOfWork
 
 class AIClassificationService:
     def __init__(
@@ -52,7 +53,8 @@ class AIClassificationService:
             status=status,
             created_at=now_iso()
         )
-        self.class_repo.create(sug)
+        with UnitOfWork():
+            self.class_repo.create(sug)
 
     def process_classification_batch(
         self,
@@ -139,7 +141,8 @@ class AIClassificationService:
                             status="failed",
                             created_at=now_iso()
                         )
-                        self.class_repo.create(sug)
+                        with UnitOfWork():
+                            self.class_repo.create(sug)
                         classified_fids.add(fid)
                         continue
 
@@ -157,7 +160,8 @@ class AIClassificationService:
                         status=status,
                         created_at=now_iso()
                     )
-                    self.class_repo.create(sug)
+                    with UnitOfWork():
+                        self.class_repo.create(sug)
                     classified_fids.add(fid)
 
             # Update progress: count all files in this batch (success or fail)
@@ -165,7 +169,8 @@ class AIClassificationService:
             if task:
                 task.processed_items = processed
                 from ..repositories.ai_task_repository import AITaskRepository
-                AITaskRepository().update(task)
+                with UnitOfWork():
+                    AITaskRepository().update(task)
 
         # Write failed records for any file that got no result (ghost or LLM omission)
         for fid in file_ids:
@@ -181,7 +186,8 @@ class AIClassificationService:
                     status="failed",
                     created_at=now_iso()
                 )
-                self.class_repo.create(sug)
+                with UnitOfWork():
+                    self.class_repo.create(sug)
                 print(f"Missing classification result for file_id={fid}, wrote failed record")
 
     def _group_files_by_directory(self, file_ids: List[int]) -> Dict[str, List[int]]:

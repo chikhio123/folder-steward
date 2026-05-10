@@ -10,6 +10,7 @@ from ..repositories.organize_plan_repository import OrganizePlanRepository
 from ..repositories.ai_classification_repository import AIClassificationRepository
 from ..repositories.suggestion_repository import SuggestionRepository
 from .path_protection_service import PathProtectionService
+from ..core.uow import UnitOfWork
 
 class OrganizePlanService:
     def __init__(
@@ -81,11 +82,13 @@ class OrganizePlanService:
             task.total_items = len(file_ids)
             from ..repositories.ai_task_repository import AITaskRepository
             task_repo = AITaskRepository()
-            task_repo.update(task)
+            with UnitOfWork():
+                task_repo.update(task)
 
         # Clear existing pending suggestions for these files so we start fresh
         if file_ids:
-            self.ai_sug_repo.delete_pending_by_files(file_ids)
+            with UnitOfWork():
+                self.ai_sug_repo.delete_pending_by_files(file_ids)
 
         # Classify all target files in batches
         class_service.process_classification_batch(file_ids, archive_root, batch_size=20, task=task)
@@ -108,41 +111,43 @@ class OrganizePlanService:
             status="draft",
             created_at=now_iso()
         )
-        plan_id = self.plan_repo.create_plan(plan)
-        plan.id = plan_id
 
-        summary_counts = {}
+        with UnitOfWork():
+            plan_id = self.plan_repo.create_plan(plan)
+            plan.id = plan_id
 
-        for r in rows:
-            target_dir = r["suggested_target_dir"]
-            # Increment summary
-            summary_counts[target_dir] = summary_counts.get(target_dir, 0) + 1
+            summary_counts = {}
 
-            target_path = str(Path(archive_root) / target_dir / Path(r["current_path"]).name)
+            for r in rows:
+                target_dir = r["suggested_target_dir"]
+                # Increment summary
+                summary_counts[target_dir] = summary_counts.get(target_dir, 0) + 1
 
-            item = OrganizePlanItem(
-                plan_id=plan_id,
-                file_id=r["file_id"],
-                ai_suggestion_id=r["suggestion_id"],
-                source_path=r["current_path"],
-                target_dir=target_dir,
-                target_path=target_path,
-                directory_status=r["directory_status"],
-                confidence=r["confidence"],
-                reason=r["reason"],
-                evidence_json=r["evidence_json"],
-                status="pending",
-                created_at=now_iso()
-            )
-            self.plan_repo.create_item(item)
+                target_path = str(Path(archive_root) / target_dir / Path(r["current_path"]).name)
 
-        # Mark AI suggestion as in_plan so it doesn't get picked up again
-        suggestion_ids_to_update = [r["suggestion_id"] for r in rows]
-        if suggestion_ids_to_update:
-            self.ai_sug_repo.update_status_batch(suggestion_ids_to_update, "in_plan")
+                item = OrganizePlanItem(
+                    plan_id=plan_id,
+                    file_id=r["file_id"],
+                    ai_suggestion_id=r["suggestion_id"],
+                    source_path=r["current_path"],
+                    target_dir=target_dir,
+                    target_path=target_path,
+                    directory_status=r["directory_status"],
+                    confidence=r["confidence"],
+                    reason=r["reason"],
+                    evidence_json=r["evidence_json"],
+                    status="pending",
+                    created_at=now_iso()
+                )
+                self.plan_repo.create_item(item)
 
-        plan.summary_json = json.dumps(summary_counts, ensure_ascii=False)
-        self.plan_repo.update_plan(plan)
+            # Mark AI suggestion as in_plan so it doesn't get picked up again
+            suggestion_ids_to_update = [r["suggestion_id"] for r in rows]
+            if suggestion_ids_to_update:
+                self.ai_sug_repo.update_status_batch(suggestion_ids_to_update, "in_plan")
+
+            plan.summary_json = json.dumps(summary_counts, ensure_ascii=False)
+            self.plan_repo.update_plan(plan)
 
         return plan_id
 
@@ -203,7 +208,8 @@ class OrganizePlanService:
             )
             self.sug_repo.create(sug)
 
-        self.plan_repo.commit_accept_plan(plan, accepted_items, create_sug_callback)
+        with UnitOfWork():
+            self.plan_repo.commit_accept_plan(plan, accepted_items, create_sug_callback)
 
     def reject_plan(self, plan_id: int) -> None:
         """Rejects a plan and restores its items' original classification suggestions to pending."""
@@ -212,4 +218,5 @@ class OrganizePlanService:
             raise ValueError("Plan not found or not in draft status.")
 
         items = self.plan_repo.get_items_by_plan(plan_id)
-        self.plan_repo.commit_reject_plan(plan, items)
+        with UnitOfWork():
+            self.plan_repo.commit_reject_plan(plan, items)

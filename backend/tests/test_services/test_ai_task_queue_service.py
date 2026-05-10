@@ -38,7 +38,9 @@ def test_task_rate_limit_retry():
     svc = AITaskQueueService()
 
     task = AITask(task_type="classification", total_items=1)
-    task_id = svc.task_repo.create(task)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        task_id = svc.task_repo.create(task)
 
     # Handler throws RateLimitException
     def failing_handler(t):
@@ -66,7 +68,9 @@ def test_task_failure():
     svc = AITaskQueueService()
 
     task = AITask(task_type="classification", total_items=1)
-    task_id = svc.task_repo.create(task)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        task_id = svc.task_repo.create(task)
 
     def failing_handler(t):
         raise ValueError("Something went wrong")
