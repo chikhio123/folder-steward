@@ -16,12 +16,14 @@ def create_summary_task(body: GenerateSummaryRequest):
     from ..models.file_summary import FileSummary
     from ..models.scan_task import now_iso
 
+    from ..core.uow import UnitOfWork
     # Insert pending status placeholder to allow frontend polling
     existing = summary_repo.get_by_file_id(body.file_id)
     if existing:
         existing.status = "pending"
         existing.updated_at = now_iso()
-        summary_repo.update(existing)
+        with UnitOfWork():
+            summary_repo.update(existing)
     else:
         new_summary = FileSummary(
             file_id=body.file_id,
@@ -29,7 +31,8 @@ def create_summary_task(body: GenerateSummaryRequest):
             status="pending",
             created_at=now_iso()
         )
-        summary_repo.create(new_summary)
+        with UnitOfWork():
+            summary_repo.create(new_summary)
 
     task = AITask(
         task_type="summary",

@@ -5,6 +5,7 @@ from app.models.file_content import FileContent
 from app.models.rule import Rule
 from app.repositories.rule_repository import RuleRepository
 from app.core.database import get_connection, init_db
+from app.core.uow import UnitOfWork
 from pathlib import Path
 
 @pytest.fixture
@@ -17,13 +18,16 @@ def setup_rules():
     repo = RuleRepository()
 
     r1 = Rule(name="Ext Rule", rule_type="extension", pattern=".pdf,.docx", target_dir="Docs", priority=10)
-    repo.create(r1)
+    with UnitOfWork():
+        repo.create(r1)
 
     r2 = Rule(name="FN Rule", rule_type="filename_keyword", pattern="invoice,receipt", target_dir="Finance", priority=20)
-    repo.create(r2)
+    with UnitOfWork():
+        repo.create(r2)
 
     r3 = Rule(name="Content Rule", rule_type="content_keyword", pattern="philosophy,kant", target_dir="Books/Philosophy", priority=30)
-    repo.create(r3)
+    with UnitOfWork():
+        repo.create(r3)
 
 def test_rule_engine_extension(setup_rules):
     svc = RuleEngineService()

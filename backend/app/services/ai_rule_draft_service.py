@@ -90,7 +90,9 @@ class AIRuleDraftService:
                 validation_error=validation_error,
                 created_at=now_iso()
             )
-            return self.draft_repo.create(draft)
+            from app.core.uow import UnitOfWork
+            with UnitOfWork():
+                return self.draft_repo.create(draft)
 
         except Exception as e:
             draft = AIRuleDraft(
@@ -99,7 +101,9 @@ class AIRuleDraftService:
                 validation_error=str(e),
                 created_at=now_iso()
             )
-            return self.draft_repo.create(draft)
+            from app.core.uow import UnitOfWork
+            with UnitOfWork():
+                return self.draft_repo.create(draft)
 
     def get_preview(self, draft_id: int) -> dict:
         draft = self.draft_repo.get(draft_id)
@@ -186,11 +190,13 @@ class AIRuleDraftService:
             enabled=1,
             created_at=now_iso()
         )
-        rule_id = self.rule_repo.create(rule)
+        from app.core.uow import UnitOfWork
+        with UnitOfWork():
+            rule_id = self.rule_repo.create(rule)
 
-        draft.status = "converted"
-        draft.updated_at = now_iso()
-        self.draft_repo.update(draft)
+            draft.status = "converted"
+            draft.updated_at = now_iso()
+            self.draft_repo.update(draft)
 
         archive_root = self._get_archive_root()
         if archive_root:

@@ -1,10 +1,11 @@
 from typing import Optional
-from ..core.database import get_connection
+from ..core.database import get_connection, require_transaction
 from ..models.rule import Rule
 from ..models.scan_task import now_iso
 
 class RuleRepository:
     def create(self, rule: Rule) -> int:
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """INSERT INTO rules
@@ -13,7 +14,6 @@ class RuleRepository:
             (rule.name, rule.rule_type, rule.pattern, rule.target_dir,
              rule.action, rule.priority, rule.enabled, rule.created_at or now_iso()),
         )
-        conn.commit()
         return cur.lastrowid
 
     def get(self, rule_id: int) -> Optional[Rule]:
@@ -25,6 +25,7 @@ class RuleRepository:
         return Rule(**dict(row))
 
     def update(self, rule: Rule) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute(
             """UPDATE rules SET name=?, rule_type=?, pattern=?, target_dir=?,
@@ -33,7 +34,6 @@ class RuleRepository:
             (rule.name, rule.rule_type, rule.pattern, rule.target_dir,
              rule.action, rule.priority, rule.enabled, now_iso(), rule.id),
         )
-        conn.commit()
 
     def list_all(self, only_enabled: bool = True) -> list[Rule]:
         conn = get_connection()
@@ -44,6 +44,6 @@ class RuleRepository:
         return [Rule(**dict(r)) for r in rows]
 
     def delete(self, rule_id: int) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute("DELETE FROM rules WHERE id = ?", (rule_id,))
-        conn.commit()

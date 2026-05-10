@@ -1,9 +1,10 @@
 from typing import Optional
-from ..core.database import get_connection
+from ..core.database import get_connection, require_transaction
 from ..models.file_summary import FileSummary
 
 class FileSummaryRepository:
     def create(self, summary: FileSummary) -> int:
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """INSERT INTO file_summaries
@@ -14,7 +15,6 @@ class FileSummaryRepository:
              summary.source_content_hash, summary.status, summary.error_message,
              summary.created_at, summary.updated_at),
         )
-        conn.commit()
         return cur.lastrowid
 
     def get_by_file_id(self, file_id: int) -> Optional[FileSummary]:
@@ -26,6 +26,7 @@ class FileSummaryRepository:
         return FileSummary(**dict(row))
 
     def update(self, summary: FileSummary) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute(
             """UPDATE file_summaries SET
@@ -36,4 +37,3 @@ class FileSummaryRepository:
              summary.source_content_hash, summary.status, summary.error_message,
              summary.updated_at, summary.id),
         )
-        conn.commit()
