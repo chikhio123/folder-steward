@@ -1,8 +1,8 @@
 import { BrainCircuit, Loader2, ListChecks, CheckCircle2, Play, Settings, AlertCircle, Archive, XCircle, ShieldAlert } from "lucide-react";
-import { ExcludeDirsModal } from "../components/ExcludeDirsModal";
-import { CustomSelect } from "../components/CustomSelect";
-import { useSmartOrganize } from '../hooks/useSmartOrganize';
-import { PlanPreviewGroup } from '../components/PlanPreviewGroup';
+import { ExcludeDirsModal } from "../components/common/ExcludeDirsModal";
+import { CustomSelect } from "../components/common/CustomSelect";
+import { useSmartOrganize } from './smart-organize/hooks/useSmartOrganize';
+import { PlanPreviewGroup } from './smart-organize/components/PlanPreviewGroup';
 
 export default function SmartOrganizePage() {
   const { state, actions, mutations } = useSmartOrganize();

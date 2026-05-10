@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Settings2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { listRules, updateRule, deleteRule } from '../../services/api';
+import { listRules, updateRule, deleteRule } from '../../../services/api';
 import RuleCard from './RuleCard';
 
 export default function RuleManageView() {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSettings, updateSettings, getAvailableModels } from '../services/api';
+import { getSettings, updateSettings, getAvailableModels } from '../../../services/api';
 import toast from 'react-hot-toast';
 
 export interface ApiProfile {

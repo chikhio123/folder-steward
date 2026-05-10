@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getSearchSuggestions } from '../services/api';
+import { getSearchSuggestions } from '../../../services/api';
 
 const HISTORY_KEY = 'fs_search_history';
 

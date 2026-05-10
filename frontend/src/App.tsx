@@ -2,7 +2,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
-import Layout from "./components/Layout";
+import Layout from "./components/layout/Layout";
 import DashboardPage from "./pages/DashboardPage";
 import ScanPage from "./pages/ScanPage";
 import SearchPage from "./pages/SearchPage";

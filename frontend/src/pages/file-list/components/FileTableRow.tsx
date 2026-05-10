@@ -1,7 +1,7 @@
 import { Clock, FolderOpen } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { formatSize, getFileIcon } from "../../utils/format";
-import type { FileRecord } from "../../types";
+import { formatSize, getFileIcon } from "../../../utils/format";
+import type { FileRecord } from "../../../types";
 
 export interface FileTableRowProps {
   file: FileRecord;

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Wand2, Save, FileBox, AlertCircle, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { previewRuleDraft, acceptRuleDraft } from '../../services/api';
-import { useRuleDraftMutation } from '../../hooks/useRuleDraftMutation';
+import { previewRuleDraft, acceptRuleDraft } from '../../../services/api';
+import { useRuleDraftMutation } from '../hooks/useRuleDraftMutation';
 
 export default function RuleCreateView() {
   const [prompt, setPrompt] = useState("");

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDuplicates, isolateDuplicates } from "../services/api";
+import { getDuplicates, isolateDuplicates } from "../../../services/api";
 import { CopyX, FileBox, Database, Loader2, Fingerprint, CheckCircle2, ChevronDown, ChevronRight, Wand2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import toast from "react-hot-toast";
-import { formatSize } from "../utils/format";
-import { ConfirmModal } from "./ConfirmModal";
+import { formatSize } from "../../../utils/format";
+import { ConfirmModal } from "../../../components/common/ConfirmModal";
 
 export function DuplicateIsolationPanel() {
   const queryClient = useQueryClient();

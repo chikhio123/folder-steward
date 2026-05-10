@@ -1,7 +1,7 @@
 import { FileText, ChevronRight, AlertCircle, CheckCircle2 } from "lucide-react";
-import type { ScanTask, ScanError } from "../types";
-import { Card } from "./ui/Card";
-import { Button } from "./ui/Button";
+import type { ScanTask, ScanError } from "../../../types";
+import { Card } from "../../../components/ui/Card";
+import { Button } from "../../../components/ui/Button";
 
 export interface ScanReportCardProps {
   task: ScanTask;

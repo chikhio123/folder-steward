@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Wand2, Sparkles, Settings2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { listRules } from "../services/api";
-import RuleCreateView from "./AiRuleDraft/RuleCreateView";
-import RuleManageView from "./AiRuleDraft/RuleManageView";
+import RuleCreateView from "./ai-rule-draft/components/RuleCreateView";
+import RuleManageView from "./ai-rule-draft/components/RuleManageView";
 
 export default function AiRuleDraftPage() {
   const [activeTab, setActiveTab] = useState<"create" | "manage">("create");

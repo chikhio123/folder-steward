@@ -1,6 +1,6 @@
 import { twMerge } from "tailwind-merge";
-import FileDetailPanel from "../FileDetailPanel";
-import type { FileRecord } from "../../types";
+import FileDetailPanel from "./FileDetailPanel";
+import type { FileRecord } from "../../../types";
 
 export interface FileDetailDrawerProps {
   selectedFile: FileRecord | null;
