@@ -16,7 +16,9 @@ def get_settings(settings_repo: SettingsRepository = Depends(get_settings_reposi
 
 @router.put("/settings", response_model=Dict[str, str])
 def update_settings(body: dict[str, str], settings_repo: SettingsRepository = Depends(get_settings_repository)):
-    settings_repo.update_all(body)
+    from ..core.uow import UnitOfWork
+    with UnitOfWork():
+        settings_repo.update_all(body)
     return settings_repo.get_all()
 
 

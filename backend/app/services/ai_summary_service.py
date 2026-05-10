@@ -25,13 +25,15 @@ class AISummaryService:
 
             # Check if exists, if so update it, else create
             existing = self.summary_repo.get_by_file_id(file_id)
+            from app.core.uow import UnitOfWork
             if existing:
                 existing.summary = summary_text
                 existing.status = "completed"
                 existing.updated_at = now_iso()
                 existing.llm_provider = self.llm_service.provider_type
                 existing.model_name = "mock-model"
-                self.summary_repo.update(existing)
+                with UnitOfWork():
+                    self.summary_repo.update(existing)
             else:
                 new_summary = FileSummary(
                     file_id=file_id,
@@ -41,15 +43,18 @@ class AISummaryService:
                     status="completed",
                     created_at=now_iso()
                 )
-                self.summary_repo.create(new_summary)
+                with UnitOfWork():
+                    self.summary_repo.create(new_summary)
 
         except Exception as e:
             existing = self.summary_repo.get_by_file_id(file_id)
+            from app.core.uow import UnitOfWork
             if existing:
                 existing.status = "failed"
                 existing.error_message = str(e)
                 existing.updated_at = now_iso()
-                self.summary_repo.update(existing)
+                with UnitOfWork():
+                    self.summary_repo.update(existing)
             else:
                 new_summary = FileSummary(
                     file_id=file_id,
@@ -58,4 +63,5 @@ class AISummaryService:
                     error_message=str(e),
                     created_at=now_iso()
                 )
-                self.summary_repo.create(new_summary)
+                with UnitOfWork():
+                    self.summary_repo.create(new_summary)
