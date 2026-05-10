@@ -5,6 +5,7 @@ from ..models.scan_task import now_iso
 from ..repositories.file_summary_repository import FileSummaryRepository
 from .prompt_context_service import PromptContextService
 from .llm_provider_service import LLMProviderService
+from ..core.uow import UnitOfWork
 
 class AISummaryService:
     def __init__(self):
@@ -25,7 +26,6 @@ class AISummaryService:
 
             # Check if exists, if so update it, else create
             existing = self.summary_repo.get_by_file_id(file_id)
-            from app.core.uow import UnitOfWork
             if existing:
                 existing.summary = summary_text
                 existing.status = "completed"
@@ -48,7 +48,6 @@ class AISummaryService:
 
         except Exception as e:
             existing = self.summary_repo.get_by_file_id(file_id)
-            from app.core.uow import UnitOfWork
             if existing:
                 existing.status = "failed"
                 existing.error_message = str(e)
