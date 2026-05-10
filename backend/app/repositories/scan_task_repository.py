@@ -91,6 +91,10 @@ class ScanTaskRepository:
         ).fetchall()
         return [ScanTask(**dict(r)) for r in rows]
 
+    def get_all_roots(self) -> list[str]:
+        rows = get_connection().execute("SELECT DISTINCT root_path FROM scan_tasks").fetchall()
+        return [r["root_path"] for r in rows]
+
 
 class ScanErrorRepository:
     def create(self, task_id: int, file_path: str, error_message: str) -> ScanError:

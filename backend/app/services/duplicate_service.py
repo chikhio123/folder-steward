@@ -56,10 +56,20 @@ class DuplicateService:
         """, (file_id,)).fetchone()
         return bool(row)
 
-    def isolate_duplicates(self, groups: list[dict], auto_mode: bool = False) -> dict:
+    def _find_isolation_root(self, file_path: Path, scan_roots: list[Path]) -> Path | None:
+        for root in scan_roots:
+            try:
+                if file_path.is_relative_to(root):
+                    return root
+            except ValueError:
+                continue
+
+        return None
+
+    def isolate_duplicates(self, groups: list[dict], auto_mode: bool = False, isolation_strategy: str = "local") -> dict:
         """
         For each group, pick a keep_file_id (if auto_mode, pick best),
-        move others to archive_root/Trash_Duplicates.
+        move others to Trash_Duplicates according to the isolation strategy.
         Returns execution results using OperationService.
         """
         archive_root_str = self.get_archive_root()
@@ -74,6 +84,13 @@ class DuplicateService:
         used_paths = set()
 
         all_db_groups = self.file_repo.find_duplicate_groups()
+
+        scan_roots = []
+        if isolation_strategy == "local":
+            from ..repositories.scan_task_repository import ScanTaskRepository
+            root_paths = ScanTaskRepository().get_all_roots()
+            scan_roots = [Path(r).resolve() for r in root_paths]
+            scan_roots.sort(key=lambda p: len(p.parts), reverse=True)
 
         for input_group in groups:
             sha256 = input_group["sha256"]
@@ -113,7 +130,27 @@ class DuplicateService:
                     if not file_rec:
                         continue
 
-                    target = self.get_unique_target_path(trash_dir / file_rec.filename, used_paths)
+                    file_path = Path(file_rec.current_path).resolve()
+
+                    if isolation_strategy == "local":
+                        base_root = self._find_isolation_root(file_path, scan_roots)
+                        if base_root is not None:
+                            try:
+                                rel_path = file_path.relative_to(base_root)
+                            except ValueError:
+                                rel_path = Path(file_path.name)
+                            trash_dir = base_root / "Trash_Duplicates"
+                            sug_archive_root = str(base_root)
+                        else:
+                            rel_path = Path(file_rec.filename)
+                            trash_dir = archive_root / "Trash_Duplicates"
+                            sug_archive_root = archive_root_str
+                    else:
+                        rel_path = Path(file_rec.filename)
+                        trash_dir = archive_root / "Trash_Duplicates"
+                        sug_archive_root = archive_root_str
+
+                    target = self.get_unique_target_path(trash_dir / rel_path, used_paths)
 
                     suggestion = FileSuggestion(
                         file_id=file_rec.id,
@@ -124,7 +161,7 @@ class DuplicateService:
                         confidence=1.0,
                         conflict_status="none",
                         status="accepted", # automatically accept
-                        archive_root=archive_root_str,
+                        archive_root=sug_archive_root,
                         created_at=now_iso(),
                     )
                     sug_id = self.sug_repo.create(suggestion)

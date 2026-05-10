@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
 
 from ..repositories.file_repository import FileRepository
 from ..services.duplicate_service import DuplicateService
@@ -23,6 +23,7 @@ class DuplicateGroupItem(BaseModel):
 class IsolateDuplicatesRequest(BaseModel):
     mode: str  # "auto" or "manual"
     groups: Optional[List[DuplicateGroupItem]] = None
+    isolation_strategy: Literal["local", "global"] = "local"
 
 @router.post("/duplicates/isolation-plan")
 def isolate_duplicates(body: IsolateDuplicatesRequest):
@@ -39,5 +40,5 @@ def isolate_duplicates(body: IsolateDuplicatesRequest):
             return {"success_count": 0, "failed_count": 0, "results": [], "skipped": []}
         groups_to_process = [g.dict() for g in body.groups]
 
-    result = svc.isolate_duplicates(groups_to_process, auto_mode=(body.mode == "auto"))
+    result = svc.isolate_duplicates(groups_to_process, auto_mode=(body.mode == "auto"), isolation_strategy=body.isolation_strategy)
     return result

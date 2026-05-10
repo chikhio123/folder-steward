@@ -11,6 +11,14 @@ export function DuplicateIsolationPanel() {
   const queryClient = useQueryClient();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showAutoConfirm, setShowAutoConfirm] = useState(false);
+  const [isolationMode, setIsolationMode] = useState<"local" | "global">(
+    () => (localStorage.getItem("fs_duplicate_isolation_mode") as "local" | "global") || "local"
+  );
+
+  const handleModeChange = (mode: "local" | "global") => {
+    setIsolationMode(mode);
+    localStorage.setItem("fs_duplicate_isolation_mode", mode);
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["duplicates"],
@@ -21,7 +29,7 @@ export function DuplicateIsolationPanel() {
 
   const isolateMutation = useMutation({
     mutationFn: ({ sha256, filename, keepFileId }: { sha256: string; filename: string; keepFileId: number }) =>
-      isolateDuplicates("manual", [{ sha256, filename, keep_file_id: keepFileId }]),
+      isolateDuplicates("manual", [{ sha256, filename, keep_file_id: keepFileId }], isolationMode),
     onMutate: (variables) => {
       setProcessingKey(variables.sha256);
     },
@@ -43,7 +51,7 @@ export function DuplicateIsolationPanel() {
   });
 
   const autoIsolateMutation = useMutation({
-    mutationFn: () => isolateDuplicates("auto"),
+    mutationFn: () => isolateDuplicates("auto", undefined, isolationMode),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["duplicates"] });
       queryClient.invalidateQueries({ queryKey: ["operations"] });
@@ -88,19 +96,48 @@ export function DuplicateIsolationPanel() {
       {/* Accordion Content */}
       {isExpanded && (
         <div className="mt-4 bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden animation-fade-in flex flex-col max-h-[600px]">
-          <div className="px-6 py-4 border-b border-slate-100/80 bg-slate-50/40 flex items-center justify-between sticky top-0 z-10">
+          <div className="px-6 py-4 border-b border-slate-100/80 bg-slate-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-0 z-10">
             <div>
               <h3 className="text-sm font-bold text-slate-800">重复文件物理隔离区</h3>
               <p className="text-xs text-slate-500 mt-0.5">直接将多余副本移入 Trash_Duplicates，绕过 AI 建议流，支持在操作历史中回滚。</p>
             </div>
-            <button
-              onClick={() => setShowAutoConfirm(true)}
-              disabled={autoIsolateMutation.isPending}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50"
-            >
-              {autoIsolateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-              一键智能隔离
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="flex bg-slate-200/50 p-1 rounded-xl w-fit shrink-0">
+                <button
+                  onClick={() => handleModeChange("global")}
+                  className={twMerge(
+                    "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                    isolationMode === "global"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  )}
+                  title="移动到全局归档目录下的 Trash_Duplicates"
+                >
+                  全局隔离
+                </button>
+                <button
+                  onClick={() => handleModeChange("local")}
+                  className={twMerge(
+                    "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                    isolationMode === "local"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  )}
+                  title="就近移动到文件原扫描目录下的 Trash_Duplicates (推荐)"
+                >
+                  就近隔离
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowAutoConfirm(true)}
+                disabled={autoIsolateMutation.isPending}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50 shrink-0"
+              >
+                {autoIsolateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                一键智能隔离
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-5">
