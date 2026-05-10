@@ -5,6 +5,7 @@ from ..models.scan_task import now_iso
 
 class FileContentRepository:
     def create(self, content: FileContent) -> int:
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """INSERT INTO file_contents
@@ -15,7 +16,6 @@ class FileContentRepository:
              content.extractor_type, content.extract_status, content.error_message,
              content.extracted_at, content.updated_at),
         )
-        conn.commit()
         return cur.lastrowid
 
     def mark_stale(self, file_id: int) -> None:
@@ -37,6 +37,7 @@ class FileContentRepository:
         return FileContent(**dict(row))
 
     def upsert(self, content: FileContent) -> int:
+        require_transaction()
         existing = self.get_by_file_id(content.file_id)
         if existing:
             conn = get_connection()
@@ -49,6 +50,5 @@ class FileContentRepository:
                  content.extract_status, content.error_message, content.extracted_at,
                  now_iso(), content.file_id),
             )
-            conn.commit()
             return existing.id or 0
         return self.create(content)

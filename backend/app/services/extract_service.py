@@ -6,6 +6,7 @@ from ..core.database import get_connection
 from ..models.extract_task import ExtractTask
 from ..models.file_content import FileContent
 from ..models.scan_task import now_iso
+from ..core.uow import UnitOfWork
 from ..repositories.extract_task_repository import ExtractTaskRepository
 from ..repositories.file_repository import FileRepository
 from ..repositories.file_content_repository import FileContentRepository
@@ -22,16 +23,16 @@ class ExtractService:
     @staticmethod
     def cleanup_ghost_tasks() -> None:
         """Reset any 'running' or 'pending' tasks from a previous crashed run back to 'failed'."""
-        conn = get_connection()
-        conn.execute(
-            "UPDATE extract_tasks SET status = 'failed', error_message = 'Process terminated unexpectedly', finished_at = ? WHERE status IN ('running', 'pending')",
-            (now_iso(),)
-        )
-        conn.execute(
-            "UPDATE file_contents SET extract_status = 'failed', error_message = 'Process terminated unexpectedly', updated_at = ? WHERE extract_status IN ('running', 'pending')",
-            (now_iso(),)
-        )
-        conn.commit()
+        with UnitOfWork():
+            conn = get_connection()
+            conn.execute(
+                "UPDATE extract_tasks SET status = 'failed', error_message = 'Process terminated unexpectedly', finished_at = ? WHERE status IN ('running', 'pending')",
+                (now_iso(),)
+            )
+            conn.execute(
+                "UPDATE file_contents SET extract_status = 'failed', error_message = 'Process terminated unexpectedly', updated_at = ? WHERE extract_status IN ('running', 'pending')",
+                (now_iso(),)
+            )
 
     def create_extract_tasks(self, file_ids: Optional[list[int]] = None, mode: str = "missing_only") -> tuple[int, int]:
         conn = get_connection()
@@ -88,14 +89,15 @@ class ExtractService:
                 extract_status="pending",
                 error_message=None
             )
-            self.content_repo.upsert(pending_content)
+            with UnitOfWork():
+                self.content_repo.upsert(pending_content)
 
-            task = ExtractTask(
-                file_id=file_id,
-                status="pending",
-                created_at=now_iso()
-            )
-            task_id = self.task_repo.create(task)
+                task = ExtractTask(
+                    file_id=file_id,
+                    status="pending",
+                    created_at=now_iso()
+                )
+                task_id = self.task_repo.create(task)
             created += 1
 
             # Dispatch execution in thread pool
@@ -108,14 +110,15 @@ class ExtractService:
         if not task or task.status != "pending":
             return
 
-        task.status = "running"
-        task.started_at = now_iso()
-        self.task_repo.update(task)
+        with UnitOfWork():
+            task.status = "running"
+            task.started_at = now_iso()
+            self.task_repo.update(task)
 
-        content = self.content_repo.get_by_file_id(task.file_id)
-        if content:
-            content.extract_status = "running"
-            self.content_repo.upsert(content)
+            content = self.content_repo.get_by_file_id(task.file_id)
+            if content:
+                content.extract_status = "running"
+                self.content_repo.upsert(content)
 
         file_record = self.file_repo.get(task.file_id)
         if not file_record or file_record.status != "active":
@@ -165,39 +168,42 @@ class ExtractService:
                 error_message="; ".join(warnings) if warnings else None,
                 extracted_at=now_iso(),
             )
-            self.content_repo.upsert(content)
+            with UnitOfWork():
+                self.content_repo.upsert(content)
 
-            task.status = "completed"
-            task.finished_at = now_iso()
-            self.task_repo.update(task)
+                task.status = "completed"
+                task.finished_at = now_iso()
+                self.task_repo.update(task)
 
         except Exception as e:
             self._fail_task(task, str(e))
 
     def _fail_task(self, task: ExtractTask, error: str) -> None:
-        task.status = "failed"
-        task.error_message = error
-        task.finished_at = now_iso()
-        self.task_repo.update(task)
+        with UnitOfWork():
+            task.status = "failed"
+            task.error_message = error
+            task.finished_at = now_iso()
+            self.task_repo.update(task)
 
-        content = FileContent(
-            file_id=task.file_id,
-            extractor_type="unknown",
-            extract_status="failed",
-            error_message=error,
-        )
-        self.content_repo.upsert(content)
+            content = FileContent(
+                file_id=task.file_id,
+                extractor_type="unknown",
+                extract_status="failed",
+                error_message=error,
+            )
+            self.content_repo.upsert(content)
 
     def _skip_task(self, task: ExtractTask, reason: str) -> None:
-        task.status = "skipped"
-        task.error_message = reason
-        task.finished_at = now_iso()
-        self.task_repo.update(task)
+        with UnitOfWork():
+            task.status = "skipped"
+            task.error_message = reason
+            task.finished_at = now_iso()
+            self.task_repo.update(task)
 
-        content = FileContent(
-            file_id=task.file_id,
-            extractor_type="unknown",
-            extract_status="skipped",
-            error_message=reason,
-        )
-        self.content_repo.upsert(content)
+            content = FileContent(
+                file_id=task.file_id,
+                extractor_type="unknown",
+                extract_status="skipped",
+                error_message=reason,
+            )
+            self.content_repo.upsert(content)

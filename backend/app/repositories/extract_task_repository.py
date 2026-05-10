@@ -1,10 +1,11 @@
 from typing import Optional
-from ..core.database import get_connection
+from ..core.database import get_connection, require_transaction
 from ..models.extract_task import ExtractTask
 from ..models.scan_task import now_iso
 
 class ExtractTaskRepository:
     def create(self, task: ExtractTask) -> int:
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """INSERT INTO extract_tasks
@@ -13,7 +14,6 @@ class ExtractTaskRepository:
             (task.file_id, task.status, task.error_message,
              task.started_at, task.finished_at, task.created_at or now_iso()),
         )
-        conn.commit()
         return cur.lastrowid
 
     def get(self, task_id: int) -> Optional[ExtractTask]:
@@ -25,6 +25,7 @@ class ExtractTaskRepository:
         return ExtractTask(**dict(row))
 
     def update(self, task: ExtractTask) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute(
             """UPDATE extract_tasks SET status=?, error_message=?,
@@ -32,7 +33,6 @@ class ExtractTaskRepository:
             (task.status, task.error_message, task.started_at,
              task.finished_at, task.id),
         )
-        conn.commit()
 
     def list_paginated(self, status: Optional[str] = None, page: int = 1, page_size: int = 50) -> tuple[list[ExtractTask], int]:
         conn = get_connection()
