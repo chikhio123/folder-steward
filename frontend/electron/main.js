@@ -22,7 +22,6 @@ function notifyBackendError(message) {
 
 function startBackend() {
   const backendDir = path.join(__dirname, '../../backend');
-  const pythonCommand = process.platform === 'win32' ? 'py' : 'python3';
 
   const userDataPath = app.getPath('userData');
   const dbPath = path.join(userDataPath, 'folder_steward.db');
@@ -35,10 +34,18 @@ function startBackend() {
 
   console.log(`Starting backend. Database path: ${dbPath}`);
 
-  backendProcess = spawn(pythonCommand, ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000'], {
-    cwd: backendDir,
-    env
-  });
+  if (isDev) {
+    const pythonCommand = process.platform === 'win32' ? 'py' : 'python3';
+    backendProcess = spawn(pythonCommand, ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000'], {
+      cwd: backendDir,
+      env
+    });
+  } else {
+    const exePath = path.join(process.resourcesPath, 'backend-bin', 'folder-steward-backend.exe');
+    backendProcess = spawn(exePath, [], {
+      env
+    });
+  }
 
   backendProcess.stdout.on('data', (data) => {
     console.log(`[Backend] ${data.toString().trim()}`);

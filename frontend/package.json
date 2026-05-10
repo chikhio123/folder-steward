@@ -15,6 +15,7 @@
     "gen:api-types": "npm run gen:api-schema && npx openapi-typescript src/types/generated/openapi.json -o src/types/generated/api.d.ts",
     "check:api-types": "npm run gen:api-types && git diff --exit-code src/types/generated",
     "typecheck": "tsc -b",
+    "release:win": "cd ../backend && python build_backend.py && cd ../frontend && npm run build && electron-builder --win",
     "lint": "eslint \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
@@ -57,11 +58,27 @@
     },
     "files": [
       "dist/**/*",
-      "electron/**/*",
-      "../backend/**/*"
+      "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend-bin",
+        "to": "backend-bin",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "win": {
       "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Folder Steward"
     }
   }
 }

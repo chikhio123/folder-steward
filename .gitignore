@@ -11,12 +11,24 @@ venv/
 node_modules/
 frontend/dist/
 frontend/dist-electron/
+frontend/backend-bin/
 release/
 *.tsbuildinfo
 
+# PyInstaller
+*.spec
+
 # Database
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
 data/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Test temp
 .test_tmp/
