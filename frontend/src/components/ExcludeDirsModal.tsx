@@ -241,10 +241,10 @@ export function ExcludeDirsModal({ isOpen, onClose, planGroups }: ExcludeDirsMod
   }, [rootNodes, search]);
 
   useEffect(() => {
-      if (isOpen && search && matchPaths.size > 0) {
+    if (isOpen && search && matchPaths.size > 0) {
       setExpandedNodes(prev => new Set([...prev, ...matchPaths]));
     }
-  }, [search, matchPaths]);
+  }, [isOpen, search, matchPaths]);
 
   const toggleExpand = (path: string) => {
     setExpandedNodes(prev => {
