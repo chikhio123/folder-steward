@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getExcludePaths, updateExcludePaths } from "../../services/api";
-import { X, Search, ShieldAlert, Loader2, FolderMinus, ChevronRight, ChevronDown } from "lucide-react";
+import { X, Search, ShieldAlert, Loader2, FolderMinus, ChevronRight, ChevronDown, FolderPlus } from "lucide-react";
 import toast from "react-hot-toast";
 import { twMerge } from "tailwind-merge";
 import type { OrganizePlanItem } from "../../types";
@@ -282,6 +282,26 @@ export function ExcludeDirsModal({ isOpen, onClose, planGroups }: ExcludeDirsMod
     removeMutation.mutate(nextPaths);
   };
 
+  const handleSelectLocalDir = async () => {
+    if (window.electronAPI?.selectDirectory) {
+      const dirPath = await window.electronAPI.selectDirectory();
+      if (dirPath) {
+        const p = normalizePath(dirPath);
+
+        if (isRootPath(p)) {
+          toast.error("为防止误排除过大范围，不能直接排除磁盘根目录");
+          return;
+        }
+
+        if (!existingExcluded.includes(p) && !selectedDirs.has(p)) {
+          setSelectedDirs(prev => new Set([...prev, p]));
+        }
+      }
+    } else {
+      toast.error("当前不在 Electron 环境中，无法打开目录选择器");
+    }
+  };
+
   const handleSubmit = () => {
     if (selectedDirs.size === 0) {
       toast("未选择新的排除目录");
@@ -393,8 +413,9 @@ export function ExcludeDirsModal({ isOpen, onClose, planGroups }: ExcludeDirsMod
 
             <div className="flex-1 overflow-y-auto p-4 bg-white">
               {rootNodes.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-200 h-full">
-                  <p className="text-sm text-slate-500">当前没有待整理的目录</p>
+                <div className="flex-1 flex flex-col items-center justify-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-200 h-full text-center px-4">
+                  <p className="text-sm text-slate-500 mb-2">当前没有待整理的目录树</p>
+                  <p className="text-xs text-slate-400">若要提前排除，可点击右侧的添加按钮直接从本机选择</p>
                 </div>
               ) : (
                 <div className="space-y-0.5">
@@ -411,11 +432,20 @@ export function ExcludeDirsModal({ isOpen, onClose, planGroups }: ExcludeDirsMod
 
           {/* Right panel: Currently Excluded */}
           <div className="flex-1 flex flex-col min-h-0 sm:w-1/3 bg-slate-50/50">
-            <div className="px-6 py-4 border-b border-slate-100 shrink-0">
+            <div className="px-6 py-4 border-b border-slate-100 shrink-0 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                 <FolderMinus className="w-4 h-4 text-slate-400" />
                 已排除列表 ({existingExcluded.length})
               </h3>
+              {window.electronAPI?.selectDirectory && (
+                <button
+                  onClick={handleSelectLocalDir}
+                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="从本机添加排除目录"
+                >
+                  <FolderPlus className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">

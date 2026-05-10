@@ -66,7 +66,15 @@ export default function SmartOrganizePage() {
             />
           </div>
         </div>
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button
+            onClick={() => setShowExcludeModal(true)}
+            disabled={isRunning}
+            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold shadow-sm hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2"
+          >
+            <ShieldAlert className="w-4 h-4 text-blue-500" />
+            管理排除目录
+          </button>
           <button
             onClick={() => planMutation.mutate({
               scope,
@@ -141,12 +149,6 @@ export default function SmartOrganizePage() {
               <p className="text-xs text-slate-500 mt-0.5">请审查 AI 自动分组结果，确认无误后转化为执行建议。</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setShowExcludeModal(true)}
-                className="px-4 py-2 flex items-center gap-1.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors"
-              >
-                <ShieldAlert className="w-4 h-4 text-slate-400" /> 管理排除目录
-              </button>
               <button
                 onClick={() => rejectMutation.mutate()}
                 disabled={rejectMutation.isPending || acceptMutation.isPending}
