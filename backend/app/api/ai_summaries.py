@@ -41,7 +41,9 @@ def create_summary_task(body: GenerateSummaryRequest):
         inputs = json.loads(t.input_json)
         summary_service.process_summary_task(inputs["file_id"])
         t.processed_items = 1
-        queue_service.task_repo.update(t)
+        from ..core.uow import UnitOfWork
+        with UnitOfWork():
+            queue_service.task_repo.update(t)
 
     task_id = queue_service.enqueue_task(task, handler)
     return {"task_id": task_id, "status": "pending"}

@@ -31,14 +31,16 @@ class AITaskQueueService:
 
     def cleanup_ghost_tasks(self) -> None:
         """Reset any 'running' tasks from a previous crashed run back to 'failed'."""
-        self.task_repo.cleanup_ghost_tasks()
+        with UnitOfWork():
+            self.task_repo.cleanup_ghost_tasks()
 
     def _cleanup_ghost_tasks(self) -> None:
         self.cleanup_ghost_tasks()
         self._resurrect_pending_tasks()
 
     def _resurrect_pending_tasks(self) -> None:
-        self.task_repo.resurrect_pending_tasks()
+        with UnitOfWork():
+            self.task_repo.resurrect_pending_tasks()
 
     def enqueue_task(self, task: AITask, handler: Callable[[AITask], None]) -> int:
         """Adds an AI task to the database and submits it to the thread pool."""
