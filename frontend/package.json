@@ -11,6 +11,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "electron:build": "npm run build && electron-builder",
+    "gen:api-schema": "cd ../backend && python scripts/export_openapi.py",
+    "gen:api-types": "npm run gen:api-schema && npx openapi-typescript src/types/generated/openapi.json -o src/types/generated/api.d.ts",
+    "check:api-types": "npm run gen:api-types && git diff --exit-code src/types/generated",
     "typecheck": "tsc -b",
     "lint": "eslint \"src/**/*.{ts,tsx}\""
   },
@@ -38,6 +41,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "openapi-typescript": "^7.13.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.6.0",
