@@ -6,7 +6,12 @@ import toast from "react-hot-toast";
 export function useScanTask() {
   const queryClient = useQueryClient();
   const [path, setPath] = useState(() => localStorage.getItem("fs_last_scan_path") || "");
-  const [taskId, setTaskId] = useState<number | null>(null);
+  const [taskId, setTaskId] = useState<number | null>(() => {
+    const saved = localStorage.getItem("fs_active_scan_task_id");
+    if (!saved) return null;
+    const parsed = parseInt(saved, 10);
+    return isNaN(parsed) ? null : parsed;
+  });
 
   // Save path to local storage whenever it changes
   useEffect(() => {
@@ -17,7 +22,10 @@ export function useScanTask() {
 
   const createMutation = useMutation({
     mutationFn: () => createScanTask(path),
-    onSuccess: (data) => setTaskId(data.task_id),
+    onSuccess: (data) => {
+      setTaskId(data.task_id);
+      localStorage.setItem("fs_active_scan_task_id", data.task_id.toString());
+    },
   });
 
   const cancelMutation = useMutation({
@@ -36,6 +44,20 @@ export function useScanTask() {
     refetchInterval: (query) =>
       query.state.data?.status === "running" || query.state.data?.status === "pending" ? 1000 : false,
   });
+
+  // Clear persisted task if it finishes or errors out (404)
+  useEffect(() => {
+    if (taskQuery.isError) {
+      setTaskId(null);
+      localStorage.removeItem("fs_active_scan_task_id");
+    } else if (
+      taskQuery.data?.status === "completed" ||
+      taskQuery.data?.status === "failed" ||
+      taskQuery.data?.status === "cancelled"
+    ) {
+      localStorage.removeItem("fs_active_scan_task_id");
+    }
+  }, [taskQuery.data?.status, taskQuery.isError]);
 
   const errorQuery = useQuery({
     queryKey: ["scan-errors", taskId],
