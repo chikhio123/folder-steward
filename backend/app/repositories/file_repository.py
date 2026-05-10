@@ -1,12 +1,11 @@
 from typing import Optional
 
-from ..core.database import get_connection
+from ..core.database import get_connection, require_transaction
 from ..models.file_record import FileRecord
 
 
 class FileRepository:
     def create(self, record: FileRecord) -> int:
-        from ..core.database import require_transaction
         require_transaction()
         conn = get_connection()
         cur = conn.execute(
@@ -31,7 +30,6 @@ class FileRepository:
 
     def upsert(self, record: FileRecord) -> int:
         """Insert if new, update if existing by current_path. Returns record id."""
-        from ..core.database import require_transaction
         require_transaction()
         existing = self.find_by_current_path(record.current_path)
         if existing:

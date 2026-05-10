@@ -1,5 +1,5 @@
 from typing import Optional
-from ..core.database import get_connection
+from ..core.database import get_connection, require_transaction
 from ..models.file_content import FileContent
 from ..models.scan_task import now_iso
 
@@ -19,7 +19,6 @@ class FileContentRepository:
         return cur.lastrowid
 
     def mark_stale(self, file_id: int) -> None:
-        from ..core.database import require_transaction
         require_transaction()
         conn = get_connection()
         conn.execute(
