@@ -5,13 +5,13 @@ export default function RuleCard({ rule, onToggle, onDelete, isToggling, isDelet
   return (
     <div className={twMerge(
       "bg-white/80 backdrop-blur-xl rounded-2xl border p-5 shadow-sm transition-all duration-300",
-      rule.enabled ? "border-slate-200/60" : "border-slate-100 opacity-60 bg-slate-50/50"
+      rule.enabled === 1 ? "border-slate-200/60" : "border-slate-100 opacity-60 bg-slate-50/50"
     )}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
             <h3 className="text-lg font-bold text-slate-800 truncate" title={rule.name}>{rule.name}</h3>
-            {!rule.enabled && (
+            {rule.enabled !== 1 && (
               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200 text-slate-500 tracking-wider">
                 已停用
               </span>
@@ -39,8 +39,8 @@ export default function RuleCard({ rule, onToggle, onDelete, isToggling, isDelet
             <input
               type="checkbox"
               className="sr-only peer"
-              checked={rule.enabled}
-              onChange={(e) => onToggle(rule.id, e.target.checked)}
+              checked={rule.enabled === 1}
+              onChange={(e) => onToggle(rule.id, e.target.checked ? 1 : 0)}
               disabled={isToggling}
             />
             <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>

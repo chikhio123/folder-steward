@@ -13,7 +13,7 @@ export default function RuleManageView() {
   });
 
   const toggleRuleMutation = useMutation({
-    mutationFn: ({ id, enabled }: { id: number, enabled: boolean }) => updateRule(id, { enabled }),
+    mutationFn: ({ id, enabled }: { id: number, enabled: number }) => updateRule(id, { enabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rules", "all"] });
       toast.success("规则状态已更新");
@@ -40,10 +40,10 @@ export default function RuleManageView() {
       ) : rulesList && rulesList.length > 0 ? (
         <div className="space-y-4">
           {rulesList.map((r: any) => (
-            <RuleCard 
-              key={r.id} 
-              rule={r} 
-              onToggle={(id: number, enabled: boolean) => toggleRuleMutation.mutate({ id, enabled })}
+            <RuleCard
+              key={r.id}
+              rule={r}
+              onToggle={(id: number, enabled: number) => toggleRuleMutation.mutate({ id, enabled })}
               onDelete={(id: number) => deleteRuleMutation.mutate(id)}
               isToggling={toggleRuleMutation.isPending}
               isDeleting={deleteRuleMutation.isPending}

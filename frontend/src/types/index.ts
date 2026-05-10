@@ -19,6 +19,7 @@ export interface ScanError {
 export interface FileRecord {
   id: number;
   filename: string;
+  original_path: string;
   current_path: string;
   extension: string | null;
   size_bytes: number;
@@ -151,6 +152,7 @@ export interface AiTask {
   total_items: number;
   processed_items: number;
   error_message: string | null;
+  retry_count: number;
   estimated_tokens: number;
   actual_tokens: number;
   estimated_cost: number;
@@ -168,22 +170,16 @@ export interface Rule {
   target_dir: string;
   action: string;
   priority: number;
-  enabled: boolean;
+  enabled: number;
   created_at: string;
   updated_at: string | null;
 }
 
 export interface FileSummary {
-  id: number;
   file_id: number;
   summary: string;
-  llm_provider: string | null;
-  model_name: string | null;
-  source_content_hash: string | null;
   status: "pending" | "running" | "completed" | "stale" | "failed";
   error_message: string | null;
-  created_at: string;
-  updated_at: string | null;
 }
 
 declare global {
