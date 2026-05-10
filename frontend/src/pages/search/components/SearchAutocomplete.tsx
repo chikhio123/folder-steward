@@ -39,7 +39,7 @@ export function SearchAutocomplete({ value, onChange, onSubmit }: SearchAutocomp
 
   // Debounce fetching suggestions
   useEffect(() => {
-    if (value.trim().length >= 2) {
+    if (value.trim().length >= 3) {
       const timer = setTimeout(() => {
         fetchSuggestions(value);
       }, 300);
@@ -54,7 +54,7 @@ export function SearchAutocomplete({ value, onChange, onSubmit }: SearchAutocomp
     setActiveIndex(-1);
   }, [value, suggestions, history]);
 
-  const displayItems: SuggestionItem[] = value.trim().length < 2
+  const displayItems: SuggestionItem[] = value.trim().length < 3
     ? history.slice(0, 5).map(h => ({ type: 'history', text: h }))
     : suggestions;
 
@@ -119,8 +119,8 @@ export function SearchAutocomplete({ value, onChange, onSubmit }: SearchAutocomp
 
   return (
     <div className="relative flex-1 min-w-[240px] z-50" ref={containerRef}>
-      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        <SearchIcon className="h-5 w-5 text-blue-500" />
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+        <SearchIcon className={twMerge("h-5 w-5 transition-colors", isOpen ? "text-blue-500" : "text-slate-400")} />
       </div>
 
       <input
@@ -133,9 +133,17 @@ export function SearchAutocomplete({ value, onChange, onSubmit }: SearchAutocomp
         }}
         onFocus={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
-        placeholder="输入搜索关键词..."
-        className="w-full bg-white/60 backdrop-blur-md border border-slate-200/60 text-slate-800 rounded-xl pl-11 pr-10 py-3 text-base font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all placeholder:text-slate-400 shadow-sm"
+        placeholder=" "
+        className="w-full bg-white/60 backdrop-blur-md border border-slate-200/60 text-slate-800 rounded-xl pl-11 pr-10 pt-5 pb-1 text-base font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all shadow-sm"
       />
+      <label className={twMerge(
+        "absolute left-11 transition-all duration-200 pointer-events-none",
+        (isOpen || value)
+           ? "top-1 text-[11px] font-bold uppercase tracking-wider " + (isOpen && value.trim().length > 0 && value.trim().length < 3 ? "text-amber-500" : "text-blue-500")
+           : "top-3.5 text-base text-slate-400"
+      )}>
+        {isOpen && value.trim().length > 0 && value.trim().length < 3 ? "请输入至少三个字符" : "输入搜索关键词..."}
+      </label>
 
       {value && (
         <button
@@ -146,7 +154,7 @@ export function SearchAutocomplete({ value, onChange, onSubmit }: SearchAutocomp
         </button>
       )}
 
-      {isOpen && (displayItems.length > 0 || isLoading) && (
+      {isOpen && (displayItems.length > 0 || isLoading || value.trim().length < 3) && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-2xl border border-slate-200/80 rounded-xl shadow-xl shadow-slate-200/50 overflow-hidden animation-fade-in py-2">
           {isLoading && displayItems.length === 0 ? (
             <div className="px-4 py-3 flex items-center gap-2 text-sm text-slate-500">
@@ -155,7 +163,7 @@ export function SearchAutocomplete({ value, onChange, onSubmit }: SearchAutocomp
             </div>
           ) : (
             <>
-              {value.trim().length < 2 && history.length > 0 && (
+              {value.trim().length < 3 && history.length > 0 && (
                 <div className="px-4 py-1.5 flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   最近搜索
                   <button onClick={clearHistory} className="hover:text-rose-500 transition-colors cursor-pointer text-[10px]">清空</button>
