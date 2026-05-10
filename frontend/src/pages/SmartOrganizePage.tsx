@@ -1,6 +1,6 @@
 import { BrainCircuit, Loader2, ListChecks, CheckCircle2, Play, Settings, AlertCircle, Archive, XCircle, ShieldAlert } from "lucide-react";
 import { ExcludeDirsModal } from "../components/common/ExcludeDirsModal";
-import { CustomSelect } from "../components/common/CustomSelect";
+import { Select } from "../components/ui/Select";
 import { useSmartOrganize } from './smart-organize/hooks/useSmartOrganize';
 import { PlanPreviewGroup } from './smart-organize/components/PlanPreviewGroup';
 
@@ -41,7 +41,7 @@ export default function SmartOrganizePage() {
             <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
               <ListChecks className="w-4 h-4 text-blue-500" /> 处理范围
             </label>
-            <CustomSelect
+            <Select
               value={scope}
               onChange={(val) => setScope(val)}
               disabled={isRunning}

@@ -5,7 +5,7 @@ import { CopyX, FileBox, Database, Loader2, Fingerprint, CheckCircle2, ChevronDo
 import { twMerge } from "tailwind-merge";
 import toast from "react-hot-toast";
 import { formatSize } from "../../../utils/format";
-import { ConfirmModal } from "../../../components/common/ConfirmModal";
+import { ConfirmModal } from "../../../components/ui/ConfirmModal";
 
 export function DuplicateIsolationPanel() {
   const queryClient = useQueryClient();

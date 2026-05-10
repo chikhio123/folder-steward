@@ -1,6 +1,6 @@
 import { Save, Loader2, FolderArchive, ShieldAlert, FileDigit, EyeOff, Bot, Key, Link2, RefreshCw, Plus, Trash2, FolderPlus } from "lucide-react";
-import { ConfirmModal } from "../components/common/ConfirmModal";
-import { CustomSelect } from "../components/common/CustomSelect";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { Select } from "../components/ui/Select";
 import { PathTreeView, buildPathTree } from '../components/common/PathTreeView';
 import { useSettings } from './settings/hooks/useSettings';
 
@@ -50,7 +50,7 @@ export default function SettingsPage() {
       </div>
       <div className="flex-1 max-w-md mt-1 sm:mt-0">
         {f.type === "select" ? (
-          <CustomSelect
+          <Select
             value={values[f.key] ?? ""}
             onChange={(value) => setValues((v: Record<string, string>) => ({ ...v, [f.key]: value }))}
             options={(f.options || []).map((o: string) => ({
@@ -88,7 +88,7 @@ export default function SettingsPage() {
             )}
             {f.key === "llm_model" && availableModels.length > 0 && (
               <div className="mt-2">
-                <CustomSelect
+                <Select
                   value={values[f.key] ?? ""}
                   onChange={(value) => setValues((v: Record<string, string>) => ({ ...v, [f.key]: value }))}
                   options={availableModels.map(m => ({ value: m, label: m }))}
@@ -182,7 +182,7 @@ export default function SettingsPage() {
             <h3 className="text-lg font-bold text-slate-800">AI 引擎配置</h3>
             {!isLoading && (
               <div className="flex items-center gap-2">
-                <CustomSelect
+                <Select
                   value={activeProfileId}
                   onChange={(value) => handleProfileChange(value)}
                   options={profiles.map(p => ({
