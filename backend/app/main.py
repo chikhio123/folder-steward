@@ -7,11 +7,15 @@ from .core.database import init_db, close_connection
 init_db()
 
 from .services.extract_service import ExtractService
+from .services.scan_service import ScanService
+from .services.ai_task_queue_service import AITaskQueueService
 # Initialize other things if needed
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     ExtractService.cleanup_ghost_tasks()
+    ScanService.cleanup_ghost_tasks()
+    AITaskQueueService()._cleanup_ghost_tasks()
     yield
 
 app = FastAPI(title="Folder Steward", version="0.1.0", lifespan=lifespan)

@@ -35,6 +35,14 @@ class ScanTaskRepository:
              task.finished_at, task.id),
         )
 
+    def cleanup_ghost_tasks(self) -> None:
+        require_transaction()
+        conn = get_connection()
+        conn.execute(
+            "UPDATE scan_tasks SET status='failed', error_message='Process terminated unexpectedly', finished_at=? WHERE status IN ('running', 'pending')",
+            (now_iso(),)
+        )
+
     def mark_running_if_pending(self, task_id: int, started_at: str) -> bool:
         require_transaction()
         conn = get_connection()

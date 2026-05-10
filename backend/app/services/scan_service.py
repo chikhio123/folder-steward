@@ -27,6 +27,11 @@ class ScanService:
         self._running_tasks: dict[int, threading.Thread] = {}
         self._cancelled_tasks: set[int] = set()
 
+    @staticmethod
+    def cleanup_ghost_tasks() -> None:
+        with UnitOfWork():
+            ScanTaskRepository().cleanup_ghost_tasks()
+
     def create_scan_task(self, root_path_str: str) -> ScanTask:
         root_path = Path(root_path_str).resolve()
         self.safety_service.validate_scan_root(root_path)
