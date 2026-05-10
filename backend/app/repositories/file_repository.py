@@ -108,12 +108,12 @@ class FileRepository:
         return [FileRecord(**dict(r)) for r in rows], total
 
     def update_path(self, file_id: int, new_path: str) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute(
             "UPDATE file_records SET current_path = ? WHERE id = ?",
             (new_path, file_id),
         )
-        conn.commit()
 
     def find_duplicate_groups(self) -> list[dict]:
         """Return groups of files sharing the same sha256 and filename."""

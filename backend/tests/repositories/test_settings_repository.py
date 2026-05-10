@@ -11,16 +11,19 @@ def setup_db():
 
 def test_settings_repository_get_and_set():
     repo = SettingsRepository()
-    
+    from app.core.uow import UnitOfWork
+
     # Test get missing key
     assert repo.get("missing_key") is None
-    
+
     # Test set key
-    repo.set("my_key", "my_value")
-    
+    with UnitOfWork():
+        repo.set("my_key", "my_value")
+
     # Test get existing key
     assert repo.get("my_key") == "my_value"
-    
+
     # Test update existing key
-    repo.set("my_key", "new_value")
+    with UnitOfWork():
+        repo.set("my_key", "new_value")
     assert repo.get("my_key") == "new_value"

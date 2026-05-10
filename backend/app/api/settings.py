@@ -3,6 +3,7 @@ from typing import Optional, Dict
 import httpx
 
 from ..core.config import settings
+from ..core.uow import UnitOfWork
 from ..dependencies import get_settings_repository
 from ..repositories.settings_repository import SettingsRepository
 
@@ -16,7 +17,8 @@ def get_settings(settings_repo: SettingsRepository = Depends(get_settings_reposi
 
 @router.put("/settings", response_model=Dict[str, str])
 def update_settings(body: dict[str, str], settings_repo: SettingsRepository = Depends(get_settings_repository)):
-    settings_repo.update_all(body)
+    with UnitOfWork():
+        settings_repo.update_all(body)
     return settings_repo.get_all()
 
 

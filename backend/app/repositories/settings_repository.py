@@ -1,4 +1,4 @@
-from ..core.database import get_connection
+from ..core.database import get_connection, require_transaction
 from ..models.scan_task import now_iso
 
 class SettingsRepository:
@@ -8,12 +8,12 @@ class SettingsRepository:
         return row["value"] if row else None
 
     def set(self, key: str, value: str) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute(
             "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)",
             (key, value, now_iso())
         )
-        conn.commit()
 
     def get_all(self) -> dict[str, str]:
         conn = get_connection()
@@ -21,15 +21,10 @@ class SettingsRepository:
         return {row["key"]: row["value"] for row in rows}
 
     def update_all(self, settings: dict[str, str]) -> None:
+        require_transaction()
         conn = get_connection()
-        conn.execute("BEGIN")
-        try:
-            for k, v in settings.items():
-                conn.execute(
-                    "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)",
-                    (k, v, now_iso()),
-                )
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+        for k, v in settings.items():
+            conn.execute(
+                "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)",
+                (k, v, now_iso()),
+            )

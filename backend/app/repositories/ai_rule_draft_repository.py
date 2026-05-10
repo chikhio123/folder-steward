@@ -1,9 +1,10 @@
 from typing import Optional
-from ..core.database import get_connection
+from ..core.database import get_connection, require_transaction
 from ..models.ai_rule_draft import AIRuleDraft
 
 class AIRuleDraftRepository:
     def create(self, draft: AIRuleDraft) -> int:
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """INSERT INTO ai_rule_drafts
@@ -15,7 +16,6 @@ class AIRuleDraftRepository:
              draft.confidence, draft.status, draft.validation_error,
              draft.created_at, draft.updated_at),
         )
-        conn.commit()
         return cur.lastrowid
 
     def get(self, draft_id: int) -> Optional[AIRuleDraft]:
@@ -27,6 +27,7 @@ class AIRuleDraftRepository:
         return AIRuleDraft(**dict(row))
 
     def update(self, draft: AIRuleDraft) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute(
             """UPDATE ai_rule_drafts SET
@@ -37,4 +38,3 @@ class AIRuleDraftRepository:
              draft.priority, draft.reason, draft.confidence, draft.status, draft.validation_error,
              draft.updated_at, draft.id),
         )
-        conn.commit()

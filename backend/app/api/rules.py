@@ -4,6 +4,7 @@ from typing import List
 from ..schemas.rule_schema import RuleCreateRequest, RuleUpdateRequest, RuleResponse
 from ..models.rule import Rule
 from ..repositories.rule_repository import RuleRepository
+from ..core.uow import UnitOfWork
 
 router = APIRouter(tags=["rules"])
 rule_repo = RuleRepository()
@@ -19,7 +20,8 @@ def create_rule(body: RuleCreateRequest):
         priority=body.priority,
         enabled=body.enabled,
     )
-    rule_id = rule_repo.create(rule)
+    with UnitOfWork():
+        rule_id = rule_repo.create(rule)
     created_rule = rule_repo.get(rule_id)
     if not created_rule:
         raise HTTPException(status_code=500, detail="Failed to retrieve created rule")
@@ -45,7 +47,8 @@ def update_rule(rule_id: int, body: RuleUpdateRequest):
     if body.priority is not None: rule.priority = body.priority
     if body.enabled is not None: rule.enabled = body.enabled
 
-    rule_repo.update(rule)
+    with UnitOfWork():
+        rule_repo.update(rule)
     updated_rule = rule_repo.get(rule_id)
     if not updated_rule:
         raise HTTPException(status_code=500, detail="Failed to retrieve updated rule")
@@ -57,5 +60,6 @@ def delete_rule(rule_id: int):
     rule = rule_repo.get(rule_id)
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
-    rule_repo.delete(rule_id)
+    with UnitOfWork():
+        rule_repo.delete(rule_id)
     return {"status": "deleted"}

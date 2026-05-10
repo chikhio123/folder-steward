@@ -8,6 +8,7 @@ from ..repositories.ai_rule_draft_repository import AIRuleDraftRepository
 from ..repositories.rule_repository import RuleRepository
 from .llm_provider_service import LLMProviderService
 from .directory_policy_service import DirectoryPolicyService
+from ..core.uow import UnitOfWork
 
 class AIRuleDraftService:
     def __init__(
@@ -90,7 +91,8 @@ class AIRuleDraftService:
                 validation_error=validation_error,
                 created_at=now_iso()
             )
-            return self.draft_repo.create(draft)
+            with UnitOfWork():
+                return self.draft_repo.create(draft)
 
         except Exception as e:
             draft = AIRuleDraft(
@@ -99,7 +101,8 @@ class AIRuleDraftService:
                 validation_error=str(e),
                 created_at=now_iso()
             )
-            return self.draft_repo.create(draft)
+            with UnitOfWork():
+                return self.draft_repo.create(draft)
 
     def get_preview(self, draft_id: int) -> dict:
         draft = self.draft_repo.get(draft_id)
@@ -186,11 +189,12 @@ class AIRuleDraftService:
             enabled=1,
             created_at=now_iso()
         )
-        rule_id = self.rule_repo.create(rule)
+        with UnitOfWork():
+            rule_id = self.rule_repo.create(rule)
 
-        draft.status = "converted"
-        draft.updated_at = now_iso()
-        self.draft_repo.update(draft)
+            draft.status = "converted"
+            draft.updated_at = now_iso()
+            self.draft_repo.update(draft)
 
         archive_root = self._get_archive_root()
         if archive_root:
