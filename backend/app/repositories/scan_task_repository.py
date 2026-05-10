@@ -1,11 +1,12 @@
 from typing import Optional
 
-from ..core.database import get_connection
+from ..core.database import get_connection, require_transaction
 from ..models.scan_task import ScanTask, ScanError, now_iso
 
 
 class ScanTaskRepository:
     def create(self, root_path: str) -> ScanTask:
+        require_transaction()
         conn = get_connection()
         now = now_iso()
         cur = conn.execute(
@@ -23,6 +24,7 @@ class ScanTaskRepository:
         return ScanTask(**dict(row))
 
     def update(self, task: ScanTask) -> None:
+        require_transaction()
         conn = get_connection()
         conn.execute(
             """UPDATE scan_tasks SET status=?, total_files=?, scanned_files=?,
@@ -34,6 +36,7 @@ class ScanTaskRepository:
         )
 
     def mark_running_if_pending(self, task_id: int, started_at: str) -> bool:
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             "UPDATE scan_tasks SET status='running', started_at=? WHERE id=? AND status='pending'",
@@ -45,6 +48,7 @@ class ScanTaskRepository:
         """Update only progress counters without touching status/state fields.
         Prevents race conditions where cancel_task sets cancelled but
         the scan loop's periodic update overwrites it back to running."""
+        require_transaction()
         conn = get_connection()
         conn.execute(
             "UPDATE scan_tasks SET scanned_files=?, failed_files=? WHERE id=?",
@@ -52,6 +56,7 @@ class ScanTaskRepository:
         )
 
     def complete_if_running(self, task: ScanTask) -> bool:
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """UPDATE scan_tasks SET status=?, total_files=?, scanned_files=?,
@@ -63,6 +68,7 @@ class ScanTaskRepository:
         return cur.rowcount == 1
 
     def fail_if_running(self, task: ScanTask) -> bool:
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """UPDATE scan_tasks SET status='failed', error_message=?, finished_at=?
@@ -80,7 +86,6 @@ class ScanTaskRepository:
 
 class ScanErrorRepository:
     def create(self, task_id: int, file_path: str, error_message: str) -> ScanError:
-        from ..core.database import require_transaction
         require_transaction()
         conn = get_connection()
         now = now_iso()

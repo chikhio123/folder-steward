@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from app.core.database import get_connection
+from app.core.uow import UnitOfWork
 from app.services.scan_service import ScanService
 from app.services.suggestion_service import SuggestionService
 from app.services.operation_service import OperationService
@@ -232,10 +233,11 @@ class TestFullFlow:
         (source / "file.txt").write_bytes(b"content")
 
         task_repo = ScanTaskRepository()
-        task = task_repo.create(str(source))
-        task.status = "cancelled"
-        task.finished_at = "already-cancelled"
-        task_repo.update(task)
+        with UnitOfWork():
+            task = task_repo.create(str(source))
+            task.status = "cancelled"
+            task.finished_at = "already-cancelled"
+            task_repo.update(task)
 
         scan_service = ScanService()
         scan_service._run_scan(task.id)
@@ -251,7 +253,8 @@ class TestFullFlow:
         (source / "file.txt").write_bytes(b"content")
 
         task_repo = ScanTaskRepository()
-        task = task_repo.create(str(source))
+        with UnitOfWork():
+            task = task_repo.create(str(source))
         scan_service = ScanService()
         original_mark_running = scan_service.task_repo.mark_running_if_pending
 
