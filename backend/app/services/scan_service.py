@@ -78,13 +78,16 @@ class ScanService:
         conn = get_connection()
         rows = conn.execute("SELECT id, current_path FROM file_records WHERE status = 'active'").fetchall()
         
-        root_str = str(root.resolve())
+        root_res = root.resolve()
         deleted_ids = []
         for r in rows:
             path_str = r["current_path"]
-            if path_str.startswith(root_str):
+            try:
+                Path(path_str).resolve().relative_to(root_res)
                 if not Path(path_str).exists():
                     deleted_ids.append(r["id"])
+            except ValueError:
+                pass
                     
         if deleted_ids:
             # Batch update in chunks of 500 to avoid sqlite limits
