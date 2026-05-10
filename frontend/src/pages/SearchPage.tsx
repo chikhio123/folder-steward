@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { searchFiles } from "../services/api";
-import { getFileIcon } from "../utils/format";
+import { FileIcon } from "../components/ui/FileIcon";
 import {
   Search as SearchIcon,
   Filter,
@@ -13,7 +13,7 @@ import {
   Loader2
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { CustomSelect } from "../components/common/CustomSelect";
+import { Select } from "../components/ui/Select";
 import { SearchAutocomplete } from "./search/components/SearchAutocomplete";
 
 export default function SearchPage() {
@@ -64,7 +64,7 @@ export default function SearchPage() {
         />
 
         <div className="relative flex items-center w-48">
-          <CustomSelect
+          <Select
             value={scope}
             onChange={(value) => setScope(value)}
             options={[
@@ -105,7 +105,7 @@ export default function SearchPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 min-w-0 flex-1">
                       <div className="mt-1">
-                         {getFileIcon(item.extension)}
+                         <FileIcon ext={item.extension} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">

@@ -1,5 +1,5 @@
 import { Search, Filter, ArrowUpDown } from "lucide-react";
-import { CustomSelect } from "../../../components/common/CustomSelect";
+import { Select } from "../../../components/ui/Select";
 
 export interface FileFilterBarProps {
   keyword: string;
@@ -53,7 +53,7 @@ export function FileFilterBar({
       <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
       <div className="relative flex items-center w-40">
-        <CustomSelect
+        <Select
           value={sortBy}
           onChange={onSortByChange}
           options={[

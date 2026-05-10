@@ -1,6 +1,7 @@
 import { Clock, FolderOpen } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { formatSize, getFileIcon } from "../../../utils/format";
+import { formatSize } from "../../../utils/format";
+import { FileIcon } from "../../../components/ui/FileIcon";
 import type { FileRecord } from "../../../types";
 
 export interface FileTableRowProps {
@@ -17,7 +18,7 @@ export function FileTableRow({ file, onSelect, onOpenFolder }: FileTableRowProps
     >
       <div className="flex flex-col min-w-0 gap-0.5">
         <div className="flex items-center gap-3 min-w-0">
-          {getFileIcon(file.extension)}
+          <FileIcon ext={file.extension} />
           <span className="text-sm font-medium text-slate-700 truncate" title={file.filename}>
             {file.filename}
           </span>

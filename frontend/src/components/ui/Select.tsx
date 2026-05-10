@@ -7,7 +7,7 @@ interface Option {
   label: string;
 }
 
-interface CustomSelectProps {
+interface SelectProps {
   value: string;
   onChange: (value: string) => void;
   options: Option[];
@@ -17,7 +17,7 @@ interface CustomSelectProps {
   icon?: React.ReactNode;
 }
 
-export function CustomSelect({
+export function Select({
   value,
   onChange,
   options,
@@ -25,7 +25,7 @@ export function CustomSelect({
   disabled = false,
   className,
   icon
-}: CustomSelectProps) {
+}: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 

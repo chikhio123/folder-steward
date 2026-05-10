@@ -16,8 +16,8 @@ import {
   X
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { ConfirmModal } from "../components/common/ConfirmModal";
-import { CustomSelect } from "../components/common/CustomSelect";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { Select } from "../components/ui/Select";
 import { Pagination } from "../components/common/Pagination";
 import { DuplicateIsolationPanel } from "./scan/components/DuplicateIsolationPanel";
 import { useSuggestions } from "./suggestion/hooks/useSuggestions";
@@ -123,7 +123,7 @@ export default function SuggestionPage() {
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
           <div className="relative flex items-center w-40">
-            <CustomSelect
+            <Select
               value={filter}
               onChange={(value) => { setFilter(value); setPage(1); setSelected(new Set()); }}
               options={[

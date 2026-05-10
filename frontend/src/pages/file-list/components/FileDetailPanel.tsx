@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getFileContent, forceExtractFile, getFileSummary, createSummaryTask } from "../../../services/api";
-import { formatSize, getFileIcon } from "../../../utils/format";
+import { formatSize } from "../../../utils/format";
+import { FileIcon } from "../../../components/ui/FileIcon";
 import type { FileRecord } from "../../../types";
 import { X, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, FileSignature, Sparkles } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -65,7 +66,7 @@ export default function FileDetailPanel({ file, onClose }: FileDetailPanelProps)
       {/* Header */}
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
         <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-          {getFileIcon(file.extension)}
+          <FileIcon ext={file.extension} />
           文件详情
         </h3>
         <button
