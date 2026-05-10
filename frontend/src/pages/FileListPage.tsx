@@ -6,6 +6,8 @@ import { FileTableHeader } from '../components/file-list/FileTableHeader';
 import { FileTableRow } from '../components/file-list/FileTableRow';
 import { FileEmptyState } from '../components/file-list/FileEmptyState';
 import { FileDetailDrawer } from '../components/file-list/FileDetailDrawer';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Card } from '../components/ui/Card';
 import type { FileRecord } from "../types";
 
 export default function FileListPage() {
@@ -40,8 +42,11 @@ export default function FileListPage() {
       <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
       <div className="mb-6 shrink-0 z-20 bg-slate-50/80 backdrop-blur-xl border-b border-slate-200/50 pb-4 pt-2 -mx-4 px-4 sm:-mx-0 sm:px-0">
-        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight pb-1">文件索引库</h2>
-        <p className="text-slate-500 mt-1 font-medium">浏览已建立索引的所有文件记录，支持多维度检索与排序。</p>
+        <PageHeader 
+          title="文件索引库" 
+          description="浏览已建立索引的所有文件记录，支持多维度检索与排序。" 
+          className="mb-0"
+        />
       </div>
 
       <FileFilterBar 
@@ -55,7 +60,7 @@ export default function FileListPage() {
         onSortOrderToggle={() => { setSortOrder(o => (o === "asc" ? "desc" : "asc")); setPage(1); }}
       />
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 shadow-sm relative flex flex-col mb-8">
+      <Card variant="glass" className="relative flex flex-col mb-8 overflow-hidden">
         <FileTableHeader 
           sortBy={sortBy} 
           sortOrder={sortOrder} 
@@ -85,7 +90,7 @@ export default function FileListPage() {
         </div>
 
         <Pagination currentPage={page} totalPages={totalPages} totalItems={data?.total || 0} onPageChange={setPage} />
-      </div>
+      </Card>
 
       <FileDetailDrawer 
         selectedFile={selectedFile} 

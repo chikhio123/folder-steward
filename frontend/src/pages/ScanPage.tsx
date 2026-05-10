@@ -2,6 +2,9 @@ import { FolderSearch, Play, AlertCircle, Loader2, FolderInput } from "lucide-re
 import { useScanTask } from "../hooks/useScanTask";
 import { ScanProgressCard } from "../components/ScanProgressCard";
 import { ScanReportCard } from "../components/ScanReportCard";
+import { PageHeader } from "../components/ui/PageHeader";
+import { Card } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
 
 export default function ScanPage() {
   const {
@@ -23,12 +26,13 @@ export default function ScanPage() {
       {/* 背景光晕 */}
       <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div className="mb-8 relative z-10">
-        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 tracking-tight pb-1">扫描文件夹</h2>
-        <p className="text-slate-500 mt-1 font-medium">选择一个目录进行深度扫描，建立本地文件索引并生成整理建议。</p>
-      </div>
+      <PageHeader 
+        title="扫描文件夹" 
+        description="选择一个目录进行深度扫描，建立本地文件索引并生成整理建议。" 
+        className="relative z-10" 
+      />
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-8 mb-6 shadow-sm hover:shadow-md transition-all duration-300 relative z-10">
+      <Card variant="glass" className="p-8 mb-6 hover:shadow-md relative z-10">
         <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
           <FolderSearch className="w-4 h-4 text-blue-600" />
           目标文件夹路径
@@ -59,10 +63,12 @@ export default function ScanPage() {
               </button>
             )}
           </div>
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             onClick={() => createMutation.mutate()}
             disabled={!path.trim() || isRunning}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-500 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 min-w-[140px]"
+            className="min-w-[140px]"
           >
             {createMutation.isPending ? (
               <>
@@ -75,7 +81,7 @@ export default function ScanPage() {
                 开始扫描
               </>
             )}
-          </button>
+          </Button>
         </div>
         {createMutation.isError && (
           <div className="mt-3 flex items-center gap-2 text-rose-600 bg-rose-50 px-3 py-2 rounded-lg text-sm border border-rose-100">
@@ -83,7 +89,7 @@ export default function ScanPage() {
             <p>{(createMutation.error as Error).message}</p>
           </div>
         )}
-      </div>
+      </Card>
 
       {task && (
         <ScanProgressCard 

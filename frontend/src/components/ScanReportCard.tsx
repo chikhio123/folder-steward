@@ -1,5 +1,7 @@
 import { FileText, ChevronRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import type { ScanTask, ScanError } from "../types";
+import { Card } from "./ui/Card";
+import { Button } from "./ui/Button";
 
 export interface ScanReportCardProps {
   task: ScanTask;
@@ -9,20 +11,22 @@ export interface ScanReportCardProps {
 
 export function ScanReportCard({ task, errorData, onLoadErrors }: ScanReportCardProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/60 p-8 shadow-sm">
+    <Card className="p-8">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
           <FileText className="w-5 h-5 text-slate-400" />
           扫描报告
         </h3>
         {task.failed_files > 0 && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onLoadErrors}
-            className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
+            className="text-blue-600 hover:text-blue-700"
           >
             加载错误日志
             <ChevronRight className="w-4 h-4" />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -46,6 +50,6 @@ export function ScanReportCard({ task, errorData, onLoadErrors }: ScanReportCard
           <p className="text-sm font-medium">太棒了，没有任何扫描错误！</p>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

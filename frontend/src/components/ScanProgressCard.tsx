@@ -1,6 +1,8 @@
 import { Square, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 import type { ScanTask } from "../types";
+import { Card } from "./ui/Card";
+import { Badge } from "./ui/Badge";
+import { Button } from "./ui/Button";
 
 export interface ScanProgressCardProps {
   task: ScanTask;
@@ -11,25 +13,26 @@ export interface ScanProgressCardProps {
 
 export function ScanProgressCard({ task, onCancel, isCancelling, cancelError }: ScanProgressCardProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/60 p-8 mb-6 shadow-sm transition-all duration-300">
+    <Card className="p-8 mb-6">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
           <ActivityIcon status={task.status} />
           扫描进度
         </h3>
         <div className="flex items-center gap-3">
-          <span className={twMerge("px-3 py-1 rounded-full text-xs font-bold tracking-wide", statusBadgeColor(task.status))}>
+          <Badge variant={statusBadgeVariant(task.status)}>
             {statusLabel(task.status)}
-          </span>
+          </Badge>
           {(task.status === "running" || task.status === "pending") && (
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={onCancel}
               disabled={isCancelling}
-              className="px-3 py-1.5 flex items-center gap-1.5 text-xs font-semibold bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 hover:text-slate-900 disabled:opacity-50 transition-colors"
             >
               <Square className="w-3.5 h-3.5" fill="currentColor" />
               {isCancelling ? "正在停止..." : "停止扫描"}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -44,9 +47,9 @@ export function ScanProgressCard({ task, onCancel, isCancelling, cancelError }: 
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden ring-1 ring-inset ring-slate-200/50">
             <div
-              className={twMerge("h-full rounded-full transition-all duration-500 ease-out relative",
+              className={`h-full rounded-full transition-all duration-500 ease-out relative ${
                 task.status === "completed" ? "bg-emerald-500" : task.status === "failed" ? "bg-rose-500" : "bg-blue-500"
-              )}
+              }`}
               style={{
                 width: task.total_files > 0 ? `${(task.scanned_files / task.total_files) * 100}%` : "0%",
               }}
@@ -74,7 +77,7 @@ export function ScanProgressCard({ task, onCancel, isCancelling, cancelError }: 
           <p className="text-rose-600 text-sm">{cancelError.message}</p>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -96,13 +99,13 @@ function statusLabel(status: string): string {
   }
 }
 
-function statusBadgeColor(status: string): string {
+function statusBadgeVariant(status: string): "success" | "primary" | "danger" | "default" {
   switch (status) {
-    case "completed": return "bg-emerald-100 text-emerald-700";
+    case "completed": return "success";
     case "running":
-    case "pending": return "bg-blue-100 text-blue-700";
-    case "failed": return "bg-rose-100 text-rose-700";
-    case "cancelled": return "bg-slate-100 text-slate-700";
-    default: return "bg-slate-100 text-slate-600";
+    case "pending": return "primary";
+    case "failed": return "danger";
+    case "cancelled": return "default";
+    default: return "default";
   }
 }
