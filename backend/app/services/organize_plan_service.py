@@ -108,41 +108,43 @@ class OrganizePlanService:
             status="draft",
             created_at=now_iso()
         )
-        plan_id = self.plan_repo.create_plan(plan)
-        plan.id = plan_id
+        from app.core.uow import UnitOfWork
+        with UnitOfWork():
+            plan_id = self.plan_repo.create_plan(plan)
+            plan.id = plan_id
 
-        summary_counts = {}
+            summary_counts = {}
 
-        for r in rows:
-            target_dir = r["suggested_target_dir"]
-            # Increment summary
-            summary_counts[target_dir] = summary_counts.get(target_dir, 0) + 1
+            for r in rows:
+                target_dir = r["suggested_target_dir"]
+                # Increment summary
+                summary_counts[target_dir] = summary_counts.get(target_dir, 0) + 1
 
-            target_path = str(Path(archive_root) / target_dir / Path(r["current_path"]).name)
+                target_path = str(Path(archive_root) / target_dir / Path(r["current_path"]).name)
 
-            item = OrganizePlanItem(
-                plan_id=plan_id,
-                file_id=r["file_id"],
-                ai_suggestion_id=r["suggestion_id"],
-                source_path=r["current_path"],
-                target_dir=target_dir,
-                target_path=target_path,
-                directory_status=r["directory_status"],
-                confidence=r["confidence"],
-                reason=r["reason"],
-                evidence_json=r["evidence_json"],
-                status="pending",
-                created_at=now_iso()
-            )
-            self.plan_repo.create_item(item)
+                item = OrganizePlanItem(
+                    plan_id=plan_id,
+                    file_id=r["file_id"],
+                    ai_suggestion_id=r["suggestion_id"],
+                    source_path=r["current_path"],
+                    target_dir=target_dir,
+                    target_path=target_path,
+                    directory_status=r["directory_status"],
+                    confidence=r["confidence"],
+                    reason=r["reason"],
+                    evidence_json=r["evidence_json"],
+                    status="pending",
+                    created_at=now_iso()
+                )
+                self.plan_repo.create_item(item)
 
-        # Mark AI suggestion as in_plan so it doesn't get picked up again
-        suggestion_ids_to_update = [r["suggestion_id"] for r in rows]
-        if suggestion_ids_to_update:
-            self.ai_sug_repo.update_status_batch(suggestion_ids_to_update, "in_plan")
+            # Mark AI suggestion as in_plan so it doesn't get picked up again
+            suggestion_ids_to_update = [r["suggestion_id"] for r in rows]
+            if suggestion_ids_to_update:
+                self.ai_sug_repo.update_status_batch(suggestion_ids_to_update, "in_plan")
 
-        plan.summary_json = json.dumps(summary_counts, ensure_ascii=False)
-        self.plan_repo.update_plan(plan)
+            plan.summary_json = json.dumps(summary_counts, ensure_ascii=False)
+            self.plan_repo.update_plan(plan)
 
         return plan_id
 
