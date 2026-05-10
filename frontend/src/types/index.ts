@@ -96,21 +96,21 @@ export interface AITask {
   updated_at: string | null;
 }
 
-export interface PlanItemPreview {
-  item_id: number;
-  file_id: number;
-  source_path: string;
-  target_path: string;
-  directory_status: string;
-  confidence: number;
-  reason: string | null;
-}
-
 export interface OrganizePlanPreview {
   plan_id: number;
   title: string;
   status: string;
-  groups: Record<string, PlanItemPreview[]>;
+  groups: Record<string, OrganizePlanItem[]>;
+}
+
+export interface OrganizePlanItem {
+  item_id: number;
+  file_id: number;
+  source_path: string;
+  target_path: string;
+  directory_status: "proposed_new" | "existing" | "excluded" | string;
+  confidence: number;
+  reason: string | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -191,23 +191,6 @@ export interface Rule {
   enabled: boolean;
   created_at: string;
   updated_at: string | null;
-}
-
-export interface OrganizePlanPreview {
-  id: number;
-  title: string;
-  scope: string;
-  status: "draft" | "reviewing" | "accepted" | "rejected" | "converted" | "failed";
-  summary_json: string | null;
-  created_at: string;
-  updated_at: string | null;
-  groups?: Record<string, PlanGroupItem[]>;
-  uncertain_file_ids?: number[];
-}
-
-export interface PlanGroupItem {
-  file_ids: number[];
-  reason: string | null;
 }
 
 export interface FileSummary {
