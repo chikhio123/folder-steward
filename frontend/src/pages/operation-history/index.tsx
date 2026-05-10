@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getOperations, rollbackOperation } from "../services/api";
-import type { OperationLog } from "../types";
+import { getOperations, rollbackOperation } from "../../services/api";
+import type { OperationLog } from "../../types";
 import toast from "react-hot-toast";
 import {
   History,

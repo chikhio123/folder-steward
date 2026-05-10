@@ -1,14 +1,14 @@
-import { useFileList } from './file-list/hooks/useFileList';
-import { Pagination } from '../components/common/Pagination';
+import { useFileList } from './hooks/useFileList';
+import { Pagination } from '../../components/common/Pagination';
 import { Loader2 } from "lucide-react";
-import { FileFilterBar } from './file-list/components/FileFilterBar';
-import { FileTableHeader } from './file-list/components/FileTableHeader';
-import { FileTableRow } from './file-list/components/FileTableRow';
-import { FileEmptyState } from './file-list/components/FileEmptyState';
-import { FileDetailDrawer } from './file-list/components/FileDetailDrawer';
-import { PageHeader } from '../components/ui/PageHeader';
-import { Card } from '../components/ui/Card';
-import type { FileRecord } from "../types";
+import { FileFilterBar } from './components/FileFilterBar';
+import { FileTableHeader } from './components/FileTableHeader';
+import { FileTableRow } from './components/FileTableRow';
+import { FileEmptyState } from './components/FileEmptyState';
+import { FileDetailDrawer } from './components/FileDetailDrawer';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Card } from '../../components/ui/Card';
+import type { FileRecord } from "../../types";
 
 export default function FileListPage() {
   const { state, actions, query } = useFileList();

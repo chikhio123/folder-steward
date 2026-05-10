@@ -1,8 +1,8 @@
 import { Save, Loader2, FolderArchive, ShieldAlert, FileDigit, EyeOff, Bot, Key, Link2, RefreshCw, Plus, Trash2, FolderPlus } from "lucide-react";
-import { ConfirmModal } from "../components/ui/ConfirmModal";
-import { Select } from "../components/ui/Select";
-import { PathTreeView, buildPathTree } from '../components/common/PathTreeView';
-import { useSettings } from './settings/hooks/useSettings';
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { Select } from "../../components/ui/Select";
+import { PathTreeView, buildPathTree } from '../../components/common/PathTreeView';
+import { useSettings } from './hooks/useSettings';
 
 export default function SettingsPage() {
   const { state, actions } = useSettings();

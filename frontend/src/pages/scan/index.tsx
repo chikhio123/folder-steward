@@ -1,10 +1,10 @@
 import { FolderSearch, Play, AlertCircle, Loader2, FolderInput } from "lucide-react";
-import { useScanTask } from "./scan/hooks/useScanTask";
-import { ScanProgressCard } from "./scan/components/ScanProgressCard";
-import { ScanReportCard } from "./scan/components/ScanReportCard";
-import { PageHeader } from "../components/ui/PageHeader";
-import { Card } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
+import { useScanTask } from "./hooks/useScanTask";
+import { ScanProgressCard } from "./components/ScanProgressCard";
+import { ScanReportCard } from "./components/ScanReportCard";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { Card } from "../../components/ui/Card";
+import { Button } from "../../components/ui/Button";
 
 export default function ScanPage() {
   const {

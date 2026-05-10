@@ -3,15 +3,15 @@ import { Toaster } from "react-hot-toast";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
 import Layout from "./components/layout/Layout";
-import DashboardPage from "./pages/DashboardPage";
-import ScanPage from "./pages/ScanPage";
-import SearchPage from "./pages/SearchPage";
-import FileListPage from "./pages/FileListPage";
-import SuggestionPage from "./pages/SuggestionPage";
-import AiRuleDraftPage from "./pages/AiRuleDraftPage";
-import SmartOrganizePage from "./pages/SmartOrganizePage";
-import OperationHistoryPage from "./pages/OperationHistoryPage";
-import SettingsPage from "./pages/SettingsPage";
+import DashboardPage from "./pages/dashboard";
+import ScanPage from "./pages/scan";
+import SearchPage from "./pages/search";
+import FileListPage from "./pages/file-list";
+import SuggestionPage from "./pages/suggestion";
+import AiRuleDraftPage from "./pages/ai-rule-draft";
+import SmartOrganizePage from "./pages/smart-organize";
+import OperationHistoryPage from "./pages/operation-history";
+import SettingsPage from "./pages/settings";
 
 export default function App() {
   useEffect(() => {

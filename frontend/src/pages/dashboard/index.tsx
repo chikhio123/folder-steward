@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getDashboard } from "../services/api";
+import { getDashboard } from "../../services/api";
 import {
   Files,
   Database,
@@ -10,7 +10,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { formatSize } from "../utils/format";
+import { formatSize } from "../../utils/format";
 
 export default function DashboardPage() {
   const { data, isLoading } = useQuery({
@@ -76,7 +76,7 @@ export default function DashboardPage() {
           <div className="p-6 flex-1">
             {data?.recent_tasks?.length ? (
               <div className="space-y-4">
-                {data.recent_tasks.map((t: import("../types").ScanTask) => (
+                {data.recent_tasks.map((t: import("../../types").ScanTask) => (
                   <div key={t.task_id} className="group flex items-start gap-4">
                     <div className="mt-1">
                       <div className={twMerge("w-2.5 h-2.5 rounded-full mt-1.5", statusDotColor(t.status))} />
@@ -115,7 +115,7 @@ export default function DashboardPage() {
           <div className="p-6 flex-1">
             {data?.recent_operations?.length ? (
               <div className="space-y-4">
-                {data.recent_operations.map((o: import("../types").OperationLog) => (
+                {data.recent_operations.map((o: import("../../types").OperationLog) => (
                   <div key={o.id} className="group flex items-start gap-4">
                     <div className="mt-1">
                       <div className={twMerge("w-2.5 h-2.5 rounded-full mt-1.5", statusDotColor(o.status))} />

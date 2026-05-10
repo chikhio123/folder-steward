@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { FileSuggestion } from "../types";
+import type { FileSuggestion } from "../../types";
 import {
   Wand2,
   FolderOpen,
@@ -16,11 +16,11 @@ import {
   X
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { ConfirmModal } from "../components/ui/ConfirmModal";
-import { Select } from "../components/ui/Select";
-import { Pagination } from "../components/common/Pagination";
-import { DuplicateIsolationPanel } from "./scan/components/DuplicateIsolationPanel";
-import { useSuggestions } from "./suggestion/hooks/useSuggestions";
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { Select } from "../../components/ui/Select";
+import { Pagination } from "../../components/common/Pagination";
+import { DuplicateIsolationPanel } from "../scan/components/DuplicateIsolationPanel";
+import { useSuggestions } from "./hooks/useSuggestions";
 
 export default function SuggestionPage() {
   const { state, actions, mutations } = useSuggestions();

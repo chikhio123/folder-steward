@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { searchFiles } from "../services/api";
-import { FileIcon } from "../components/ui/FileIcon";
+import { searchFiles } from "../../services/api";
+import { FileIcon } from "../../components/ui/FileIcon";
 import {
   Search as SearchIcon,
   Filter,
@@ -13,8 +13,8 @@ import {
   Loader2
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { Select } from "../components/ui/Select";
-import { SearchAutocomplete } from "./search/components/SearchAutocomplete";
+import { Select } from "../../components/ui/Select";
+import { SearchAutocomplete } from "./components/SearchAutocomplete";
 
 export default function SearchPage() {
   const [queryInput, setQueryInput] = useState("");
@@ -100,7 +100,7 @@ export default function SearchPage() {
             </div>
           ) : data?.items?.length ? (
             <div className="divide-y divide-slate-100/60 p-2">
-              {data.items.map((item: import("../types").SearchResultItem) => (
+              {data.items.map((item: import("../../types").SearchResultItem) => (
                 <div key={item.file_id} className="p-4 hover:bg-slate-50/80 transition-colors rounded-xl group relative">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 min-w-0 flex-1">
