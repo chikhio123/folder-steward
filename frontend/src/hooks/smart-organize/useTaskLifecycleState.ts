@@ -41,6 +41,11 @@ export const useTaskLifecycleState = () => {
     }
   }, [planId]);
 
+  const startTask = (id: number) => {
+    setTaskId(id);
+    setPlanId(null);
+  };
+
   const clearTasks = () => {
     setTaskId(null);
     setPlanId(null);
@@ -51,6 +56,7 @@ export const useTaskLifecycleState = () => {
     setTaskId,
     planId,
     setPlanId,
+    startTask,
     clearTasks
   };
 };

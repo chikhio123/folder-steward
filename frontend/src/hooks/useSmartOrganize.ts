@@ -10,7 +10,7 @@ export const useSmartOrganize = () => {
     taskId: lifecycle.taskId,
     planId: lifecycle.planId,
     callbacks: {
-      onTaskCreated: lifecycle.setTaskId,
+      onTaskCreated: lifecycle.startTask,
       onPlanReady: lifecycle.setPlanId,
       onClear: lifecycle.clearTasks
     }

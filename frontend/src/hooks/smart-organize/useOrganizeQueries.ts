@@ -46,11 +46,12 @@ export const useOrganizeQueries = ({ taskId, planId, callbacks }: OrganizeQuerie
   });
 
   // Safely update planId outside of rendering phase when task completes
+  const { onPlanReady } = callbacks;
   useEffect(() => {
     if (taskQuery.data?.status === "completed" && taskQuery.data?.result_ref_id && planId === null) {
-      callbacks.onPlanReady(taskQuery.data.result_ref_id);
+      onPlanReady(taskQuery.data.result_ref_id);
     }
-  }, [taskQuery.data, planId, callbacks]);
+  }, [taskQuery.data, planId, onPlanReady]);
 
   const planQuery = useQuery({
     queryKey: ["organize-plan", planId],
