@@ -4,6 +4,7 @@ import { getExcludePaths, updateExcludePaths } from "../services/api";
 import { X, Search, ShieldAlert, Loader2, FolderMinus, ChevronRight, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 import { twMerge } from "tailwind-merge";
+import type { OrganizePlanItem } from "../types";
 
 function normalizePath(p: string): string {
   return p.replace(/\\/g, '/');
@@ -119,7 +120,14 @@ function getNodeState(path: string, existingExcluded: string[], selectedDirs: Se
   return { checked: false, indeterminate: false, disabled: false, isDirect: false };
 }
 
-function TriStateCheckbox({ checked, indeterminate, disabled, onChange }: any) {
+interface TriStateCheckboxProps {
+  checked: boolean;
+  indeterminate: boolean;
+  disabled?: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+function TriStateCheckbox({ checked, indeterminate, disabled, onChange }: TriStateCheckboxProps) {
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (ref.current) {
@@ -145,7 +153,7 @@ function TriStateCheckbox({ checked, indeterminate, disabled, onChange }: any) {
 interface ExcludeDirsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  planGroups?: Record<string, any[]>;
+  planGroups?: Record<string, OrganizePlanItem[]>;
 }
 
 export function ExcludeDirsModal({ isOpen, onClose, planGroups }: ExcludeDirsModalProps) {
@@ -178,7 +186,7 @@ export function ExcludeDirsModal({ isOpen, onClose, planGroups }: ExcludeDirsMod
       setSelectedDirs(new Set());
       onClose();
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error(`更新排除列表失败: ${err.message}`);
     }
   });
@@ -189,7 +197,7 @@ export function ExcludeDirsModal({ isOpen, onClose, planGroups }: ExcludeDirsMod
       queryClient.invalidateQueries({ queryKey: ["exclude-paths"] });
       toast.success("已移除排除规则");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error(`更新排除列表失败: ${err.message}`);
     }
   });
@@ -216,7 +224,7 @@ export function ExcludeDirsModal({ isOpen, onClose, planGroups }: ExcludeDirsMod
     const lowerSearch = search.toLowerCase();
 
     function traverse(n: TreeNodeData): boolean {
-      let isMatch = n.name.toLowerCase().includes(lowerSearch) || n.path.toLowerCase().includes(lowerSearch);
+      const isMatch = n.name.toLowerCase().includes(lowerSearch) || n.path.toLowerCase().includes(lowerSearch);
       let hasVisibleChild = false;
       for (const child of Object.values(n.children)) {
         if (traverse(child)) hasVisibleChild = true;
@@ -233,7 +241,7 @@ export function ExcludeDirsModal({ isOpen, onClose, planGroups }: ExcludeDirsMod
   }, [rootNodes, search]);
 
   useEffect(() => {
-    if (search && matchPaths.size > 0) {
+      if (isOpen && search && matchPaths.size > 0) {
       setExpandedNodes(prev => new Set([...prev, ...matchPaths]));
     }
   }, [search, matchPaths]);

@@ -1,7 +1,8 @@
 import { FolderTree, FileBox, AlertCircle, ArrowRight, ShieldAlert } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
+import type { OrganizePlanItem } from '../types';
 
-export function PlanPreviewGroup({ dir, items }: { dir: string, items: any[] }) {
+export function PlanPreviewGroup({ dir, items }: { dir: string, items: OrganizePlanItem[] }) {
   const isExcluded = items.some(item => item.directory_status === "excluded");
   
   return (
@@ -20,7 +21,7 @@ export function PlanPreviewGroup({ dir, items }: { dir: string, items: any[] }) 
         )}
       </h4>
       <div className="space-y-3">
-        {items.map((item: any, idx: number) => (
+        {items.map((item, idx: number) => (
           <div key={idx} className={twMerge(
             "p-4 rounded-xl border transition-colors",
             item.directory_status === "excluded" 

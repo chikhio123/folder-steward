@@ -76,26 +76,6 @@ export interface OperationLog {
   error_message: string | null;
 }
 
-export interface AITask {
-  id: number;
-  task_type: string;
-  status: "pending" | "running" | "completed" | "failed" | "cancelled" | "rate_limited";
-  input_json: string | null;
-  result_ref_type: string | null;
-  result_ref_id: number | null;
-  total_items: number;
-  processed_items: number;
-  error_message: string | null;
-  retry_count: number;
-  estimated_tokens: number;
-  actual_tokens: number;
-  estimated_cost: number;
-  started_at: string | null;
-  finished_at: string | null;
-  created_at: string;
-  updated_at: string | null;
-}
-
 export interface OrganizePlanPreview {
   plan_id: number;
   title: string;
