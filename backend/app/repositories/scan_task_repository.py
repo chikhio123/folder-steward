@@ -12,7 +12,6 @@ class ScanTaskRepository:
             "INSERT INTO scan_tasks (root_path, status, created_at) VALUES (?, ?, ?)",
             (root_path, "pending", now),
         )
-        conn.commit()
         return ScanTask(id=cur.lastrowid, root_path=root_path, status="pending", created_at=now)
 
     def get(self, task_id: int) -> Optional[ScanTask]:
@@ -33,7 +32,6 @@ class ScanTaskRepository:
              task.failed_files, task.error_message, task.started_at,
              task.finished_at, task.id),
         )
-        conn.commit()
 
     def mark_running_if_pending(self, task_id: int, started_at: str) -> bool:
         conn = get_connection()
@@ -41,7 +39,6 @@ class ScanTaskRepository:
             "UPDATE scan_tasks SET status='running', started_at=? WHERE id=? AND status='pending'",
             (started_at, task_id),
         )
-        conn.commit()
         return cur.rowcount == 1
 
     def update_progress(self, task_id: int, scanned: int, failed: int) -> None:
@@ -53,7 +50,6 @@ class ScanTaskRepository:
             "UPDATE scan_tasks SET scanned_files=?, failed_files=? WHERE id=?",
             (scanned, failed, task_id),
         )
-        conn.commit()
 
     def complete_if_running(self, task: ScanTask) -> bool:
         conn = get_connection()
@@ -64,7 +60,6 @@ class ScanTaskRepository:
             (task.status, task.total_files, task.scanned_files,
              task.failed_files, task.error_message, task.finished_at, task.id),
         )
-        conn.commit()
         return cur.rowcount == 1
 
     def fail_if_running(self, task: ScanTask) -> bool:
@@ -74,7 +69,6 @@ class ScanTaskRepository:
                WHERE id=? AND status='running'""",
             (task.error_message, task.finished_at, task.id),
         )
-        conn.commit()
         return cur.rowcount == 1
 
     def list_recent(self, limit: int = 5) -> list[ScanTask]:
@@ -86,13 +80,14 @@ class ScanTaskRepository:
 
 class ScanErrorRepository:
     def create(self, task_id: int, file_path: str, error_message: str) -> ScanError:
+        from ..core.database import require_transaction
+        require_transaction()
         conn = get_connection()
         now = now_iso()
         cur = conn.execute(
             "INSERT INTO scan_errors (task_id, file_path, error_message, created_at) VALUES (?, ?, ?, ?)",
             (task_id, file_path, error_message, now),
         )
-        conn.commit()
         return ScanError(id=cur.lastrowid, task_id=task_id, file_path=file_path,
                          error_message=error_message, created_at=now)
 

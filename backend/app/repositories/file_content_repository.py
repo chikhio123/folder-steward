@@ -19,6 +19,8 @@ class FileContentRepository:
         return cur.lastrowid
 
     def mark_stale(self, file_id: int) -> None:
+        from ..core.database import require_transaction
+        require_transaction()
         conn = get_connection()
         conn.execute(
             """UPDATE file_contents
@@ -26,7 +28,6 @@ class FileContentRepository:
                WHERE file_id = ? AND extract_status = 'completed'""",
             (now_iso(), file_id),
         )
-        conn.commit()
 
     def get_by_file_id(self, file_id: int) -> Optional[FileContent]:
         row = get_connection().execute(

@@ -35,10 +35,12 @@ def test_create_summary_task(mock_queue):
 
     # Create a file record
     repo = FileRepository()
-    file_id = repo.create(FileRecord(
-        original_path="test.txt", current_path="test.txt", filename="test.txt",
-        size_bytes=100, indexed_at="2026-05-06T00:00:00"
-    ))
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        file_id = repo.create(FileRecord(
+            original_path="test.txt", current_path="test.txt", filename="test.txt",
+            size_bytes=100, indexed_at="2026-05-06T00:00:00"
+        ))
 
     # Request summary
     res = client.post("/api/ai/summaries", json={"file_id": file_id})

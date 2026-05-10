@@ -237,10 +237,13 @@ def test_extract_integration_real_oversize_file():
 
         # Insert a record
         rec = FileRecord(original_path=str(large_file), current_path=str(large_file), filename="large.txt", extension=".txt", status="active", size_bytes=large_file.stat().st_size)
-        file_id = svc.file_repo.create(rec)
+        from app.core.uow import UnitOfWork
+        with UnitOfWork():
+            file_id = svc.file_repo.create(rec)
 
         task = ExtractTask(file_id=file_id, status="pending", created_at=now_iso())
-        task_id = svc.task_repo.create(task)
+        with UnitOfWork():
+            task_id = svc.task_repo.create(task)
 
         with patch("app.services.extract_limits.MAX_EXTRACT_FILE_MB", 1):
             svc.run_extract_task(task_id)

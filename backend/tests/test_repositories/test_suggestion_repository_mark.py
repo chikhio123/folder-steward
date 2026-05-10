@@ -45,7 +45,8 @@ def file_id(file_repo):
         size_bytes=100,
         indexed_at=now_iso(),
     )
-    return file_repo.create(rec)
+    with UnitOfWork():
+        return file_repo.create(rec)
 
 def test_mark_superseded_routine(repo, file_id):
     # Routine task without include_accepted

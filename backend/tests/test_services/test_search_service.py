@@ -34,7 +34,9 @@ def setup_fts_data():
         indexed_at="2026-05-06T00:00:00",
         status="active"
     )
-    id1 = repo.create(r1)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        id1 = repo.create(r1)
 
     c1 = FileContent(
         file_id=id1,
@@ -43,7 +45,8 @@ def setup_fts_data():
         extractor_type="TxtExtractor",
         extract_status="completed"
     )
-    crepo.create(c1)
+    with UnitOfWork():
+        crepo.create(c1)
 
     # Record 2
     r2 = FileRecord(
@@ -55,7 +58,8 @@ def setup_fts_data():
         indexed_at="2026-05-06T00:00:00",
         status="active"
     )
-    id2 = repo.create(r2)
+    with UnitOfWork():
+        id2 = repo.create(r2)
 
     c2 = FileContent(
         file_id=id2,
@@ -64,7 +68,8 @@ def setup_fts_data():
         extractor_type="PdfExtractor",
         extract_status="completed"
     )
-    crepo.create(c2)
+    with UnitOfWork():
+        crepo.create(c2)
 
     return id1, id2
 

@@ -57,7 +57,9 @@ def test_execute_target_already_exists(op_service, tmp_workspace):
     create_mock_file(target) # Target exists!
 
     rec = FileRecord(original_path=str(source), current_path=str(source), filename="source.txt", size_bytes=4, status="active")
-    file_id = op_service.file_repo.create(rec)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        file_id = op_service.file_repo.create(rec)
 
     sug = FileSuggestion(file_id=file_id, status="accepted", source_path=str(source), target_path=str(target), archive_root=str(archive_root), created_at=now_iso())
     with UnitOfWork():
@@ -86,7 +88,9 @@ def test_execute_source_missing(op_service, tmp_workspace):
     target = archive_root / "target.txt"
 
     rec = FileRecord(original_path=str(source), current_path=str(source), filename="missing.txt", size_bytes=4, status="active")
-    file_id = op_service.file_repo.create(rec)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        file_id = op_service.file_repo.create(rec)
 
     sug = FileSuggestion(file_id=file_id, status="accepted", source_path=str(source), target_path=str(target), archive_root=str(archive_root), created_at=now_iso())
     with UnitOfWork():
@@ -110,7 +114,9 @@ def test_execute_target_outside_archive_root(op_service, tmp_workspace):
     create_mock_file(source)
 
     rec = FileRecord(original_path=str(source), current_path=str(source), filename="source.txt", size_bytes=4, status="active")
-    file_id = op_service.file_repo.create(rec)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        file_id = op_service.file_repo.create(rec)
 
     sug = FileSuggestion(file_id=file_id, status="accepted", source_path=str(source), target_path=str(target), archive_root=str(archive_root), created_at=now_iso())
     with UnitOfWork():
@@ -135,7 +141,9 @@ def test_execute_target_system_sensitive_path(mock_is_sensitive, op_service, tmp
     create_mock_file(source)
 
     rec = FileRecord(original_path=str(source), current_path=str(source), filename="source.txt", size_bytes=4, status="active")
-    file_id = op_service.file_repo.create(rec)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        file_id = op_service.file_repo.create(rec)
 
     sug = FileSuggestion(file_id=file_id, status="accepted", source_path=str(source), target_path=str(target), archive_root=str(archive_root), created_at=now_iso())
     with UnitOfWork():
@@ -162,7 +170,9 @@ def test_execute_db_update_fails_rollback_file(mock_commit_db, op_service, tmp_w
     create_mock_file(source)
 
     rec = FileRecord(original_path=str(source), current_path=str(source), filename="source.txt", size_bytes=4, status="active")
-    file_id = op_service.file_repo.create(rec)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        file_id = op_service.file_repo.create(rec)
 
     sug = FileSuggestion(file_id=file_id, status="accepted", source_path=str(source), target_path=str(target), archive_root=str(archive_root), created_at=now_iso())
     with UnitOfWork():
@@ -185,7 +195,9 @@ def test_rollback_success(op_service, tmp_workspace):
     create_mock_file(source)
 
     rec = FileRecord(original_path=str(source), current_path=str(source), filename="source.txt", size_bytes=4, status="active")
-    file_id = op_service.file_repo.create(rec)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        file_id = op_service.file_repo.create(rec)
 
     sug = FileSuggestion(file_id=file_id, status="accepted", source_path=str(source), target_path=str(target), archive_root=str(archive_root), created_at=now_iso())
     with UnitOfWork():
@@ -219,7 +231,9 @@ def test_rollback_source_missing(op_service, tmp_workspace):
     create_mock_file(source)
 
     rec = FileRecord(original_path=str(source), current_path=str(source), filename="source.txt", size_bytes=4, status="active")
-    file_id = op_service.file_repo.create(rec)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        file_id = op_service.file_repo.create(rec)
     sug = FileSuggestion(file_id=file_id, status="accepted", source_path=str(source), target_path=str(target), archive_root=str(archive_root), created_at=now_iso())
     with UnitOfWork():
         sug_id = op_service.sug_repo.create(sug)
@@ -240,7 +254,9 @@ def test_rollback_target_already_exists(op_service, tmp_workspace):
     create_mock_file(source)
 
     rec = FileRecord(original_path=str(source), current_path=str(source), filename="source.txt", size_bytes=4, status="active")
-    file_id = op_service.file_repo.create(rec)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        file_id = op_service.file_repo.create(rec)
     sug = FileSuggestion(file_id=file_id, status="accepted", source_path=str(source), target_path=str(target), archive_root=str(archive_root), created_at=now_iso())
     with UnitOfWork():
         sug_id = op_service.sug_repo.create(sug)
@@ -264,7 +280,9 @@ def test_rollback_db_update_fails_rollback_file(mock_commit_db, op_service, tmp_
     create_mock_file(source)
 
     rec = FileRecord(original_path=str(source), current_path=str(source), filename="source.txt", size_bytes=4, status="active")
-    file_id = op_service.file_repo.create(rec)
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        file_id = op_service.file_repo.create(rec)
     sug = FileSuggestion(file_id=file_id, status="accepted", source_path=str(source), target_path=str(target), archive_root=str(archive_root), created_at=now_iso())
     with UnitOfWork():
         sug_id = op_service.sug_repo.create(sug)
@@ -286,18 +304,22 @@ def test_execute_partial_success(op_service, tmp_workspace):
     s1 = tmpdir / "s1.txt"
     t1 = archive_root / "t1.txt"
     create_mock_file(s1)
-    rec1 = op_service.file_repo.create(FileRecord(original_path=str(s1), current_path=str(s1), filename="s1.txt", status="active", size_bytes=4))
+    from app.core.uow import UnitOfWork
+    with UnitOfWork():
+        rec1 = op_service.file_repo.create(FileRecord(original_path=str(s1), current_path=str(s1), filename="s1.txt", status="active", size_bytes=4))
 
     # 2. Failed (source missing)
     s2 = tmpdir / "s2.txt"
     t2 = archive_root / "t2.txt"
-    rec2 = op_service.file_repo.create(FileRecord(original_path=str(s2), current_path=str(s2), filename="s2.txt", status="active", size_bytes=4))
+    with UnitOfWork():
+        rec2 = op_service.file_repo.create(FileRecord(original_path=str(s2), current_path=str(s2), filename="s2.txt", status="active", size_bytes=4))
 
     # 3. Success
     s3 = tmpdir / "s3.txt"
     t3 = archive_root / "t3.txt"
     create_mock_file(s3)
-    rec3 = op_service.file_repo.create(FileRecord(original_path=str(s3), current_path=str(s3), filename="s3.txt", status="active", size_bytes=4))
+    with UnitOfWork():
+        rec3 = op_service.file_repo.create(FileRecord(original_path=str(s3), current_path=str(s3), filename="s3.txt", status="active", size_bytes=4))
 
     with UnitOfWork():
         sug1 = op_service.sug_repo.create(FileSuggestion(file_id=rec1, status="accepted", source_path=str(s1), target_path=str(t1), archive_root=str(archive_root), created_at=now_iso()))

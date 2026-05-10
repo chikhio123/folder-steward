@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..core.errors import ScanError, PathSafetyError
+from ..core.uow import UnitOfWork
 from ..models.file_record import FileRecord
 from ..models.scan_task import ScanTask, now_iso
 from ..repositories.file_repository import FileRepository
@@ -30,7 +31,8 @@ class ScanService:
         root_path = Path(root_path_str).resolve()
         self.safety_service.validate_scan_root(root_path)
 
-        task = self.task_repo.create(str(root_path))
+        with UnitOfWork():
+            task = self.task_repo.create(str(root_path))
         thread = threading.Thread(target=self._run_scan, args=(task.id,), daemon=True)
         self._running_tasks[task.id] = thread
         thread.start()
@@ -43,7 +45,8 @@ class ScanService:
         self._cancelled_tasks.add(task_id)
         task.status = "cancelled"
         task.finished_at = now_iso()
-        self.task_repo.update(task)
+        with UnitOfWork():
+            self.task_repo.update(task)
         return True
 
     def _is_cancelled(self, task_id: int) -> bool:
@@ -58,7 +61,8 @@ class ScanService:
         if latest_task:
             latest_task.status = "cancelled"
             latest_task.finished_at = now_iso()
-            self.task_repo.update(latest_task)
+            with UnitOfWork():
+                self.task_repo.update(latest_task)
         self._running_tasks.pop(task.id, None)
 
     def get_task(self, task_id: int) -> Optional[ScanTask]:
@@ -88,9 +92,11 @@ class ScanService:
             for i in range(0, len(deleted_ids), chunk_size):
                 chunk = deleted_ids[i:i+chunk_size]
                 placeholders = ",".join("?" for _ in chunk)
-                conn.execute(f"UPDATE file_records SET status = 'deleted' WHERE id IN ({placeholders})", chunk)
-            conn.commit()
-            
+                with UnitOfWork():
+                    conn = get_connection()
+                    conn.execute(f"UPDATE file_records SET status = 'deleted' WHERE id IN ({placeholders})", chunk)
+            # We removed conn.commit() here because UnitOfWork handles it per chunk
+
             # Also clean up FTS for deleted files using triggers we added
         return len(deleted_ids)
 
@@ -105,7 +111,9 @@ class ScanService:
             return
         task.started_at = now_iso()
         if task.status == "pending":
-            if not self.task_repo.mark_running_if_pending(task.id, task.started_at):
+            with UnitOfWork():
+                marked = self.task_repo.mark_running_if_pending(task.id, task.started_at)
+            if not marked:
                 task = self.task_repo.get(task_id)
                 if task and task.status == "cancelled":
                     self._running_tasks.pop(task_id, None)
@@ -133,9 +141,11 @@ class ScanService:
                     scanned += 1
                 except Exception as e:
                     failed += 1
-                    self.error_repo.create(task_id, str(path), str(e))
+                    with UnitOfWork():
+                        self.error_repo.create(task_id, str(path), str(e))
 
-                self.task_repo.update_progress(task.id, scanned, failed)
+                with UnitOfWork():
+                    self.task_repo.update_progress(task.id, scanned, failed)
         except Exception as e:
             if self._is_cancelled(task_id):
                 self._finish_cancelled(task)
@@ -143,7 +153,8 @@ class ScanService:
             task.status = "failed"
             task.error_message = f"Scan failed: {e}"
             task.finished_at = now_iso()
-            self.task_repo.fail_if_running(task)
+            with UnitOfWork():
+                self.task_repo.fail_if_running(task)
             self._running_tasks.pop(task_id, None)
             return
 
@@ -161,7 +172,8 @@ class ScanService:
         task.failed_files = failed
         task.error_message = f"Cleaned {cleaned} missing files." if cleaned > 0 else None
         task.finished_at = now_iso()
-        self.task_repo.complete_if_running(task)
+        with UnitOfWork():
+            self.task_repo.complete_if_running(task)
 
         self._running_tasks.pop(task_id, None)
 
@@ -204,12 +216,13 @@ class ScanService:
         )
 
         # Check if file changed to mark stale
-        existing = self.file_repo.find_by_current_path(record.current_path)
-        if existing:
-            if existing.modified_at != record.modified_at or existing.size_bytes != record.size_bytes or existing.sha256 != record.sha256:
-                self.content_repo.mark_stale(existing.id)
+        with UnitOfWork():
+            existing = self.file_repo.find_by_current_path(record.current_path)
+            if existing:
+                if existing.modified_at != record.modified_at or existing.size_bytes != record.size_bytes or existing.sha256 != record.sha256:
+                    self.content_repo.mark_stale(existing.id)
 
-        self.file_repo.upsert(record)
+            self.file_repo.upsert(record)
 
     def _should_scan_hidden(self) -> bool:
         from ..core.config import settings

@@ -6,6 +6,8 @@ from ..models.file_record import FileRecord
 
 class FileRepository:
     def create(self, record: FileRecord) -> int:
+        from ..core.database import require_transaction
+        require_transaction()
         conn = get_connection()
         cur = conn.execute(
             """INSERT INTO file_records
@@ -17,7 +19,6 @@ class FileRepository:
              record.sha256, record.created_at, record.modified_at,
              record.indexed_at, record.status, record.last_error),
         )
-        conn.commit()
         return cur.lastrowid
 
     def find_by_current_path(self, current_path: str) -> Optional[FileRecord]:
@@ -30,6 +31,8 @@ class FileRepository:
 
     def upsert(self, record: FileRecord) -> int:
         """Insert if new, update if existing by current_path. Returns record id."""
+        from ..core.database import require_transaction
+        require_transaction()
         existing = self.find_by_current_path(record.current_path)
         if existing:
             conn = get_connection()
@@ -43,7 +46,6 @@ class FileRepository:
                  record.modified_at, record.indexed_at, record.status,
                  record.last_error, existing.id),
             )
-            conn.commit()
             return existing.id
         return self.create(record)
 
