@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getFileContent, forceExtractFile, getFileSummary, createSummaryTask } from "../services/api";
-import { formatSize, getFileIcon } from "../utils/format";
-import type { FileRecord } from "../types";
+import { getFileContent, forceExtractFile, getFileSummary, createSummaryTask } from "../../../services/api";
+import { formatSize, getFileIcon } from "../../../utils/format";
+import type { FileRecord } from "../../../types";
 import { X, FileText, Loader2, RefreshCw, AlertCircle, CheckCircle2, FileSignature, Sparkles } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import toast from "react-hot-toast";

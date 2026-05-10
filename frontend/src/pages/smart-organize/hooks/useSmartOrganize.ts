@@ -1,6 +1,6 @@
-import { useSmartOrganizeFormState } from './smart-organize/useSmartOrganizeFormState';
-import { useTaskLifecycleState } from './smart-organize/useTaskLifecycleState';
-import { useOrganizeQueries } from './smart-organize/useOrganizeQueries';
+import { useSmartOrganizeFormState } from './useSmartOrganizeFormState';
+import { useTaskLifecycleState } from './useTaskLifecycleState';
+import { useOrganizeQueries } from './useOrganizeQueries';
 
 export const useSmartOrganize = () => {
   const form = useSmartOrganizeFormState();

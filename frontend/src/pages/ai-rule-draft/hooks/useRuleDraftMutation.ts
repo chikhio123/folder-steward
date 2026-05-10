@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { createRuleDraft } from "../services/api";
+import { createRuleDraft } from "../../../services/api";
 import toast from "react-hot-toast";
 
 interface UseRuleDraftMutationOptions {

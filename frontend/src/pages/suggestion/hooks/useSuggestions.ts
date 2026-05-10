@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSuggestions, generateSuggestions, updateSuggestion, executeSuggestions, bulkRejectSuggestions } from '../services/api';
+import { getSuggestions, generateSuggestions, updateSuggestion, executeSuggestions, bulkRejectSuggestions } from '../../../services/api';
 import toast from 'react-hot-toast';
 
 export const useSuggestions = () => {

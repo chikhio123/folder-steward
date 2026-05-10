@@ -1,5 +1,5 @@
 import { Search, Filter, ArrowUpDown } from "lucide-react";
-import { CustomSelect } from "../CustomSelect";
+import { CustomSelect } from "../../../components/common/CustomSelect";
 
 export interface FileFilterBarProps {
   keyword: string;

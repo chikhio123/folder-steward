@@ -13,8 +13,8 @@ import {
   Loader2
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { CustomSelect } from "../components/CustomSelect";
-import { SearchAutocomplete } from "../components/SearchAutocomplete";
+import { CustomSelect } from "../components/common/CustomSelect";
+import { SearchAutocomplete } from "./search/components/SearchAutocomplete";
 
 export default function SearchPage() {
   const [queryInput, setQueryInput] = useState("");

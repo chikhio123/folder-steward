@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { createOrganizePlan, getOrganizePlanPreview, acceptOrganizePlan, rejectOrganizePlan, getAiTask, cancelAiTask } from '../../services/api';
+import { createOrganizePlan, getOrganizePlanPreview, acceptOrganizePlan, rejectOrganizePlan, getAiTask, cancelAiTask } from '../../../services/api';
 import toast from 'react-hot-toast';
 
 interface OrganizeQueriesProps {

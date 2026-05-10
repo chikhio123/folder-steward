@@ -1,6 +1,6 @@
 import { FolderTree, FileBox, AlertCircle, ArrowRight, ShieldAlert } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
-import type { OrganizePlanItem } from '../types';
+import type { OrganizePlanItem } from '../../../types';
 
 export function PlanPreviewGroup({ dir, items }: { dir: string, items: OrganizePlanItem[] }) {
   const isExcluded = items.some(item => item.directory_status === "excluded");

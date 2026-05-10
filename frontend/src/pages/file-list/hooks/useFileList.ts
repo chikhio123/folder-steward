@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getFiles } from '../services/api';
-import type { FileRecord } from '../types';
+import { getFiles } from '../../../services/api';
+import type { FileRecord } from '../../../types';
 
 export const useFileList = () => {
   const [page, setPage] = useState(1);

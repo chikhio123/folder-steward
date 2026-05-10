@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createScanTask, getScanTask, getScanErrors, cancelScanTask } from "../services/api";
+import { createScanTask, getScanTask, getScanErrors, cancelScanTask } from "../../../services/api";
 import toast from "react-hot-toast";
 
 export function useScanTask() {

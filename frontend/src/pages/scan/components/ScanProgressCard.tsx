@@ -1,8 +1,8 @@
 import { Square, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
-import type { ScanTask } from "../types";
-import { Card } from "./ui/Card";
-import { Badge } from "./ui/Badge";
-import { Button } from "./ui/Button";
+import type { ScanTask } from "../../../types";
+import { Card } from "../../../components/ui/Card";
+import { Badge } from "../../../components/ui/Badge";
+import { Button } from "../../../components/ui/Button";
 
 export interface ScanProgressCardProps {
   task: ScanTask;

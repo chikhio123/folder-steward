@@ -16,11 +16,11 @@ import {
   X
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { ConfirmModal } from "../components/ConfirmModal";
-import { CustomSelect } from "../components/CustomSelect";
+import { ConfirmModal } from "../components/common/ConfirmModal";
+import { CustomSelect } from "../components/common/CustomSelect";
 import { Pagination } from "../components/common/Pagination";
-import { DuplicateIsolationPanel } from "../components/DuplicateIsolationPanel";
-import { useSuggestions } from "../hooks/useSuggestions";
+import { DuplicateIsolationPanel } from "./scan/components/DuplicateIsolationPanel";
+import { useSuggestions } from "./suggestion/hooks/useSuggestions";
 
 export default function SuggestionPage() {
   const { state, actions, mutations } = useSuggestions();

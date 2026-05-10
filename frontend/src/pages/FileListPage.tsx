@@ -1,11 +1,11 @@
-import { useFileList } from '../hooks/useFileList';
+import { useFileList } from './file-list/hooks/useFileList';
 import { Pagination } from '../components/common/Pagination';
 import { Loader2 } from "lucide-react";
-import { FileFilterBar } from '../components/file-list/FileFilterBar';
-import { FileTableHeader } from '../components/file-list/FileTableHeader';
-import { FileTableRow } from '../components/file-list/FileTableRow';
-import { FileEmptyState } from '../components/file-list/FileEmptyState';
-import { FileDetailDrawer } from '../components/file-list/FileDetailDrawer';
+import { FileFilterBar } from './file-list/components/FileFilterBar';
+import { FileTableHeader } from './file-list/components/FileTableHeader';
+import { FileTableRow } from './file-list/components/FileTableRow';
+import { FileEmptyState } from './file-list/components/FileEmptyState';
+import { FileDetailDrawer } from './file-list/components/FileDetailDrawer';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import type { FileRecord } from "../types";
