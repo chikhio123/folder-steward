@@ -2,17 +2,15 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-# Initialize DB first, before importing routers that instantiate services
-from .core.database import init_db, close_connection
-init_db()
-
+from .core.connection import get_connection
+from .core.database import close_connection
 from .services.extract_service import ExtractService
 from .services.scan_service import ScanService
 from .services.ai_task_queue_service import AITaskQueueService
-# Initialize other things if needed
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    get_connection()
     ExtractService.cleanup_ghost_tasks()
     ScanService.cleanup_ghost_tasks()
     AITaskQueueService()._cleanup_ghost_tasks()

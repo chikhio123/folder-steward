@@ -23,11 +23,13 @@ class OrganizePlanService:
         settings_repo=None,
         file_repo=None,
     ):
+        if classification_service is None:
+            raise ValueError("classification_service is required")
         self.plan_repo = plan_repo or OrganizePlanRepository()
         self.ai_sug_repo = class_repo or AIClassificationRepository()
         self.sug_repo = suggestion_repo or SuggestionRepository()
         self.path_protection = path_protection or PathProtectionService()
-        self.classification_service = classification_service or None
+        self.classification_service = classification_service
 
         from ..repositories.settings_repository import SettingsRepository
         from ..repositories.file_repository import FileRepository
@@ -37,10 +39,7 @@ class OrganizePlanService:
 
     def generate_plan(self, scope: str, min_confidence: float = 0.65, task=None) -> int:
         """Classifies files and aggregates suggestions into a structured plan."""
-        from .ai_classification_service import AIClassificationService
-        class_service = self.classification_service or AIClassificationService(
-            path_protection=self.path_protection
-        )
+        class_service = self.classification_service
 
         archive_root = self.settings_repo.get("archive_root") or ""
 
