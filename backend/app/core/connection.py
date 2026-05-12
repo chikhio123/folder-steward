@@ -6,9 +6,30 @@ from .config import settings
 
 _local = threading.local()
 
+_initialized_paths: set[str] = set()
+_init_lock = threading.Lock()
 
-def get_connection() -> sqlite3.Connection:
-    """Get a thread-local SQLite connection."""
+
+def _ensure_schema(db_path: str) -> None:
+    """Lazily initialize schema.
+    Holds the lock during the entire init to prevent:
+      Thread A: init_db() running, schema half-created
+      Thread B: sees path in set, proceeds with incomplete schema
+    init_db() uses get_connection(ensure_schema=False) internally,
+    so there's no recursion when called from within the lock.
+    """
+    if db_path in _initialized_paths:
+        return
+    with _init_lock:
+        if db_path in _initialized_paths:
+            return
+        from .schema import init_db
+        init_db()
+        _initialized_paths.add(db_path)
+
+
+def get_connection(*, ensure_schema: bool = True) -> sqlite3.Connection:
+    """Get a thread-local SQLite connection, optionally ensuring schema on first use."""
     conn = getattr(_local, "connection", None)
     db_path = str(Path(settings.database_path))
 
@@ -27,6 +48,9 @@ def get_connection() -> sqlite3.Connection:
         conn.execute("PRAGMA foreign_keys=ON")
         _local.connection = conn
         _local.db_path = db_path
+
+    if ensure_schema:
+        _ensure_schema(db_path)
     return conn
 
 
