@@ -6,38 +6,30 @@ from .config import settings
 
 _local = threading.local()
 
-# Track which DB paths have had their schema initialized.
-# Per-path tracking is critical: tests switch settings.database_path,
-# and a single global bool would skip schema creation on the new path.
-# Flag is set BEFORE calling init_db() to prevent recursion:
-#   get_connection() → _ensure_schema() → mark path → init_db() → get_connection() (finds existing conn, path is marked → returns)
 _initialized_paths: set[str] = set()
 _init_lock = threading.Lock()
 
 
 def _ensure_schema(db_path: str) -> None:
-    """Lazily initialize schema if this db_path hasn't been seen before.
-    Safe against recursion because we mark the path before calling init_db(),
-    which internally calls get_connection() and will see the path is already handled.
-    On failure, the path is removed from the set so the next request retries.
+    """Lazily initialize schema.
+    Holds the lock during the entire init to prevent:
+      Thread A: init_db() running, schema half-created
+      Thread B: sees path in set, proceeds with incomplete schema
+    init_db() uses get_connection(ensure_schema=False) internally,
+    so there's no recursion when called from within the lock.
     """
     if db_path in _initialized_paths:
         return
     with _init_lock:
         if db_path in _initialized_paths:
             return
-        _initialized_paths.add(db_path)
-    try:
         from .schema import init_db
         init_db()
-    except Exception:
-        with _init_lock:
-            _initialized_paths.discard(db_path)
-        raise
+        _initialized_paths.add(db_path)
 
 
-def get_connection() -> sqlite3.Connection:
-    """Get a thread-local SQLite connection, lazily initializing schema on first use."""
+def get_connection(*, ensure_schema: bool = True) -> sqlite3.Connection:
+    """Get a thread-local SQLite connection, optionally ensuring schema on first use."""
     conn = getattr(_local, "connection", None)
     db_path = str(Path(settings.database_path))
 
@@ -57,7 +49,8 @@ def get_connection() -> sqlite3.Connection:
         _local.connection = conn
         _local.db_path = db_path
 
-    _ensure_schema(db_path)
+    if ensure_schema:
+        _ensure_schema(db_path)
     return conn
 
 
